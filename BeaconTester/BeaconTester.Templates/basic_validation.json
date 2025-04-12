@@ -1,0 +1,9 @@
+{
+  "templateType": "standard",
+  "description": "Basic rule validation template",
+  "parameters": {
+    "duration": "short",
+    "intensity": "normal",
+    "coverage": "full"
+  }
+}

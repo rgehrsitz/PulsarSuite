@@ -1,0 +1,12 @@
+{
+  "templateType": "stability",
+  "description": "Long-running stability test",
+  "parameters": {
+    "duration": "continuous",
+    "monitoring": {
+      "memory": true,
+      "cpu": true,
+      "latency": true
+    }
+  }
+}

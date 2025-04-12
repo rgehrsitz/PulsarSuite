@@ -1,0 +1,9 @@
+{
+  "templateType": "performance",
+  "description": "Stress test configuration",
+  "parameters": {
+    "duration": "extended",
+    "intensity": "high",
+    "throughput": "max"
+  }
+}
