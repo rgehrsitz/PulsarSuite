@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project>
+  <PropertyGroup>
+    <SolutionDir>$(MSBuildThisFileDirectory)../</SolutionDir>
+    <SrcDir>$(SolutionDir)src/</SrcDir>
+    <RulesDir>$(SrcDir)Rules/</RulesDir>
+    <TestsDir>$(SrcDir)Tests/</TestsDir>
+    <BinDir>$(SrcDir)Bin/</BinDir>
+    <OutputDir>$(SolutionDir)output/</OutputDir>
+    <DistDir>$(OutputDir)dist/</DistDir>
+    <ReportsDir>$(OutputDir)reports/</ReportsDir>
+    <ProjectName Condition="'$(ProjectName)' == ''">DefaultProject</ProjectName>
+    <RulesFile Condition="'$(RulesFile)' == ''">$(RulesDir)$(ProjectName)/rules/temperature_rules.yaml</RulesFile>
+    <PulsarDir>$(SolutionDir)Pulsar/</PulsarDir>
+    <BeaconTesterDir>$(SolutionDir)BeaconTester/</BeaconTesterDir>
+    <PulsarCompilerProject>$(PulsarDir)Pulsar.Compiler/Pulsar.Compiler.csproj</PulsarCompilerProject>
+    <BeaconTesterRunnerProject>$(BeaconTesterDir)BeaconTester.Runner/BeaconTester.Runner.csproj</BeaconTesterRunnerProject>
+  </PropertyGroup>
+
+  <Target Name="ValidateRules">
+    <Exec Command="dotnet run --project $(PulsarCompilerProject) validate --rules=$(RulesFile) --config=system_config.yaml" WorkingDirectory="$(PulsarDir)" />
+  </Target>
+
+  <Target Name="CompileRules" DependsOnTargets="ValidateRules">
+    <MakeDir Directories="$(BinDir)$(ProjectName)" />
+    <Exec Command="dotnet run --project $(PulsarCompilerProject) compile --rules=$(RulesFile) --output=$(BinDir)$(ProjectName) --config=system_config.yaml" WorkingDirectory="$(PulsarDir)" />
+  </Target>
+
+  <Target Name="BuildBeacon" DependsOnTargets="CompileRules">
+    <MakeDir Directories="$(DistDir)$(ProjectName)" />
+    <Exec Command="dotnet run --project $(PulsarCompilerProject) beacon --rules=$(BinDir)$(ProjectName) --output=$(DistDir)$(ProjectName) --config=system_config.yaml" WorkingDirectory="$(PulsarDir)" />
+  </Target>
+
+  <Target Name="Build" DependsOnTargets="BuildBeacon">
+    <Message Text="Build completed successfully." Importance="high" />
+  </Target>
+</Project>

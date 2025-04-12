@@ -1,15 +1,26 @@
-# Pulsar/Beacon Testing Environment
+# Pulsar/Beacon Development Environment
 
-This repository contains a streamlined workflow for developing, testing, and running Pulsar/Beacon rule-based applications.
+This repository provides a modern development environment for Pulsar/Beacon rule-based applications using MSBuild for streamlined builds and testing.
 
-## Directory Structure
+## Project Structure
 
-- `/Rules/` - YAML rule definition files
-- `/Config/` - Configuration files for Pulsar/Beacon
-- `/Scripts/` - Helper scripts for automation
-- `/Output/` - Generated content (excluded from version control)
-- `/Pulsar/` - Pulsar compiler and templates
-- `/BeaconTester/` - Automated testing framework
+```
+PulsarSuite/
+├── src/                 # Source code and input files
+│   ├── Rules/          # Rule definitions
+│   │   └── [ProjectName]/
+│   │       ├── rules/  # YAML rule files
+│   │       └── config/ # Configuration files
+│   ├── Tests/         # Generated test files
+│   └── Bin/           # Compiled binaries
+├── build/              # Build configuration
+│   └── PulsarSuite.build  # Main build file
+├── output/             # Build outputs
+│   ├── dist/           # Distributable Beacon apps
+│   └── reports/        # Test reports
+├── Pulsar/             # Pulsar compiler source
+└── BeaconTester/       # BeaconTester source
+```
 
 ## Getting Started
 
@@ -22,59 +33,62 @@ This repository contains a streamlined workflow for developing, testing, and run
 ### Quick Start
 
 1. Clone this repository
-2. Place your rule files in the `/Rules/` directory
-3. Run the end-to-end test script:
-
-```bash
-./Scripts/run-end-to-end.sh Rules/your-rules.yaml
-```
+2. Create a new project directory in `src/Rules/`:
+   ```bash
+   mkdir -p src/Rules/MyProject/{rules,config}
+   ```
+3. Place your rule files in `src/Rules/MyProject/rules/`
+4. Build and test your project:
+   ```bash
+   msbuild build/PulsarSuite.build /t:Build /p:ProjectName=MyProject
+   ```
 
 This will:
-- Start Redis if needed
-- Compile the rules into a Beacon application
-- Run the Beacon runtime
-- Execute tests using BeaconTester
-- Generate a test report
+- Validate your rules
+- Compile them to C#
+- Generate test cases
+- Build the Beacon application
+- Run tests and generate reports
 
-## Available Scripts
-
-### setup-environment.sh
-
-Ensures Redis is running and clears existing test data.
+## Build Commands
 
 ```bash
-./Scripts/setup-environment.sh
+# Clean all build artifacts
+msbuild build/PulsarSuite.build /t:Clean
+
+# Validate rules only
+msbuild build/PulsarSuite.build /t:ValidateRules
+
+# Compile rules to C#
+msbuild build/PulsarSuite.build /t:CompileRules
+
+# Generate tests from compiled rules
+msbuild build/PulsarSuite.build /t:GenerateTests
+
+# Build Beacon application
+msbuild build/PulsarSuite.build /t:BuildBeacon
+
+# Run tests
+msbuild build/PulsarSuite.build /t:RunTests
+
+# Full build process (clean + validate + compile + test)
+msbuild build/PulsarSuite.build /t:Build
 ```
 
-### compile-beacon.sh
+## Output Locations
 
-Compiles rule files into a Beacon application.
+All build outputs are placed in consistent locations:
 
-```bash
-./Scripts/compile-beacon.sh <rule-file> [output-dir]
-```
-
-### run-tests.sh
-
-Runs tests against a running Beacon instance.
-
-```bash
-./Scripts/run-tests.sh <rule-file> [test-output-dir]
-```
-
-### run-end-to-end.sh
-
-Runs the complete end-to-end workflow.
-
-```bash
-./Scripts/run-end-to-end.sh <rule-file>
-```
+- Compiled rules: `src/Bin/[ProjectName]/`
+- Generated tests: `src/Tests/[ProjectName]/`
+- Distributable Beacon: `output/dist/[ProjectName]/`
+- Test reports: `output/reports/`
 
 ## Development Notes
 
-- All generated content goes to `/Output/` and is excluded from version control
-- Each run creates a timestamped directory for easy reference
-- Test reports are available in HTML and JSON formats
+- All generated content goes to the `output/` directory and is excluded from version control
+- Test reports are available in `output/reports/`
+- Each project has its own isolated build directories under `src/Bin/` and `src/Tests/`
 
 ## Related Projects
 

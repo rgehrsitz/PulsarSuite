@@ -2,6 +2,8 @@
 
 version: 1
 validSensors:
+  - input:temperature
+  - input:humidity
   - temperature_f
   - temperature_c
   - humidity
