@@ -1,0 +1,112 @@
+{
+  "scenarios": [
+    {
+      "name": "High Temperature Test",
+      "description": "Tests the high temperature rule",
+      "steps": [
+        {
+          "name": "Below Threshold",
+          "inputs": [
+            { "key": "input:temperature", "value": 25 },
+            { "key": "input:humidity", "value": 50 }
+          ],
+          "expectations": [
+            { "key": "output:high_temperature", "expected": false }
+          ]
+        },
+        {
+          "name": "Above Threshold",
+          "inputs": [
+            { "key": "input:temperature", "value": 35 },
+            { "key": "input:humidity", "value": 50 }
+          ],
+          "expectations": [
+            { "key": "output:high_temperature", "expected": true }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Humidity Test",
+      "description": "Tests the humidity rule",
+      "steps": [
+        {
+          "name": "Below Threshold",
+          "inputs": [
+            { "key": "input:humidity", "value": 25 },
+            { "key": "input:temperature", "value": 20 }
+          ],
+          "expectations": [
+            { "key": "output:humidity_normal", "expected": false }
+          ]
+        },
+        {
+          "name": "Above Threshold",
+          "inputs": [
+            { "key": "input:humidity", "value": 45 },
+            { "key": "input:temperature", "value": 20 }
+          ],
+          "expectations": [
+            { "key": "output:humidity_normal", "expected": true }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Comfort Index Test",
+      "description": "Tests the comfort index calculation",
+      "steps": [
+        {
+          "name": "Calculate Index",
+          "inputs": [
+            { "key": "input:temperature", "value": 25 },
+            { "key": "input:humidity", "value": 50 }
+          ],
+          "expectations": [
+            { "key": "output:comfort_index", "expected": 30, "validator": "numeric", "tolerance": 0.01 }
+          ]
+        },
+        {
+          "name": "Different Values",
+          "inputs": [
+            { "key": "input:temperature", "value": 20 },
+            { "key": "input:humidity", "value": 40 }
+          ],
+          "expectations": [
+            { "key": "output:comfort_index", "expected": 24, "validator": "numeric", "tolerance": 0.01 }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Combined Rules Test",
+      "description": "Tests all rules together",
+      "steps": [
+        {
+          "name": "Hot and Humid",
+          "inputs": [
+            { "key": "input:temperature", "value": 35 },
+            { "key": "input:humidity", "value": 60 }
+          ],
+          "expectations": [
+            { "key": "output:high_temperature", "expected": true },
+            { "key": "output:humidity_normal", "expected": true },
+            { "key": "output:comfort_index", "expected": 40, "validator": "numeric", "tolerance": 0.01 }
+          ]
+        },
+        {
+          "name": "Cool and Dry",
+          "inputs": [
+            { "key": "input:temperature", "value": 18 },
+            { "key": "input:humidity", "value": 25 }
+          ],
+          "expectations": [
+            { "key": "output:high_temperature", "expected": false },
+            { "key": "output:humidity_normal", "expected": false },
+            { "key": "output:comfort_index", "expected": 19.4, "validator": "numeric", "tolerance": 0.01 }
+          ]
+        }
+      ]
+    }
+  ]
+}

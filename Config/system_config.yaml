@@ -1,0 +1,30 @@
+version: 1
+validSensors:
+  # Input sensors
+  - input:temperature
+  - input:humidity
+  - input:pressure
+  - input:light_level
+  - input:motion_detected
+
+  # Output sensors
+  - output:high_temperature
+  - output:temperature_rising
+  - output:humidity_normal
+  - output:comfort_index
+  - output:alert_status
+  - output:alert_message
+cycleTime: 100
+redis:
+  endpoints:
+    - localhost:6379
+  poolSize: 8
+  retryCount: 3
+  retryBaseDelayMs: 100
+  connectTimeout: 5000
+  syncTimeout: 1000
+  keepAlive: 60
+  password: null
+  ssl: false
+  allowAdmin: false
+bufferCapacity: 100
