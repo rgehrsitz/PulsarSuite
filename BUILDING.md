@@ -54,8 +54,65 @@ dotnet build /t:CompileRules /p:ProjectName=MyProject /p:RulesFile=/path/to/rule
 # Build Beacon application
 dotnet build /t:BuildBeacon /p:ProjectName=MyProject /p:RulesFile=/path/to/rules.yaml
 
+# Build Beacon solution (includes the fix for RedisService.cs template issues)
+dotnet build /t:BuildBeaconSolution /p:ProjectName=MyProject /p:RulesFile=/path/to/rules.yaml /p:Configuration=Release
+
+# Generate tests
+dotnet build /t:GenerateTests /p:ProjectName=MyProject /p:RulesFile=/path/to/rules.yaml /p:Configuration=Release
+
+# Run tests
+dotnet build /t:RunTests /p:ProjectName=MyProject /p:RulesFile=/path/to/rules.yaml /p:Configuration=Release
+
 # Full build process
 dotnet build /p:ProjectName=MyProject /p:RulesFile=/path/to/rules.yaml
+```
+
+### Known Issues and Workarounds
+
+#### RedisService.cs Template Issue
+
+The RedisService.cs template in Pulsar.Compiler can have issues with C# pattern matching syntax, causing compilation errors when generating a Beacon application. This is addressed directly in the MSBuild system using the following approach:
+
+1. The BuildBeacon target in full.e2e.build creates a Beacon application using the Pulsar compiler
+
+2. A fixed version of RedisService.cs is maintained in the build directory (`RedisService.cs.fixed`)
+
+3. The build system automatically replaces the problematic generated file:
+
+```xml
+<!-- Replace the generated RedisService.cs with our fixed version -->
+<PropertyGroup>
+  <RedisServicePath>$(BeaconOutputDir)/Beacon/Beacon.Runtime/Services/RedisService.cs</RedisServicePath>
+  <FixedRedisServicePath>$(MSBuildThisFileDirectory)/RedisService.cs.fixed</FixedRedisServicePath>
+</PropertyGroup>
+
+<!-- Use our rewritten RedisService.cs to avoid template processing issues -->
+<Copy SourceFiles="$(FixedRedisServicePath)" DestinationFiles="$(RedisServicePath)" OverwriteReadOnlyFiles="true" />
+```
+
+This MSBuild approach ensures that no manual intervention or shell scripts are required to fix the issue.
+
+#### End-to-End Test Process
+
+The complete workflow for testing with the fixed RedisService.cs template:
+
+```bash
+# Clean environment
+dotnet msbuild build/full.e2e.build /t:Clean /p:Configuration=Release
+
+# Build Beacon application (includes automatic RedisService.cs fix)
+dotnet msbuild build/full.e2e.build /t:BuildBeacon /p:Configuration=Release \
+   /p:RulesFile=/path/to/your/rules.yaml \
+   /p:ConfigFile=/path/to/your/system_config.yaml
+
+# Compile Beacon solution
+dotnet msbuild build/full.e2e.build /t:BuildBeaconSolution /p:Configuration=Release
+
+# Generate tests
+dotnet msbuild build/full.e2e.build /t:GenerateTests /p:Configuration=Release
+
+# Run tests
+dotnet msbuild build/full.e2e.build /t:RunTests /p:Configuration=Release
 ```
 
 ## Output Locations

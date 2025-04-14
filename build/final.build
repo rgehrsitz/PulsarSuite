@@ -4,11 +4,11 @@
     <SolutionDir>$(MSBuildThisFileDirectory)../</SolutionDir>
     <SrcDir>$(SolutionDir)src/</SrcDir>
     <RulesDir>$(SrcDir)Rules/</RulesDir>
-    <TestsDir>$(SrcDir)Tests/</TestsDir>
     <BinDir>$(SrcDir)Bin/</BinDir>
     <OutputDir>$(SolutionDir)output/</OutputDir>
     <DistDir>$(OutputDir)dist/</DistDir>
     <ReportsDir>$(OutputDir)reports/</ReportsDir>
+    <TestsDir>$(SrcDir)Tests/</TestsDir>
     <ProjectName Condition="'$(ProjectName)' == ''">DefaultProject</ProjectName>
     <RulesFile Condition="'$(RulesFile)' == ''">$(RulesDir)$(ProjectName)/rules/temperature_rules.yaml</RulesFile>
     <PulsarDir>$(SolutionDir)Pulsar/</PulsarDir>
@@ -31,10 +31,6 @@
     <Exec Command="dotnet run --project $(PulsarCompilerProject) beacon --rules=$(BinDir)$(ProjectName) --output=$(DistDir)$(ProjectName) --config=system_config.yaml" WorkingDirectory="$(PulsarDir)" />
   </Target>
 
-  <Target Name="Build" DependsOnTargets="BuildBeacon">
-    <Message Text="Build completed successfully. Use RunEndToEnd target to run the full end-to-end test." Importance="high" />
-  </Target>
-
   <Target Name="GenerateTests" DependsOnTargets="CompileRules">
     <PropertyGroup>
       <TestScenariosFile>$(TestsDir)$(ProjectName)/test_scenarios.json</TestScenariosFile>
@@ -51,43 +47,68 @@
     <Exec Command="dotnet run --project $(BeaconTesterRunnerProject) run --scenarios=$(TestScenariosFile) --output=$(TestResultsFile) --redis-host=localhost --redis-port=6379" WorkingDirectory="$(BeaconTesterDir)" />
   </Target>
 
+  <Target Name="Build" DependsOnTargets="BuildBeacon">
+    <Message Text="Build completed successfully." Importance="high" />
+  </Target>
+
   <Target Name="RunEndToEnd">
-    <Message Text="========== END-TO-END RULE TESTING WORKFLOW ==========" Importance="high" />
+    <Message Text="END-TO-END RULE TESTING WORKFLOW" Importance="high" />
     
     <!-- Clean environment -->
     <Message Text="[1] Cleaning environment..." Importance="high" />
     <Exec Command="pkill -f Beacon.Runtime || true" ContinueOnError="true" />
     <Exec Command="pkill -f BeaconTester || true" ContinueOnError="true" />
-    <Exec Command="redis-cli keys \"*\" | xargs -r redis-cli del" ContinueOnError="true" />
+    <!-- Use FLUSHALL instead of keys + del to avoid XML parsing issues with asterisk -->
+    <Exec Command="redis-cli FLUSHALL" ContinueOnError="true" />
+    
     <RemoveDir Directories="$(ReportsDir)$(ProjectName)" ContinueOnError="true" />
     <MakeDir Directories="$(ReportsDir)$(ProjectName)" />
-    <Message Text="[OK] Environment cleaned" Importance="high" />
+    <Message Text="Environment cleaned" Importance="high" />
     
     <!-- Run Pulsar to compile rules -->
     <Message Text="[2] Running Pulsar to compile rules into Beacon application..." Importance="high" />
     <CallTarget Targets="CompileRules" />
-    <Message Text="[OK] Pulsar successfully compiled rules into Beacon application" Importance="high" />
+    <Message Text="Pulsar successfully compiled rules into Beacon application" Importance="high" />
     
     <!-- Generate test scenarios -->
     <Message Text="[3] Generating test scenarios..." Importance="high" />
     <CallTarget Targets="GenerateTests" />
-    <Message Text="[OK] Test scenarios generated successfully" Importance="high" />
+    <Message Text="Test scenarios generated successfully" Importance="high" />
     
     <!-- Build Beacon application -->
     <Message Text="[4] Building Beacon application..." Importance="high" />
     <CallTarget Targets="BuildBeacon" />
-    <Message Text="[OK] Beacon application built successfully" Importance="high" />
+    <Message Text="Beacon application built successfully" Importance="high" />
+    
+    <!-- Start Beacon application -->
+    <Message Text="[5] Starting Beacon application..." Importance="high" />
+    <MakeDir Directories="$(DistDir)$(ProjectName)/logs" />
+    <Exec Command="dotnet $(DistDir)$(ProjectName)/Beacon.Runtime.dll --redis-host=localhost --redis-port=6379 --verbose > $(DistDir)$(ProjectName)/logs/beacon.log 2>&amp;1 &amp;" WorkingDirectory="$(DistDir)$(ProjectName)" ContinueOnError="true" />
+    <Message Text="Beacon application started in background" Importance="high" />
+    
+    <!-- Wait for Beacon to initialize -->
+    <Message Text="[6] Waiting for Beacon to initialize..." Importance="high" />
+    <Exec Command="sleep 10" ContinueOnError="true" />
+    <Message Text="Checking Beacon status..." Importance="high" />
+    <Exec Command="ps aux | grep -v grep | grep Beacon.Runtime" ContinueOnError="true" />
+    <Exec Command="redis-cli KEYS \"*\"" ContinueOnError="true" />
+    <Message Text="Beacon initialization time elapsed" Importance="high" />
     
     <!-- Run tests -->
-    <Message Text="[5] Running tests against Beacon..." Importance="high" />
+    <Message Text="[7] Running tests against Beacon..." Importance="high" />
     <CallTarget Targets="RunTests" />
-    <Message Text="[OK] Tests completed" Importance="high" />
+    <Message Text="Tests completed" Importance="high" />
+    
+    <!-- Stop Beacon application -->
+    <Message Text="[8] Stopping Beacon application..." Importance="high" />
+    <Exec Command="pkill -f Beacon.Runtime || true" ContinueOnError="true" />
+    <Message Text="Beacon application stopped" Importance="high" />
     
     <!-- Final cleanup -->
-    <Message Text="[6] Final cleanup..." Importance="high" />
-    <Exec Command="redis-cli keys \"*\" | xargs -r redis-cli del" ContinueOnError="true" />
-    <Message Text="[OK] Final cleanup complete" Importance="high" />
+    <Message Text="[9] Final cleanup..." Importance="high" />
+    <Exec Command="redis-cli FLUSHALL" ContinueOnError="true" />
+    <Message Text="Final cleanup complete" Importance="high" />
     
-    <Message Text="======== END-TO-END TEST COMPLETED ========" Importance="high" />
+    <Message Text="END-TO-END TEST COMPLETED" Importance="high" />
   </Target>
 </Project>

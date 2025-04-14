@@ -7,6 +7,6 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
-  <Import Project="build/PulsarSuite.core.build" Condition="Exists('build/PulsarSuite.core.build')" />
+  <Import Project="build/minimal.fixed.build" Condition="Exists('build/minimal.fixed.build')" />
 
 </Project>

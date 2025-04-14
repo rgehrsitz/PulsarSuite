@@ -31,10 +31,6 @@
     <Exec Command="dotnet run --project $(PulsarCompilerProject) beacon --rules=$(BinDir)$(ProjectName) --output=$(DistDir)$(ProjectName) --config=system_config.yaml" WorkingDirectory="$(PulsarDir)" />
   </Target>
 
-  <Target Name="Build" DependsOnTargets="BuildBeacon">
-    <Message Text="Build completed successfully. Use RunEndToEnd target to run the full end-to-end test." Importance="high" />
-  </Target>
-
   <Target Name="GenerateTests" DependsOnTargets="CompileRules">
     <PropertyGroup>
       <TestScenariosFile>$(TestsDir)$(ProjectName)/test_scenarios.json</TestScenariosFile>
@@ -51,8 +47,12 @@
     <Exec Command="dotnet run --project $(BeaconTesterRunnerProject) run --scenarios=$(TestScenariosFile) --output=$(TestResultsFile) --redis-host=localhost --redis-port=6379" WorkingDirectory="$(BeaconTesterDir)" />
   </Target>
 
+  <Target Name="Build" DependsOnTargets="BuildBeacon">
+    <Message Text="Build completed successfully. Use RunEndToEnd target to run the full end-to-end test." Importance="high" />
+  </Target>
+
   <Target Name="RunEndToEnd">
-    <Message Text="========== END-TO-END RULE TESTING WORKFLOW ==========" Importance="high" />
+    <Message Text="END-TO-END RULE TESTING WORKFLOW" Importance="high" />
     
     <!-- Clean environment -->
     <Message Text="[1] Cleaning environment..." Importance="high" />
@@ -61,33 +61,33 @@
     <Exec Command="redis-cli keys \"*\" | xargs -r redis-cli del" ContinueOnError="true" />
     <RemoveDir Directories="$(ReportsDir)$(ProjectName)" ContinueOnError="true" />
     <MakeDir Directories="$(ReportsDir)$(ProjectName)" />
-    <Message Text="[OK] Environment cleaned" Importance="high" />
+    <Message Text="Environment cleaned" Importance="high" />
     
     <!-- Run Pulsar to compile rules -->
     <Message Text="[2] Running Pulsar to compile rules into Beacon application..." Importance="high" />
     <CallTarget Targets="CompileRules" />
-    <Message Text="[OK] Pulsar successfully compiled rules into Beacon application" Importance="high" />
+    <Message Text="Pulsar successfully compiled rules into Beacon application" Importance="high" />
     
     <!-- Generate test scenarios -->
     <Message Text="[3] Generating test scenarios..." Importance="high" />
     <CallTarget Targets="GenerateTests" />
-    <Message Text="[OK] Test scenarios generated successfully" Importance="high" />
+    <Message Text="Test scenarios generated successfully" Importance="high" />
     
     <!-- Build Beacon application -->
     <Message Text="[4] Building Beacon application..." Importance="high" />
     <CallTarget Targets="BuildBeacon" />
-    <Message Text="[OK] Beacon application built successfully" Importance="high" />
+    <Message Text="Beacon application built successfully" Importance="high" />
     
     <!-- Run tests -->
     <Message Text="[5] Running tests against Beacon..." Importance="high" />
     <CallTarget Targets="RunTests" />
-    <Message Text="[OK] Tests completed" Importance="high" />
+    <Message Text="Tests completed" Importance="high" />
     
     <!-- Final cleanup -->
     <Message Text="[6] Final cleanup..." Importance="high" />
     <Exec Command="redis-cli keys \"*\" | xargs -r redis-cli del" ContinueOnError="true" />
-    <Message Text="[OK] Final cleanup complete" Importance="high" />
+    <Message Text="Final cleanup complete" Importance="high" />
     
-    <Message Text="======== END-TO-END TEST COMPLETED ========" Importance="high" />
+    <Message Text="END-TO-END TEST COMPLETED" Importance="high" />
   </Target>
 </Project>

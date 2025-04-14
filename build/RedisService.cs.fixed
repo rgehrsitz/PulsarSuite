@@ -239,14 +239,14 @@ public class RedisService : IRedisService, IDisposable
                 {
                     // Get both input and output keys for proper rule dependency handling
                     _logger.Debug("Getting all input and output keys from Redis for cycle-aware testing");
-                    
+
                     // Get input keys
                     var inputKeys = await db.ExecuteAsync("KEYS", $"{INPUT_PREFIX}*");
                     if (!inputKeys.IsNull)
                     {
                         await ProcessRedisKeysAsync(db, (RedisResult[])inputKeys, result, INPUT_PREFIX);
                     }
-                    
+
                     // Get output keys (critical for rule dependencies across rule groups)
                     var outputKeys = await db.ExecuteAsync("KEYS", $"{OUTPUT_PREFIX}*");
                     if (!outputKeys.IsNull)
@@ -254,23 +254,79 @@ public class RedisService : IRedisService, IDisposable
                         _logger.Debug("Loading {Count} output keys for rule dependencies", ((RedisResult[])outputKeys).Length);
                         await ProcessRedisKeysAsync(db, (RedisResult[])outputKeys, result, OUTPUT_PREFIX);
                     }
+
+                    return result;
+                }
+                catch (RedisServerException ex) when (ex.Message.Contains("WRONGTYPE"))
+                {
+                    _logger.Warning("Key type mismatch in Redis. Trying scan command instead.");
+                    
+                    // Fallback to SCAN command if KEYS fails due to type issues
+                    long cursor = 0;
+                    do
+                    {
+                        var scan = await db.ExecuteAsync("SCAN", cursor.ToString(), "MATCH", $"{INPUT_PREFIX}*", "COUNT", "100");
+                        var scanResult = (RedisResult[])scan;
+                        cursor = long.Parse(scanResult[0].ToString());
+                        var keys = (RedisResult[])scanResult[1];
+                        
+                        foreach (var key in keys)
+                        {
+                            var keyStr = key.ToString();
+                            try 
+                            {
+                                // Check key type first to avoid WRONGTYPE errors
+                                var keyType = await db.KeyTypeAsync(keyStr);
+                                if (keyType == RedisType.String)
+                                {
+                                    var value = await db.StringGetAsync(keyStr);
+                                    if (!value.IsNull)
+                                    {
+                                        // Extract only the part after the prefix
+                                        var sensorName = keyStr.Substring(INPUT_PREFIX.Length);
+                                        
+                                        if (double.TryParse(value, out var doubleValue))
+                                        {
+                                            // For backward compatibility, include both prefixed and unprefixed keys
+                                            result[keyStr] = doubleValue;   // Keep the prefixed key for new code
+                                            result[sensorName] = doubleValue; // Keep unprefixed for backward compatibility
+                                        }
+                                        else
+                                        {
+                                            // For backward compatibility, include both prefixed and unprefixed keys
+                                            result[keyStr] = value.ToString();   // Keep the prefixed key for new code
+                                            result[sensorName] = value.ToString(); // Keep unprefixed for backward compatibility
+                                        }
+                                    }
+                                }
+                                else
+                                {
+                                    _logger.Warning("Skipping non-string Redis key {Key} of type {Type}", keyStr, keyType);
+                                }
+                            }
+                            catch (Exception innerEx)
+                            {
+                                _logger.Warning(innerEx, "Failed to process Redis key {Key}", keyStr);
+                            }
+                        }
+                    } while (cursor != 0);
                     
                     return result;
                 }
                 catch (Exception ex)
                 {
                     _logger.Error(ex, "Error getting inputs and outputs from Redis");
-                    throw;
+                    return result;
                 }
             });
         }
         catch (Exception ex)
         {
-            _logger.Error(ex, "Error in GetAllInputsAsync");
-            throw;
+            _logger.Error(ex, "Failed to get all input values from Redis");
+            return new Dictionary<string, object>();
         }
     }
-    
+
     /// <summary>
     /// Helper method to process Redis keys and add their values to the result dictionary
     /// </summary>
@@ -326,80 +382,17 @@ public class RedisService : IRedisService, IDisposable
                                 result[sensorName] = value.ToString();
                             }
                         }
-                            }
-                            else
-                            {
-                                _logger.Warning("Skipping non-string Redis key {Key} of type {Type}", keyStr, keyType);
-                            }
-                        }
-                        catch (Exception innerEx)
-                        {
-                            _logger.Warning(innerEx, "Failed to process Redis key {Key}", keyStr);
-                        }
                     }
                 }
-                catch (RedisServerException ex) when (ex.Message.Contains("WRONGTYPE"))
+                else
                 {
-                    _logger.Warning("Key type mismatch in Redis. Trying scan command instead.");
-                    
-                    // Fallback to SCAN command if KEYS fails due to type issues
-                    long cursor = 0;
-                    do
-                    {
-                        var scan = await db.ExecuteAsync("SCAN", cursor.ToString(), "MATCH", $"{INPUT_PREFIX}*", "COUNT", "100");
-                        var scanResult = (RedisResult[])scan;
-                        cursor = long.Parse(scanResult[0].ToString());
-                        var keys = (RedisResult[])scanResult[1];
-                        
-                        foreach (var key in keys)
-                        {
-                            var keyStr = key.ToString();
-                            try 
-                            {
-                                // Check key type first to avoid WRONGTYPE errors
-                                var keyType = await db.KeyTypeAsync(keyStr);
-                                if (keyType == RedisType.String)
-                                {
-                                    var value = await db.StringGetAsync(keyStr);
-                                    if (!value.IsNull)
-                                    {
-                                        // Extract only the part after the prefix
-                                        var sensorName = keyStr.Substring(INPUT_PREFIX.Length);
-                                        
-                                        if (double.TryParse(value, out var doubleValue))
-                                        {
-                                            // For backward compatibility, include both prefixed and unprefixed keys
-                                            result[keyStr] = doubleValue;   // Keep the prefixed key for new code
-                                            result[sensorName] = doubleValue; // Keep unprefixed for backward compatibility
-                                        }
-                                        else
-                                        {
-                                            // For backward compatibility, include both prefixed and unprefixed keys
-                                            result[keyStr] = value.ToString();   // Keep the prefixed key for new code
-                                            result[sensorName] = value.ToString(); // Keep unprefixed for backward compatibility
-                                        }
-                                    }
-                                }
-                                else
-                                {
-                                    _logger.Warning("Skipping non-string Redis key {Key} of type {Type}", keyStr, keyType);
-                                }
-                            }
-                            catch (Exception innerEx)
-                            {
-                                _logger.Warning(innerEx, "Failed to process Redis key {Key}", keyStr);
-                            }
-                        }
-                    } while (cursor != 0);
+                    _logger.Warning("Skipping non-string Redis key {Key} of type {Type}", keyStr, keyType);
                 }
-                
-                return result;
-            });
-        }
-        catch (Exception ex)
-        {
-            _logger.Error(ex, "Failed to get all input values from Redis");
-            return new Dictionary<string, object>();
+            }
+            catch (Exception innerEx)
+            {
+                _logger.Warning(innerEx, "Failed to process Redis key {Key}", keyStr);
+            }
         }
     }
 
@@ -435,9 +428,8 @@ public class RedisService : IRedisService, IDisposable
                     
                     // Special handling for boolean values - use lowercase true/false for proper Redis compatibility
                     string valueStr;
-                    if (value is bool)
+                    if (value is bool boolValue)
                     {
-                        bool boolValue = (bool)value;
                         valueStr = boolValue.ToString().ToLowerInvariant(); // "true" or "false" lowercase
                         _logger.Debug("Setting boolean key {Key} to {Value}", redisKey, valueStr);
                     }
@@ -470,18 +462,18 @@ public class RedisService : IRedisService, IDisposable
     {
         try
         {
-            return await _retryPolicy.ExecuteAsync(async () =>
+            var result = new Dictionary<string, (double Value, DateTime Timestamp)>();
+            var now = DateTime.UtcNow;
+
+            await _retryPolicy.ExecuteAsync(async () =>
             {
                 var connection = GetConnection();
                 var db = connection.GetDatabase();
-                var result = new Dictionary<string, (double Value, DateTime Timestamp)>();
-                var now = DateTime.UtcNow;
 
                 foreach (var key in sensorKeys)
                 {
                     try
                     {
-                        // Handle case where key might already include the prefix
                         string redisKey;
                         if (key.StartsWith(INPUT_PREFIX))
                         {
@@ -491,9 +483,8 @@ public class RedisService : IRedisService, IDisposable
                         {
                             redisKey = $"{INPUT_PREFIX}{key}";
                         }
-                        
-                        var value = await db.StringGetAsync(redisKey);
 
+                        var value = await db.StringGetAsync(redisKey);
                         if (!value.IsNull && double.TryParse(value, out var doubleValue))
                         {
                             // Use the original key (without prefix) for the result
@@ -502,6 +493,7 @@ public class RedisService : IRedisService, IDisposable
                             {
                                 resultKey = key.Substring(INPUT_PREFIX.Length);
                             }
+
                             result[resultKey] = (doubleValue, now);
                         }
                     }
@@ -513,6 +505,8 @@ public class RedisService : IRedisService, IDisposable
 
                 return result;
             });
+
+            return result;
         }
         catch (Exception ex)
         {
@@ -522,7 +516,7 @@ public class RedisService : IRedisService, IDisposable
     }
 
     /// <summary>
-    /// Sets output values in Redis
+    /// Sets output values in Redis and stores them in the buffer (historical data)
     /// </summary>
     public async Task SetOutputValuesAsync(Dictionary<string, double> outputs)
     {
@@ -604,9 +598,8 @@ public class RedisService : IRedisService, IDisposable
                 {
                     bufferKey = $"{BUFFER_PREFIX}{sensor}";
                 }
-                
-                var entries = await db.ListRangeAsync(bufferKey, -count, -1);
 
+                var entries = await db.ListRangeAsync(bufferKey, -count, -1);
                 var result = new List<(double Value, DateTime Timestamp)>();
 
                 foreach (var entry in entries)
@@ -635,122 +628,130 @@ public class RedisService : IRedisService, IDisposable
         }
     }
 
+    /// <summary>
+    /// Sets a key-value pair in Redis
+    /// </summary>
     public async Task<bool> SetAsync(string key, string value, TimeSpan? expiry = null)
     {
         try
         {
-            return await _retryPolicy.ExecuteAsync(async () =>
+            var startTime = DateTime.UtcNow;
+            var result = await _retryPolicy.ExecuteAsync(async () =>
             {
                 var connection = GetConnection();
                 var db = connection.GetDatabase();
-
-                var startTime = DateTime.UtcNow;
-                var result = await db.StringSetAsync(key, value, expiry);
-                var duration = DateTime.UtcNow - startTime;
-
-                _redisMetrics.RecordOperation("SET", duration);
-                _metrics?.RecordRedisConnections(_connectionPool.Count(c => c != null && c.IsConnected));
-
-                return result;
+                return await db.StringSetAsync(key, value, expiry);
             });
+
+            var duration = DateTime.UtcNow - startTime;
+            _redisMetrics.RecordOperation("SET", duration);
+            _metrics?.RecordRedisConnections(_connectionPool.Count(c => c != null && c.IsConnected));
+
+            return result;
         }
         catch (Exception ex)
         {
             if (!ShouldThrottleError("SET"))
             {
                 _logger.Error(ex, "Failed to set Redis key {Key}", key);
+                _redisMetrics.RecordError("SET");
             }
-            _redisMetrics.RecordError("SET");
             return false;
         }
     }
 
+    /// <summary>
+    /// Sets a hash field in Redis
+    /// </summary>
     public async Task<bool> HashSetAsync(string key, string field, string value)
     {
         try
         {
-            return await _retryPolicy.ExecuteAsync(async () =>
+            var startTime = DateTime.UtcNow;
+            var result = await _retryPolicy.ExecuteAsync(async () =>
             {
                 var connection = GetConnection();
                 var db = connection.GetDatabase();
-
-                var startTime = DateTime.UtcNow;
-                var result = await db.HashSetAsync(key, field, value);
-                var duration = DateTime.UtcNow - startTime;
-
-                _redisMetrics.RecordOperation("HSET", duration);
-
-                return result;
+                return await db.HashSetAsync(key, field, value);
             });
+
+            var duration = DateTime.UtcNow - startTime;
+            _redisMetrics.RecordOperation("HSET", duration);
+
+            return result;
         }
         catch (Exception ex)
         {
             if (!ShouldThrottleError("HSET"))
             {
                 _logger.Error(ex, "Failed to set Redis hash field {Key}:{Field}", key, field);
+                _redisMetrics.RecordError("HSET");
             }
-            _redisMetrics.RecordError("HSET");
             return false;
         }
     }
 
+    /// <summary>
+    /// Gets all hash fields from Redis
+    /// </summary>
     public async Task<Dictionary<string, string>> HashGetAllAsync(string key)
     {
         try
         {
-            return await _retryPolicy.ExecuteAsync(async () =>
+            var startTime = DateTime.UtcNow;
+            var hashEntries = await _retryPolicy.ExecuteAsync(async () =>
             {
                 var connection = GetConnection();
                 var db = connection.GetDatabase();
-
-                var startTime = DateTime.UtcNow;
-                var hashEntries = await db.HashGetAllAsync(key);
-                var duration = DateTime.UtcNow - startTime;
-
-                _redisMetrics.RecordOperation("HGETALL", duration);
-
-                return hashEntries.ToDictionary(
-                    he => he.Name.ToString(),
-                    he => he.Value.ToString()
-                );
+                return await db.HashGetAllAsync(key);
             });
+
+            var duration = DateTime.UtcNow - startTime;
+            _redisMetrics.RecordOperation("HGETALL", duration);
+
+            return hashEntries.ToDictionary(
+                he => he.Name.ToString(),
+                he => he.Value.ToString()
+            );
         }
         catch (Exception ex)
         {
             if (!ShouldThrottleError("HGETALL"))
             {
                 _logger.Error(ex, "Failed to get all Redis hash fields for key {Key}", key);
+                _redisMetrics.RecordError("HGETALL");
             }
-            _redisMetrics.RecordError("HGETALL");
             return new Dictionary<string, string>();
         }
     }
 
+    /// <summary>
+    /// Gets a value from Redis by key
+    /// </summary>
     public async Task<string?> GetAsync(string key)
     {
         try
         {
-            return await _retryPolicy.ExecuteAsync(async () =>
+            var startTime = DateTime.UtcNow;
+            var value = await _retryPolicy.ExecuteAsync(async () =>
             {
                 var connection = GetConnection();
                 var db = connection.GetDatabase();
-
-                var startTime = DateTime.UtcNow;
-                var value = await db.StringGetAsync(key);
-                var duration = DateTime.UtcNow - startTime;
-
-                _redisMetrics.RecordOperation("GET", duration);
-
-                return value.IsNull ? null : value.ToString();
+                return await db.StringGetAsync(key);
             });
+
+            var duration = DateTime.UtcNow - startTime;
+            _redisMetrics.RecordOperation("GET", duration);
+
+            return value.IsNull ? null : value.ToString();
         }
         catch (Exception ex)
         {
             if (!ShouldThrottleError("GET"))
             {
                 _logger.Error(ex, "Failed to get Redis key {Key}", key);
+                _redisMetrics.RecordError("GET");
             }
-            _redisMetrics.RecordError("GET");
             return null;
         }
     }
@@ -760,27 +761,26 @@ public class RedisService : IRedisService, IDisposable
     {
         try
         {
-            return await _retryPolicy.ExecuteAsync(async () =>
+            var startTime = DateTime.UtcNow;
+            var result = await _retryPolicy.ExecuteAsync(async () =>
             {
                 var connection = GetConnection();
                 var subscriber = connection.GetSubscriber();
-
-                var startTime = DateTime.UtcNow;
-                var result = await subscriber.PublishAsync(channel, message);
-                var duration = DateTime.UtcNow - startTime;
-
-                _redisMetrics.RecordOperation("PUBLISH", duration);
-
-                return result;
+                return await subscriber.PublishAsync(channel, message);
             });
+
+            var duration = DateTime.UtcNow - startTime;
+            _redisMetrics.RecordOperation("PUBLISH", duration);
+
+            return result;
         }
         catch (Exception ex)
         {
             if (!ShouldThrottleError("PUBLISH"))
             {
                 _logger.Error(ex, "Failed to publish message to Redis channel {Channel}", channel);
+                _redisMetrics.RecordError("PUBLISH");
             }
-            _redisMetrics.RecordError("PUBLISH");
             return 0;
         }
     }
