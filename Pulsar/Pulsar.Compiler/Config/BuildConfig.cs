@@ -39,6 +39,9 @@ namespace Pulsar.Compiler.Config
         public string AdditionalUsings { get; set; } = "";
         public int MaxLinesPerFile { get; set; } = 1000;
 
+        // Directory containing compiled rule files (e.g., RuleCoordinator.cs, RuleGroup*.cs)
+        public string CompiledRulesDir { get; set; } = string.Empty;
+
         // Default constructor
     }
 

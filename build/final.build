@@ -1,5 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Project>
+  <!--
+    To override project, rules, or config file, use:
+      dotnet build /path/to/final.build /t:BuildBeacon /p:ProjectName=MyProject /p:RulesFile=/custom/path/my_rules.yaml /p:ConfigFile=/custom/path/my_config.yaml
+    All paths are fully customizable.
+  -->
   <PropertyGroup>
     <SolutionDir>$(MSBuildThisFileDirectory)../</SolutionDir>
     <SrcDir>$(SolutionDir)src/</SrcDir>
@@ -15,20 +20,34 @@
     <BeaconTesterDir>$(SolutionDir)BeaconTester/</BeaconTesterDir>
     <PulsarCompilerProject>$(PulsarDir)Pulsar.Compiler/Pulsar.Compiler.csproj</PulsarCompilerProject>
     <BeaconTesterRunnerProject>$(BeaconTesterDir)BeaconTester.Runner/BeaconTester.Runner.csproj</BeaconTesterRunnerProject>
+    <ConfigFile Condition="'$(ConfigFile)' == ''">$(RulesDir)$(ProjectName)/config/system_config.yaml</ConfigFile>
   </PropertyGroup>
 
   <Target Name="ValidateRules">
-    <Exec Command="dotnet run --project $(PulsarCompilerProject) validate --rules=$(RulesFile) --config=system_config.yaml" WorkingDirectory="$(PulsarDir)" />
+    <Exec Command="echo --- DIAGNOSTIC: ValidateRules Target ---" />
+    <Exec Command="echo Working Directory: $(PulsarDir)" />
+    <Exec Command="echo Project: $(PulsarCompilerProject)" />
+    <Exec Command="echo Rules File: $(RulesFile)" />
+    <Exec Command="echo Config File: $(ConfigFile)" />
+    <Exec Command="ls -l $(RulesFile)" />
+    <Exec Command="ls -l $(ConfigFile)" />
+    <Exec Command="env | sort" />
+    <Exec Command="dotnet run --project $(PulsarCompilerProject) validate --rules=$(RulesFile) --config=$(ConfigFile)" WorkingDirectory="$(PulsarDir)" />
   </Target>
 
   <Target Name="CompileRules" DependsOnTargets="ValidateRules">
     <MakeDir Directories="$(BinDir)$(ProjectName)" />
-    <Exec Command="dotnet run --project $(PulsarCompilerProject) compile --rules=$(RulesFile) --output=$(BinDir)$(ProjectName) --config=system_config.yaml" WorkingDirectory="$(PulsarDir)" />
+    <Exec Command="dotnet run --project $(PulsarCompilerProject) compile --rules=$(RulesFile) --output=$(BinDir)$(ProjectName) --config=$(ConfigFile)" WorkingDirectory="$(PulsarDir)" />
   </Target>
 
   <Target Name="BuildBeacon" DependsOnTargets="CompileRules">
     <MakeDir Directories="$(DistDir)$(ProjectName)" />
-    <Exec Command="dotnet run --project $(PulsarCompilerProject) beacon --rules=$(BinDir)$(ProjectName) --output=$(DistDir)$(ProjectName) --config=system_config.yaml" WorkingDirectory="$(PulsarDir)" />
+    <!-- Beacon code generation step: generates the Beacon solution and all templates -->
+    <!-- Pass the compiled rules directory to the beacon generation step -->
+    <Exec Command="dotnet run --project $(PulsarCompilerProject) beacon --rules=$(BinDir)$(ProjectName) --compiled-rules-dir=$(BinDir)$(ProjectName) --output=$(DistDir)$(ProjectName) --config=$(ConfigFile) --target=linux-x64" WorkingDirectory="$(PulsarDir)" />
+    <!-- Build the generated Beacon solution -->
+    <Exec Command="dotnet build" WorkingDirectory="$(DistDir)$(ProjectName)/Beacon" />
+    <Message Text="Beacon application built and compiled successfully." Importance="high" />
   </Target>
 
   <Target Name="GenerateTests" DependsOnTargets="CompileRules">
@@ -43,7 +62,7 @@
     <PropertyGroup>
       <TestResultsFile>$(ReportsDir)$(ProjectName)/test_results.json</TestResultsFile>
     </PropertyGroup>
-    <MakeDir Directories="$(ReportsDir)$(ProjectName)" />
+    <MakeDir Directories="$(SolutionDir)$(ReportsDir)$(ProjectName)" />
     <Exec Command="dotnet run --project $(BeaconTesterRunnerProject) run --scenarios=$(TestScenariosFile) --output=$(TestResultsFile) --redis-host=localhost --redis-port=6379" WorkingDirectory="$(BeaconTesterDir)" />
   </Target>
 
@@ -91,7 +110,7 @@
     <Exec Command="sleep 10" ContinueOnError="true" />
     <Message Text="Checking Beacon status..." Importance="high" />
     <Exec Command="ps aux | grep -v grep | grep Beacon.Runtime" ContinueOnError="true" />
-    <Exec Command="redis-cli KEYS \"*\"" ContinueOnError="true" />
+
     <Message Text="Beacon initialization time elapsed" Importance="high" />
     
     <!-- Run tests -->

@@ -18,6 +18,12 @@ namespace Beacon.Runtime.Services
             new ConcurrentDictionary<string, Stopwatch>();
         private int _connectionCount = 0;
         private int _retryCount = 0;
+        private readonly MetricsService? _metrics;
+        
+        public RedisMetrics(MetricsService? metrics = null)
+        {
+            _metrics = metrics;
+        }
 
         public void TrackError(string errorType)
         {

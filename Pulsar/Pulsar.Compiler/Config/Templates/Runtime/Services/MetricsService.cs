@@ -3,6 +3,8 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
+using System.Collections.Concurrent;
 using Prometheus;
 using Serilog;
 
@@ -12,6 +14,8 @@ namespace Beacon.Runtime.Services
     {
         private readonly ILogger _logger;
         private readonly string _instanceName;
+        private readonly ConcurrentDictionary<string, Stopwatch> _operationTimers = new ConcurrentDictionary<string, Stopwatch>();
+        
         private static readonly Counter RuleExecutionsTotal = Metrics.CreateCounter(
             "beacon_rule_executions_total", 
             "Total number of rule executions",
@@ -39,6 +43,20 @@ namespace Beacon.Runtime.Services
             {
                 Buckets = Histogram.ExponentialBuckets(0.001, 2, 10), // Start at 1ms, double 10 times
                 LabelNames = new[] { "instance", "rule_name" }
+            });
+            
+        private static readonly Counter RedisOperationsTotal = Metrics.CreateCounter(
+            "beacon_redis_operations_total",
+            "Total number of Redis operations",
+            new string[] { "instance", "operation" });
+            
+        private static readonly Histogram RedisOperationDuration = Metrics.CreateHistogram(
+            "beacon_redis_operation_duration_seconds",
+            "Duration of Redis operations in seconds",
+            new HistogramConfiguration
+            {
+                Buckets = Histogram.ExponentialBuckets(0.001, 2, 10), // Start at 1ms, double 10 times
+                LabelNames = new[] { "instance", "operation" }
             });
 
         private static readonly Gauge ActiveConnections = Metrics.CreateGauge(
@@ -96,6 +114,24 @@ namespace Beacon.Runtime.Services
             var server = new KestrelMetricServer(port: port);
             server.Start();
             _logger.Information("Prometheus metrics server started on port {Port}", port);
+        }
+        
+        public void RedisOperationStarted(string operation)
+        {
+            RedisOperationsTotal.WithLabels(_instanceName, operation).Inc();
+            var timer = new Stopwatch();
+            timer.Start();
+            _operationTimers[operation] = timer;
+        }
+        
+        public void RedisOperationCompleted(string operation)
+        {
+            if (_operationTimers.TryRemove(operation, out var timer))
+            {
+                timer.Stop();
+                var durationSeconds = timer.Elapsed.TotalSeconds;
+                RedisOperationDuration.WithLabels(_instanceName, operation).Observe(durationSeconds);
+            }
         }
     }
 }

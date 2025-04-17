@@ -15,6 +15,7 @@ validSensors:
   - output:comfort_index
   - output:alert_status
   - output:alert_message
+  - output:high_temperature
   
   # Buffers for historical data
   - buffer:temperature_history
