@@ -26,12 +26,12 @@ BeaconTester consists of several components:
 
 ### Prerequisites
 - Pulsar compiler installed and functional
-- Redis server running
+- Redis server running with admin commands enabled (AllowAdmin=true in RedisConfiguration)
 - .NET SDK installed
 
 ### Step 1: Generate Tests from Rules
 ```bash
-dotnet run --project BeaconTester.Runner -- generate --rules=path/to/rules.yaml --output=test_scenarios.json
+dotnet run --project BeaconTester/BeaconTester.Runner/BeaconTester.Runner.csproj generate --rules=path/to/rules.yaml --output=test_scenarios.json
 ```
 
 ### Step 2: Compile and Run Beacon
@@ -43,7 +43,7 @@ cd ./Beacon.Runtime && dotnet run
 
 ### Step 3: Run Tests Against Beacon
 ```bash
-dotnet run --project BeaconTester.Runner -- run --scenarios=test_scenarios.json --output=test_results.json
+dotnet run --project BeaconTester/BeaconTester.Runner/BeaconTester.Runner.csproj run --scenarios=test_scenarios.json --output=test_results.json
 ```
 
 ### Step 4: Generate Report
@@ -52,11 +52,7 @@ dotnet run --project BeaconTester.Runner -- report --results=test_results.json -
 ```
 
 ## Automated End-to-End Testing
-The repository includes a script to run the entire workflow from rule compilation to test reporting:
-
-```bash
-./Scripts/test-end-to-end.sh
-```
+The entire workflow can be executed by sequentially running the commands in Steps 1-4 above, without the need for any shell scripts.
 
 ## Development Guide
 

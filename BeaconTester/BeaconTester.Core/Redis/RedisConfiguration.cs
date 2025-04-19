@@ -31,9 +31,9 @@ namespace BeaconTester.Core.Redis
         public int SyncTimeout { get; set; } = 5000;
 
         /// <summary>
-        /// Whether to allow admin commands
+        /// Whether to allow admin commands (required to flush DB during tests)
         /// </summary>
-        public bool AllowAdmin { get; set; } = false;
+        public bool AllowAdmin { get; set; } = true;
 
         /// <summary>
         /// Number of connection retry attempts

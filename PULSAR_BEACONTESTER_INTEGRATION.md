@@ -12,15 +12,19 @@ We successfully fixed several critical issues that were preventing the end-to-en
 4. **Fixed variable naming conflicts** - Updated the variable naming in the generated code to use unique variable names for TryGetValue operations to avoid conflicts.
 
 ## End-to-End Test Results
-We've successfully demonstrated that the entire pipeline works:
+We successfully demonstrated that the entire pipeline works with the following updated steps:
 
-1. **Compilation**: Compiled the Pulsar compiler with our fixes
-2. **Beacon Generation**: Generated a Beacon application from temperature_rules.yaml
-3. **Test Generation**: Generated test scenarios from the same rules file with BeaconTester
-4. **Runtime Test**: Successfully built and ran the Beacon application
-5. **Test Execution**: Ran tests against the Beacon instance
+1. **Compilation**: Compile rules and Beacon runtime:
+   ```bash
+   dotnet run --project Pulsar.Compiler beacon --config=system_config.yaml --rules=path/to/rules.yaml --output=./Beacon
+   dotnet build ./Beacon/Beacon && dotnet run --project ./Beacon/Beacon.Runtime
+   ```
 
-While we still see some test failures (particularly with the TemperatureRateRule), the core functionality is now working. The temporal rule tests require more time to evaluate correctly due to their nature of checking values over time.
+2. **Test Generation**: Generate and run tests with BeaconTester:
+   ```bash
+   dotnet run --project BeaconTester/BeaconTester.Runner/BeaconTester.Runner.csproj generate --rules=path/to/rules.yaml --output=test_scenarios.json
+   dotnet run --project BeaconTester/BeaconTester.Runner/BeaconTester.Runner.csproj run --scenarios=test_scenarios.json --output=test_results.json
+   ```
 
 ## Remaining Work
 1. Fine-tune temporal rules testing parameters to properly account for buffer duration

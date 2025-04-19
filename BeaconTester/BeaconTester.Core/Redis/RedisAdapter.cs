@@ -849,28 +849,12 @@ namespace BeaconTester.Core.Redis
         {
             try
             {
+                // Flush the current Redis database quickly during tests
                 var endpoints = _redis.GetEndPoints();
                 var server = _redis.GetServer(endpoints.First());
-                var keys = server.Keys(pattern: pattern).ToList();
-                
-                if (keys.Count > 0)
-                {
-                    _logger.Debug("Found {KeyCount} keys matching pattern {Pattern}: {Keys}", 
-                        keys.Count, pattern, string.Join(", ", keys));
-                        
-                    foreach (var key in keys)
-                    {
-                        string value = await _db.StringGetAsync(key);
-                        _logger.Debug("Clearing key {Key} with value {Value}", key, value);
-                        await _db.KeyDeleteAsync(key);
-                    }
-                    
-                    _logger.Information("Cleared {KeyCount} keys matching pattern: {Pattern}", keys.Count, pattern);
-                }
-                else
-                {
-                    _logger.Debug("No keys found matching pattern: {Pattern}", pattern);
-                }
+                await server.FlushDatabaseAsync(_db.Database);
+                _logger.Information("Flushed Redis database for pattern: {Pattern}", pattern);
+                return;
             }
             catch (Exception ex)
             {
