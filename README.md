@@ -67,9 +67,16 @@ dotnet publish output/dist/TemperatureExample/Beacon/Beacon.Runtime/Beacon.Runti
     -c Release -r linux-x64 --self-contained true /p:PublishSingleFile=true
 ```
 
-### 5. Run End-to-End Tests
+### 5. Run Beacon Unit Tests
 ```sh
 dotnet test output/dist/TemperatureExample/Beacon/Beacon.Tests/Beacon.Tests.csproj
+```
+
+### 6. Generate & Run BeaconTester Scenarios
+```sh
+dotnet run --project BeaconTester/BeaconTester.Runner/BeaconTester.Runner.csproj generate --rules=src/Rules/TemperatureExample/rules/temperature_rules.yaml --output=output/dist/TemperatureExample/test_scenarios.json
+
+dotnet run --project BeaconTester/BeaconTester.Runner/BeaconTester.Runner.csproj run --scenarios=output/dist/TemperatureExample/test_scenarios.json --output=output/dist/TemperatureExample/test_results.json
 ```
 
 ---
@@ -77,7 +84,8 @@ dotnet test output/dist/TemperatureExample/Beacon/Beacon.Tests/Beacon.Tests.cspr
 ### Output Locations
 - Compiled rules: `output/Bin/[ProjectName]/`
 - Distributable Beacon: `output/dist/[ProjectName]/`
-- Test results: `output/dist/[ProjectName]/Beacon/Beacon.Tests/TestResults/`
+- Test results (Beacon unit tests): `output/dist/[ProjectName]/Beacon/Beacon.Tests/TestResults/`
+- Test results (BeaconTester): `output/dist/[ProjectName]/test_results.json`
 
 ---
 
@@ -112,8 +120,13 @@ dotnet run --project Pulsar/Pulsar.Compiler/Pulsar.Compiler.csproj beacon \
 dotnet publish output/dist/TemperatureExample/Beacon/Beacon.Runtime/Beacon.Runtime.csproj \
     -c Release -r linux-x64 --self-contained true /p:PublishSingleFile=true
 
-# 5. Run end-to-end tests
+# 5. Run Beacon unit tests
 dotnet test output/dist/TemperatureExample/Beacon/Beacon.Tests/Beacon.Tests.csproj
+
+# 6. Generate & Run BeaconTester Scenarios
+dotnet run --project BeaconTester/BeaconTester.Runner/BeaconTester.Runner.csproj generate --rules=src/Rules/TemperatureExample/rules/temperature_rules.yaml --output=output/dist/TemperatureExample/test_scenarios.json
+
+dotnet run --project BeaconTester/BeaconTester.Runner/BeaconTester.Runner.csproj run --scenarios=output/dist/TemperatureExample/test_scenarios.json --output=output/dist/TemperatureExample/test_results.json
 ```
 
 ---
