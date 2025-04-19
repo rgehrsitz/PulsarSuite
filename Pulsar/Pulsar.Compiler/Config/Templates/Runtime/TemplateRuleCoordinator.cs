@@ -8,6 +8,7 @@ using Beacon.Runtime.Buffers;
 using Beacon.Runtime.Interfaces;
 using Beacon.Runtime.Services;
 using Serilog;
+using Beacon.Runtime.Generated;
 
 namespace Beacon.Runtime
 {

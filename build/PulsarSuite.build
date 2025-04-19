@@ -13,7 +13,8 @@
     <ReportsDir>$(OutputDir)reports/</ReportsDir>
     <ProjectName Condition="'$(ProjectName)' == ''">DefaultProject</ProjectName>
     <ProjectRulesDir>$(RulesDir)$(ProjectName)/</ProjectRulesDir>
-    <RulesFile Condition="'$(RulesFile)' == ''">$(ProjectRulesDir)rules/temperature_rules.yaml</RulesFile>
+    <RulesFile>$(RulesFile)</RulesFile>
+    <ConfigFile>$(ConfigFile)</ConfigFile>
     <ProjectTestsDir>$(TestsDir)$(ProjectName)/</ProjectTestsDir>
     <ProjectBinDir>$(BinDir)$(ProjectName)/</ProjectBinDir>
     <ProjectDistDir>$(DistDir)$(ProjectName)/</ProjectDistDir>
@@ -46,28 +47,37 @@
     <MakeDir Directories="$(ProjectReportsDir)" />
   </Target>
 
+  <Target Name="ValidateInputs" BeforeTargets="ValidateRules;CompileRules;BuildBeacon">
+    <Error Text="MSBuild property 'RulesFile' must be set (/p:RulesFile=...)" Condition="'$(RulesFile)' == ''" />
+    <Error Text="RulesFile '$(SolutionDir)$(RulesFile)' not found" Condition="!Exists('$(SolutionDir)$(RulesFile)')" />
+    <Error Text="MSBuild property 'ConfigFile' must be set (/p:ConfigFile=...)" Condition="'$(ConfigFile)' == ''" />
+    <Error Text="ConfigFile '$(SolutionDir)$(ConfigFile)' not found" Condition="!Exists('$(SolutionDir)$(ConfigFile)')" />
+  </Target>
+
   <Target Name="ValidateRules">
-    <Exec Command="dotnet run --project $(PulsarCompilerProject) validate --rules=$(RulesFile) --config=system_config.yaml" WorkingDirectory="$(PulsarDir)" />
+    <Exec Command="dotnet run --project $(PulsarCompilerProject) validate --rules=$(SolutionDir)$(RulesFile) --config=$(SolutionDir)$(ConfigFile)" WorkingDirectory="$(PulsarDir)" />
   </Target>
 
   <Target Name="CompileRules" DependsOnTargets="ValidateRules">
     <MakeDir Directories="$(ProjectBinDir)" />
-    <Exec Command="$(SolutionDir)/Scripts/compile-beacon.sh $(RulesFile) $(ProjectBinDir)" WorkingDirectory="$(SolutionDir)" />
+    <Exec Command="dotnet run --project $(PulsarCompilerProject) compile --rules=$(SolutionDir)$(RulesFile) --output=$(ProjectBinDir) --config=$(SolutionDir)$(ConfigFile)" WorkingDirectory="$(PulsarDir)" />
   </Target>
 
   <Target Name="GenerateTests" DependsOnTargets="CompileRules">
     <MakeDir Directories="$(ProjectTestsDir)" />
-    <Exec Command="dotnet run --project $(BeaconTesterRunnerProject) generate --rules=$(RulesFile) --output=$(TestScenariosFile)" WorkingDirectory="$(BeaconTesterDir)" />
+    <Exec Command="dotnet run --project $(BeaconTesterRunnerProject) generate --rules=$(SolutionDir)$(RulesFile) --output=$(SolutionDir)$(TestScenariosFile)" WorkingDirectory="$(BeaconTesterDir)" />
   </Target>
 
   <Target Name="BuildBeacon" DependsOnTargets="CompileRules">
-    <!-- The compile-beacon.sh script already builds the Beacon application -->
-    <Message Text="Beacon application has been compiled by compile-beacon.sh" Importance="high" />
+    <Message Text="Generating Beacon solution…" Importance="high" />
+    <Exec Command="dotnet run --project $(PulsarCompilerProject) beacon --rules=$(SolutionDir)$(RulesFile) --compiled-rules-dir=$(SolutionDir)$(ProjectBinDir) --output=$(ProjectDistDir) --config=$(SolutionDir)$(ConfigFile) --target=linux-x64" WorkingDirectory="$(PulsarDir)" />
+    <Message Text="Publishing Beacon.Runtime…" Importance="high" />
+    <Exec Command="dotnet publish $(ProjectDistDir)/Beacon/Beacon.Runtime/Beacon.Runtime.csproj -c Release -r linux-x64 --self-contained true /p:PublishSingleFile=true" WorkingDirectory="$(SolutionDir)" />
   </Target>
 
   <Target Name="RunTests" DependsOnTargets="BuildBeacon;GenerateTests">
     <MakeDir Directories="$(ProjectReportsDir)" />
-    <Exec Command="dotnet run --project $(BeaconTesterRunnerProject) run --scenarios=$(TestScenariosFile) --output=$(TestResultsFile) --redis-host=localhost --redis-port=6379" WorkingDirectory="$(BeaconTesterDir)" />
+    <Exec Command="dotnet run --project $(BeaconTesterRunnerProject) run --scenarios=$(SolutionDir)$(TestScenariosFile) --output=$(SolutionDir)$(TestResultsFile) --redis-host=localhost --redis-port=6379" WorkingDirectory="$(BeaconTesterDir)" />
   </Target>
 
   <Target Name="Build" DependsOnTargets="Clean;CompileRules;GenerateTests">
@@ -83,7 +93,7 @@
     <Message Text="[1] Cleaning environment..." Importance="high" />
     <Exec Command="pkill -f Beacon.Runtime || true" ContinueOnError="true" />
     <Exec Command="pkill -f BeaconTester || true" ContinueOnError="true" />
-    <Exec Command="redis-cli keys \"*\" | xargs -r redis-cli del" ContinueOnError="true" />
+    <Exec Command='redis-cli keys "*" | xargs -r redis-cli del' ContinueOnError='true' />
     <RemoveDir Directories="$(ProjectReportsDir)" ContinueOnError="true" />
     <MakeDir Directories="$(ProjectReportsDir)" />
     <Message Text="[OK] Environment cleaned" Importance="high" />
@@ -121,7 +131,7 @@
     
     <!-- Final cleanup -->
     <Message Text="[6] Final cleanup..." Importance="high" />
-    <Exec Command="redis-cli keys \"*\" | xargs -r redis-cli del" ContinueOnError="true" />
+    <Exec Command='redis-cli keys "*" | xargs -r redis-cli del' ContinueOnError='true' />
     <Message Text="[OK] Final cleanup complete" Importance="high" />
     
     <Message Text="======== END-TO-END TEST COMPLETED ========" Importance="high" />

@@ -20,6 +20,7 @@ namespace Pulsar.Compiler.Config
         /// </summary>
         public Task<BuildResult> BuildBeaconAsync(BuildConfig config)
         {
+            _logger.Information("[DIAGNOSTIC] Entered BuildBeaconAsync");
             try
             {
                 _logger.Information(
@@ -78,6 +79,9 @@ namespace Pulsar.Compiler.Config
                     _templateManager.CreateBeaconSolution(beaconOutputDir, config);
 
                     // Use the code generator to generate rule files
+                    // Force all namespaces to be consistent
+                    config.Namespace = "Beacon.Runtime";
+                    
                     var codeGenerator = new CodeGenerator();
                     var generatedFiles = codeGenerator.GenerateCSharp(
                         config.RuleDefinitions,
@@ -92,7 +96,7 @@ namespace Pulsar.Compiler.Config
                     }
                     else
                     {
-                        // Clean existing generated files to avoid conflicts
+                        // Clean all existing generated files to avoid conflicts
                         foreach (var file in Directory.GetFiles(generatedDir))
                         {
                             try

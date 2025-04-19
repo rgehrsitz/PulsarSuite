@@ -14,6 +14,7 @@ public class Program
 
     public static async Task<int> Main(string[] args)
     {
+        Console.WriteLine("[DIAGNOSTIC] Pulsar Compiler Main called");
         try
         {
             var options = ParseArguments(args);
@@ -736,7 +737,14 @@ https://github.com/yourusername/pulsar/docs"
         Serilog.ILogger logger
     )
     {
+        Console.WriteLine("[DIAGNOSTIC] Entered GenerateBeaconSolution (beacon command handler)");
+        logger.Information("[DIAGNOSTIC] Entered beacon command handler");
         logger.Information("Generating AOT-compatible Beacon solution...");
+        logger.Information("[DIAGNOSTIC] Options received for beacon command:");
+        foreach (var kvp in options)
+        {
+            logger.Information($"[DIAGNOSTIC] Option: {kvp.Key} = {kvp.Value}");
+        }
 
         try
         {
@@ -745,6 +753,8 @@ https://github.com/yourusername/pulsar/docs"
             var outputPath = options.GetValueOrDefault("output", ".");
             var target = options.GetValueOrDefault("target", "win-x64");
             var verbose = options.ContainsKey("verbose");
+
+            logger.Information($"[DIAGNOSTIC] Parsed arguments: rulesPath={rulesPath}, configPath={configPath}, outputPath={outputPath}, target={target}, verbose={verbose}");
 
             if (string.IsNullOrEmpty(rulesPath))
             {
@@ -896,6 +906,10 @@ https://github.com/yourusername/pulsar/docs"
             }
 
             // Generate the Beacon solution
+            // Parse compiled-rules-dir
+            var compiledRulesDir = options.GetValueOrDefault("compiled-rules-dir", "");
+            logger.Information("[DIAGNOSTIC] CompiledRulesDir set to: {Dir}", compiledRulesDir);
+
             var buildConfig = new BuildConfig
             {
                 OutputPath = outputPath,
@@ -923,6 +937,7 @@ https://github.com/yourusername/pulsar/docs"
                 GenerateTestProject = true,
                 CreateSeparateDirectory = true,
                 SolutionName = "Beacon",
+                CompiledRulesDir = compiledRulesDir, // Set the compiled rules directory from command line
             };
 
             // Double-check that system config is properly set

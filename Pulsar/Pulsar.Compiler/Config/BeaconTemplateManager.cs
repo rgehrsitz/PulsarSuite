@@ -66,14 +66,55 @@ namespace Pulsar.Compiler.Config
             Directory.CreateDirectory(Path.Combine(runtimeDir, "Models"));
             Directory.CreateDirectory(Path.Combine(runtimeDir, "Rules"));
 
+            LogDirectoryContents(runtimeDir, "After directory creation");
+
             // Generate project file
             GenerateRuntimeProjectFile(runtimeDir, buildConfig);
+            LogDirectoryContents(runtimeDir, "After project file generation");
 
             // Copy necessary templates
             CopyRuntimeTemplateFiles(runtimeDir, buildConfig);
+            LogDirectoryContents(runtimeDir, "After copying templates");
 
             // Generate Program.cs with AOT compatibility
             GenerateProgramCs(runtimeDir, buildConfig);
+            LogDirectoryContents(runtimeDir, "After generating Program.cs");
+        }
+
+        // Helper method to log contents of a directory
+        private void LogDirectoryContents(string dir, string label)
+        {
+            string logPath = Path.Combine(AppContext.BaseDirectory, "diagnostic.log");
+            Console.WriteLine($"[DIAGNOSTIC] LogDirectoryContents CALLED for label: {label}, dir: {dir}");
+            Console.WriteLine($"[DIAGNOSTIC] Writing diagnostic log to: {logPath}");
+            try
+            {
+                string header = $"[DIAGNOSTIC] {label}: Listing contents of {dir}";
+                _logger.Information(header);
+                Console.WriteLine(header);
+                File.AppendAllText(logPath, header + Environment.NewLine);
+                foreach (var file in Directory.GetFiles(dir, "*", SearchOption.AllDirectories))
+                {
+                    string fileMsg = $"[DIAGNOSTIC] {label}: File: {file}";
+                    _logger.Information(fileMsg);
+                    Console.WriteLine(fileMsg);
+                    File.AppendAllText(logPath, fileMsg + Environment.NewLine);
+                }
+                foreach (var subdir in Directory.GetDirectories(dir, "*", SearchOption.AllDirectories))
+                {
+                    string dirMsg = $"[DIAGNOSTIC] {label}: Directory: {subdir}";
+                    _logger.Information(dirMsg);
+                    Console.WriteLine(dirMsg);
+                    File.AppendAllText(logPath, dirMsg + Environment.NewLine);
+                }
+            }
+            catch (Exception ex)
+            {
+                string errMsg = $"[DIAGNOSTIC] {label}: Error listing contents of {dir}: {ex}";
+                _logger.Error(ex, errMsg);
+                Console.WriteLine(errMsg);
+                File.AppendAllText(logPath, errMsg + Environment.NewLine);
+            }
         }
 
         /// <summary>
@@ -249,6 +290,7 @@ namespace Pulsar.Compiler.Config
             );
             sb.AppendLine("    <PackageReference Include=\"YamlDotNet\" Version=\"16.3.0\" />");
             sb.AppendLine("  </ItemGroup>");
+
             sb.AppendLine("</Project>");
 
             File.WriteAllText(projectPath, sb.ToString());
@@ -307,6 +349,7 @@ namespace Pulsar.Compiler.Config
                 "    <ProjectReference Include=\"..\\Beacon.Runtime\\Beacon.Runtime.csproj\" />"
             );
             sb.AppendLine("  </ItemGroup>");
+
             sb.AppendLine("</Project>");
 
             File.WriteAllText(projectPath, sb.ToString());
@@ -318,6 +361,7 @@ namespace Pulsar.Compiler.Config
         /// </summary>
         private void CopyRuntimeTemplateFiles(string runtimeDir, BuildConfig buildConfig)
         {
+            _logger.Information("[DIAGNOSTIC] Entered CopyRuntimeTemplateFiles");
             _logger.Information("[CopyRuntimeTemplateFiles] Starting copy to {RuntimeDir}", runtimeDir);
             // Clean and recreate the project directories to ensure a fresh state
             CleanAndRecreateDirectory(Path.Combine(runtimeDir, "Generated"));
@@ -362,22 +406,55 @@ namespace Pulsar.Compiler.Config
 
             // --- NEW: Copy compiled rule files into Generated directory ---
             var generatedDir = Path.Combine(runtimeDir, "Generated");
-            if (!string.IsNullOrWhiteSpace(buildConfig.CompiledRulesDir) && Directory.Exists(buildConfig.CompiledRulesDir))
+            try
             {
-                var compiledRuleFiles = Directory.GetFiles(buildConfig.CompiledRulesDir, "RuleGroup*.cs").ToList();
-                var coordinatorFile = Path.Combine(buildConfig.CompiledRulesDir, "RuleCoordinator.cs");
-                if (File.Exists(coordinatorFile))
-                    compiledRuleFiles.Add(coordinatorFile);
-                foreach (var file in compiledRuleFiles)
+                _logger.Information("========== [DIAGNOSTIC] BEFORE COPY ==========");
+                if (!string.IsNullOrWhiteSpace(buildConfig.CompiledRulesDir) && Directory.Exists(buildConfig.CompiledRulesDir))
                 {
-                    var destFile = Path.Combine(generatedDir, Path.GetFileName(file));
-                    File.Copy(file, destFile, true);
-                    _logger.Information($"Copied compiled rule file: {file} -> {destFile}");
+                    var preFiles = Directory.GetFiles(buildConfig.CompiledRulesDir, "*.cs");
+                    foreach (var f in preFiles)
+                        _logger.Information($"[DIAGNOSTIC] SourceDir contains: {f}");
+                    var preGenFiles = Directory.Exists(generatedDir) ? Directory.GetFiles(generatedDir, "*.cs") : new string[0];
+                    foreach (var f in preGenFiles)
+                        _logger.Information($"[DIAGNOSTIC] GeneratedDir before copy contains: {f}");
+
+                    // Copy ALL .cs files from CompiledRulesDir into Generated, not just RuleGroup*.cs and RuleCoordinator.cs
+                    var compiledRuleFiles = Directory.GetFiles(buildConfig.CompiledRulesDir, "*.cs").ToList();
+                    if (compiledRuleFiles.Count == 0)
+                    {
+                        _logger.Warning($"[DIAGNOSTIC] No .cs files found in CompiledRulesDir: {buildConfig.CompiledRulesDir}");
+                    }
+                    foreach (var file in compiledRuleFiles)
+                    {
+                        var destFile = Path.Combine(generatedDir, Path.GetFileName(file));
+                        try
+                        {
+                            File.Copy(file, destFile, true);
+                            _logger.Information($"[DIAGNOSTIC] Copied compiled rule file: {file} -> {destFile}");
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.Error(ex, $"[DIAGNOSTIC] Error copying file: {file} -> {destFile}");
+                        }
+                    }
+                    // List all files in Generated after copy
+                    var allGenFiles = Directory.Exists(generatedDir) ? Directory.GetFiles(generatedDir, "*.cs") : new string[0];
+                    _logger.Information($"[DIAGNOSTIC] GeneratedDir now contains {allGenFiles.Length} files:");
+                    foreach (var f in allGenFiles)
+                        _logger.Information($"[DIAGNOSTIC]   {f}");
+                    var postGenFiles = Directory.Exists(generatedDir) ? Directory.GetFiles(generatedDir, "*.cs") : new string[0];
+                    _logger.Information("========== [DIAGNOSTIC] AFTER COPY ==========");
+                    foreach (var f in postGenFiles)
+                        _logger.Information($"[DIAGNOSTIC] GeneratedDir after copy contains: {f}");
+                }
+                else
+                {
+                    _logger.Warning($"[DIAGNOSTIC] CompiledRulesDir not set or does not exist: {buildConfig.CompiledRulesDir}");
                 }
             }
-            else
+            catch (Exception ex)
             {
-                _logger.Warning($"CompiledRulesDir not set or does not exist: {buildConfig.CompiledRulesDir}");
+                _logger.Error(ex, "[DIAGNOSTIC] Exception during compiled rule copy diagnostics");
             }
             // --- END NEW ---
 

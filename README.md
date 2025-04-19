@@ -26,69 +26,119 @@ PulsarSuite/
 
 ### Prerequisites
 
-- .NET SDK 9.0 or higher
-- Redis server (will be started automatically with Docker if not running)
-- Docker (optional, for Redis if not installed locally)
+- .NET SDK 7.0 or higher (install from https://dotnet.microsoft.com/download)
+- Redis server (required by Beacon runtime)
+  - You can run Redis locally or via Docker
 
-### Quick Start
+---
 
-1. Clone this repository
-2. Create a new project directory in `src/Rules/`:
-   ```bash
-   mkdir -p src/Rules/MyProject/{rules,config}
-   ```
-3. Place your rule files in `src/Rules/MyProject/rules/`
-4. Build and test your project:
-   ```bash
-   msbuild build/PulsarSuite.build /t:Build /p:ProjectName=MyProject
-   ```
+## Manual Build & Test Workflow (Recommended)
 
-This will:
-- Validate your rules
-- Compile them to C#
-- Generate test cases
-- Build the Beacon application
-- Run tests and generate reports
+This project no longer requires a build script or MSBuild file. Instead, simply follow the step-by-step commands below for a full end-to-end build and test.
 
-## Build Commands
-
-```bash
-# Clean all build artifacts
-msbuild build/PulsarSuite.build /t:Clean
-
-# Validate rules only
-msbuild build/PulsarSuite.build /t:ValidateRules
-
-# Compile rules to C#
-msbuild build/PulsarSuite.build /t:CompileRules
-
-# Generate tests from compiled rules
-msbuild build/PulsarSuite.build /t:GenerateTests
-
-# Build Beacon application
-msbuild build/PulsarSuite.build /t:BuildBeacon
-
-# Run tests
-msbuild build/PulsarSuite.build /t:RunTests
-
-# Full build process (clean + validate + compile + test)
-msbuild build/PulsarSuite.build /t:Build
+### 1. Validate Rules
+```sh
+dotnet run --project Pulsar/Pulsar.Compiler/Pulsar.Compiler.csproj validate \
+    --rules=src/Rules/TemperatureExample/rules/temperature_rules.yaml \
+    --config=src/Rules/TemperatureExample/config/system_config.yaml
 ```
 
-## Output Locations
+### 2. Compile Rules
+```sh
+dotnet run --project Pulsar/Pulsar.Compiler/Pulsar.Compiler.csproj compile \
+    --rules=src/Rules/TemperatureExample/rules/temperature_rules.yaml \
+    --config=src/Rules/TemperatureExample/config/system_config.yaml \
+    --output=output/Bin/TemperatureExample
+```
 
-All build outputs are placed in consistent locations:
+### 3. Generate Beacon Solution
+```sh
+dotnet run --project Pulsar/Pulsar.Compiler/Pulsar.Compiler.csproj beacon \
+    --rules=src/Rules/TemperatureExample/rules/temperature_rules.yaml \
+    --compiled-rules-dir=output/Bin/TemperatureExample \
+    --output=output/dist/TemperatureExample \
+    --config=src/Rules/TemperatureExample/config/system_config.yaml \
+    --target=linux-x64
+```
 
-- Compiled rules: `src/Bin/[ProjectName]/`
-- Generated tests: `src/Tests/[ProjectName]/`
+### 4. Build Beacon Runtime
+```sh
+dotnet publish output/dist/TemperatureExample/Beacon/Beacon.Runtime/Beacon.Runtime.csproj \
+    -c Release -r linux-x64 --self-contained true /p:PublishSingleFile=true
+```
+
+### 5. Run End-to-End Tests
+```sh
+dotnet test output/dist/TemperatureExample/Beacon/Beacon.Tests/Beacon.Tests.csproj
+```
+
+---
+
+### Output Locations
+- Compiled rules: `output/Bin/[ProjectName]/`
 - Distributable Beacon: `output/dist/[ProjectName]/`
-- Test reports: `output/reports/`
+- Test results: `output/dist/[ProjectName]/Beacon/Beacon.Tests/TestResults/`
 
-## Development Notes
+---
 
-- All generated content goes to the `output/` directory and is excluded from version control
-- Test reports are available in `output/reports/`
-- Each project has its own isolated build directories under `src/Bin/` and `src/Tests/`
+### Troubleshooting
+- If you see errors about missing files or directories, ensure you have run all previous steps in order.
+- If you change your rules or config, re-run the relevant steps above.
+- For cross-platform builds, adjust the `--target` and `-r` arguments as needed (e.g., `win-x64`, `osx-x64`).
+
+---
+
+## Example: Full Workflow for TemperatureExample
+
+```sh
+# 1. Validate rules
+dotnet run --project Pulsar/Pulsar.Compiler/Pulsar.Compiler.csproj validate \
+    --rules=src/Rules/TemperatureExample/rules/temperature_rules.yaml
+
+# 2. Compile rules
+dotnet run --project Pulsar/Pulsar.Compiler/Pulsar.Compiler.csproj compile \
+    --rules=src/Rules/TemperatureExample/rules/temperature_rules.yaml \
+    --output=output/Bin/TemperatureExample
+
+# 3. Generate Beacon solution
+dotnet run --project Pulsar/Pulsar.Compiler/Pulsar.Compiler.csproj beacon \
+    --rules=src/Rules/TemperatureExample/rules/temperature_rules.yaml \
+    --compiled-rules-dir=output/Bin/TemperatureExample \
+    --output=output/dist/TemperatureExample \
+    --config=src/Rules/TemperatureExample/config/system_config.yaml \
+    --target=linux-x64
+
+# 4. Build Beacon runtime
+dotnet publish output/dist/TemperatureExample/Beacon/Beacon.Runtime/Beacon.Runtime.csproj \
+    -c Release -r linux-x64 --self-contained true /p:PublishSingleFile=true
+
+# 5. Run end-to-end tests
+dotnet test output/dist/TemperatureExample/Beacon/Beacon.Tests/Beacon.Tests.csproj
+```
+
+---
+
+## Project Structure (unchanged)
+
+```
+PulsarSuite/
+├── src/                 # Source code and input files
+│   ├── Rules/          # Rule definitions
+│   │   └── [ProjectName]/
+│   │       ├── rules/  # YAML rule files
+│   │       └── config/ # Configuration files
+├── Pulsar/             # Pulsar compiler source
+├── output/             # Build outputs
+│   └── dist/           # Distributable Beacon apps
+└── ...
+```
+
+---
+
+## Notes
+- No scripting or build system is required—just run the commands above.
+- All outputs are placed in the `output/` directory.
+- For custom projects, substitute your own `[ProjectName]` and file paths.
 
 ## Related Projects
 

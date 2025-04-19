@@ -11,7 +11,8 @@ using Beacon.Runtime.Buffers;
 using Beacon.Runtime.Interfaces;
 using Beacon.Runtime.Models;
 using Beacon.Runtime.Services;
-// Removed Generated namespace import
+using Beacon.Runtime.Generated;
+using Generated;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 
