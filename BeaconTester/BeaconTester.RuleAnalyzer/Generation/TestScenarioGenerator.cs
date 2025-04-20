@@ -1056,13 +1056,13 @@ namespace BeaconTester.RuleAnalyzer.Generation
                                         // Use the first condition to determine a suitable value based on actual rule conditions
                                         var pair = conditionPairs.First();
                                         var value = _testCaseGenerator.GenerateValueForSensor(sensor, pair.Condition, ValueTarget.Positive);
-                                        existingInputs[sensor] = value;
+                                        sequenceInput.AdditionalInputs[sensor] = value;
                                         _logger.Debug("Added missing input sensor {Sensor} with condition-based value to temporal step", sensor);
                                     }
                                     else
                                     {
                                         // No condition info available, use a neutral value that won't trigger edge cases
-                                        existingInputs[sensor] = 50.0;
+                                        sequenceInput.AdditionalInputs[sensor] = 50.0;
                                         _logger.Debug("Added missing input sensor {Sensor} with neutral value to temporal step", sensor);
                                     }
                                 }

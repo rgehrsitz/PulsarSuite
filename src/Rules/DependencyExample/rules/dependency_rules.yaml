@@ -1,0 +1,99 @@
+rules:
+  - name: "AlphaHighRule"
+    description: "Detects when alpha exceeds 10"
+    conditions:
+      all:
+        - condition:
+            type: comparison
+            sensor: input:alpha
+            operator: "greater_than"
+            value: 10
+    actions:
+      - set_value:
+          key: output:alpha_high
+          value: true
+
+  - name: "BetaHighRule"
+    description: "Detects when beta exceeds 20"
+    conditions:
+      all:
+        - condition:
+            type: comparison
+            sensor: input:beta
+            operator: "greater_than"
+            value: 20
+    actions:
+      - set_value:
+          key: output:beta_high
+          value: true
+
+  - name: "GammaNormalRule"
+    description: "Detects when gamma is below 5"
+    conditions:
+      all:
+        - condition:
+            type: comparison
+            sensor: input:gamma
+            operator: "less_than"
+            value: 5
+    actions:
+      - set_value:
+          key: output:gamma_normal
+          value: true
+
+  - name: "ABCombinedRule"
+    description: "Combines alpha and beta highs"
+    conditions:
+      all:
+        - condition:
+            type: comparison
+            sensor: output:alpha_high
+            operator: "equal_to"
+            value: true
+        - condition:
+            type: comparison
+            sensor: output:beta_high
+            operator: "equal_to"
+            value: true
+    actions:
+      - set_value:
+          key: output:ab_combined
+          value: true
+
+  - name: "AGCombinedRule"
+    description: "Combines alpha high and gamma normal"
+    conditions:
+      all:
+        - condition:
+            type: comparison
+            sensor: output:alpha_high
+            operator: "equal_to"
+            value: true
+        - condition:
+            type: comparison
+            sensor: output:gamma_normal
+            operator: "equal_to"
+            value: true
+    actions:
+      - set_value:
+          key: output:ag_combined
+          value: true
+
+  - name: "FinalAlertRule"
+    description: "Triggers final alert if both AB and AG combined"
+    conditions:
+      all:
+        - condition:
+            type: comparison
+            sensor: output:ab_combined
+            operator: "equal_to"
+            value: true
+        - condition:
+            type: comparison
+            sensor: output:ag_combined
+            operator: "equal_to"
+            value: true
+    actions:
+      - set_value:
+          key: output:final_alert
+          value: "triggered"

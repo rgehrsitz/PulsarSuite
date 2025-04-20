@@ -321,6 +321,29 @@ namespace BeaconTester.RuleAnalyzer.Generation
             ValueTarget target
         )
         {
+            // Normalize operator synonyms from YAML
+            switch (comparisonOperator)
+            {
+                case "greater_than":
+                    comparisonOperator = ">";
+                    break;
+                case "greater_than_or_equal_to":
+                    comparisonOperator = ">=";
+                    break;
+                case "less_than":
+                    comparisonOperator = "<";
+                    break;
+                case "less_than_or_equal_to":
+                    comparisonOperator = "<=";
+                    break;
+                case "equal_to":
+                    comparisonOperator = "==";
+                    break;
+                case "not_equal_to":
+                    comparisonOperator = "!=";
+                    break;
+            }
+
             if (target == ValueTarget.Positive)
             {
                 // Generate value that satisfies the condition

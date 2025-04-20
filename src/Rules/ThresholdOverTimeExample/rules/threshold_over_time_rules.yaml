@@ -1,0 +1,67 @@
+rules:
+  - name: "SustainedHighTempRule"
+    description: "Temperature > 75°C for at least 10 seconds"
+    conditions:
+      all:
+        - condition:
+            type: threshold_over_time
+            sensor: input:temperature
+            operator: "greater_than"
+            threshold: 75
+            duration: 10000
+    actions:
+      - set_value:
+          key: output:sustained_high_temp
+          value: true
+
+  - name: "TempSpikeRule"
+    description: "Temperature > 90°C at any instant"
+    conditions:
+      all:
+        - condition:
+            type: comparison
+            sensor: input:temperature
+            operator: "greater_than"
+            value: 90
+    actions:
+      - set_value:
+          key: output:temp_spike
+          value: true
+
+  - name: "HeatStressRule"
+    description: "Both sustained high and spike occurred"
+    conditions:
+      all:
+        - condition:
+            type: comparison
+            sensor: output:sustained_high_temp
+            operator: "equal_to"
+            value: true
+        - condition:
+            type: comparison
+            sensor: output:temp_spike
+            operator: "equal_to"
+            value: true
+    actions:
+      - set_value:
+          key: output:stress_alert
+          value: true
+
+  - name: "CriticalShutdownRule"
+    description: "Trigger shutdown if stress_alert and fan slows"
+    conditions:
+      all:
+        - condition:
+            type: comparison
+            sensor: output:stress_alert
+            operator: "equal_to"
+            value: true
+        - condition:
+            type: comparison
+            sensor: input:fan_speed
+            operator: "less_than"
+            value: 1000
+    actions:
+      - set_value:
+          key: output:shutdown
+          value: "triggered"

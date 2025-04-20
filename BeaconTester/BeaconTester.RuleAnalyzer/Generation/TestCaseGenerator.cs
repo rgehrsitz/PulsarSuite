@@ -393,7 +393,7 @@ namespace BeaconTester.RuleAnalyzer.Generation
                             }
 
                             var sequenceInput = new SequenceInput { DelayMs = duration / steps };
-                            sequenceInput.Inputs[sensor] = value;
+                            sequenceInput.AdditionalInputs[sensor] = value;
                             inputSequence.Add(sequenceInput);
                             
                             _logger.Debug("Generated temporal step {Step}/{TotalSteps} with value {Value} for condition {Condition}",

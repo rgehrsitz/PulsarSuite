@@ -117,7 +117,7 @@ namespace Pulsar.Compiler.Generation.Helpers
             {
                 // For output sensors, try getting from outputs first, then inputs
                 // Use unique variable names for TryGetValue to avoid conflicts
-                string varName = $"outVal_{comparison.Sensor.Replace(":", "_")}";
+                string varName = GenerateUniqueVarName($"outVal_{comparison.Sensor.Replace(":", "_")}");
                 sensorAccess = $"(outputs.TryGetValue(\"{comparison.Sensor}\", out var {varName}) ? {varName} : " +
                               $"(inputs.ContainsKey(\"{comparison.Sensor}\") ? inputs[\"{comparison.Sensor}\"] : null))";
             }
