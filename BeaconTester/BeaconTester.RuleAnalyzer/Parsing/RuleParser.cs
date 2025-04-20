@@ -203,27 +203,27 @@ namespace BeaconTester.RuleAnalyzer.Parsing
                     };
                     
                 case "threshold_over_time":
-                    // Handle conversion from object to double for the threshold
-                    double threshold = 0;
-                    if (condition.Value != null)
-                    {
-                        if (condition.Value is double d)
-                            threshold = d;
-                        else if (condition.Value is int i)
-                            threshold = i;
-                        else if (condition.Value is string s && double.TryParse(s, out double parsed))
-                            threshold = parsed;
-                        else
-                            _logger.Warning("Unsupported value type for threshold_over_time condition: {ValueType}", condition.Value.GetType());
-                    }
-                    
-                    return new ThresholdOverTimeCondition
-                    {
-                        Type = "threshold_over_time",
-                        Sensor = condition.Sensor ?? string.Empty,
-                        Threshold = threshold,
-                        Duration = condition.Duration ?? 0
-                    };
+    // Prefer the 'threshold' field if present, otherwise fall back to 'value'
+    double threshold = 0;
+    object? thresholdObj = condition.Threshold ?? condition.Value;
+    if (thresholdObj != null)
+    {
+        if (thresholdObj is double d)
+            threshold = d;
+        else if (thresholdObj is int i)
+            threshold = i;
+        else if (thresholdObj is string s && double.TryParse(s, out double parsed))
+            threshold = parsed;
+        else
+            _logger.Warning("Unsupported value type for threshold_over_time condition: {ValueType}", thresholdObj.GetType());
+    }
+    return new ThresholdOverTimeCondition
+    {
+        Type = "threshold_over_time",
+        Sensor = condition.Sensor ?? string.Empty,
+        Threshold = threshold,
+        Duration = condition.Duration ?? 0
+    };
                     
                 default:
                     _logger.Warning("Unknown condition type: {Type}", type);

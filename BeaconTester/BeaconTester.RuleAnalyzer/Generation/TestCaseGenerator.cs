@@ -13,7 +13,7 @@ namespace BeaconTester.RuleAnalyzer.Generation
     {
         private readonly ILogger _logger;
         private readonly ConditionAnalyzer _conditionAnalyzer;
-        private readonly ValueGenerator _valueGenerator;
+        internal ValueGenerator _valueGenerator;
         private readonly ExpressionEvaluator _expressionEvaluator;
         
         // Store all comparison and threshold conditions from parsed rules to derive appropriate test values
@@ -408,18 +408,48 @@ namespace BeaconTester.RuleAnalyzer.Generation
                 // Add expected outputs
                 var expectedOutputs = new Dictionary<string, object>();
 
+                // Create a dictionary of input values from the last sequence step
+                // to use when evaluating output expressions
+                var finalInputValues = new Dictionary<string, object>();
+                if (inputSequence.Count > 0)
+                {
+                    // Get all inputs from all sequence steps
+                    foreach (var step in inputSequence)
+                    {
+                        foreach (var kvp in step.Inputs)
+                        {
+                            // Keep only the latest value for each input key
+                            finalInputValues[kvp.Key] = kvp.Value;
+                        }
+                        
+                        // Also add all additional inputs
+                        foreach (var kvp in step.AdditionalInputs)
+                        {
+                            if (kvp.Key != "delayMs") // Skip non-input properties
+                            {
+                                finalInputValues[kvp.Key] = kvp.Value;
+                            }
+                        }
+                    }
+                }
+
                 foreach (var action in rule.Actions)
                 {
                     if (action is SetValueAction setValueAction)
                     {
                         if (setValueAction.Key.StartsWith("output:"))
                         {
-                            var value = DetermineOutputValue(setValueAction);
+                            // Use the final input values to determine expected outputs
+                            var value = DetermineOutputValue(setValueAction, finalInputValues);
                             expectedOutputs[setValueAction.Key] = value;
+                            _logger.Debug("Adding expected output {Key}={Value} for temporal scenario", 
+                                setValueAction.Key, value);
                         }
                     }
                 }
 
+                // FIXED: Always set ExpectedOutputs even if empty
+                // This ensures NormalizeScenario will convert InputSequence to Steps
                 scenario.ExpectedOutputs = expectedOutputs;
 
                 return scenario;
@@ -438,7 +468,7 @@ namespace BeaconTester.RuleAnalyzer.Generation
         /// <summary>
         /// Finds all temporal conditions in a rule
         /// </summary>
-        private List<ThresholdOverTimeCondition> FindTemporalConditions(
+        public List<ThresholdOverTimeCondition> FindTemporalConditions(
             ConditionDefinition condition
         )
         {

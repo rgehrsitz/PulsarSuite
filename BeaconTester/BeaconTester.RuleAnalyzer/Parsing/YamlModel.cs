@@ -56,6 +56,8 @@ namespace BeaconTester.RuleAnalyzer.Parsing
         public string? Sensor { get; set; }
         public string? Operator { get; set; }
         public object? Value { get; set; }
+        [YamlMember(Alias = "threshold")]
+        public object? Threshold { get; set; }
         public string? Expression { get; set; }
         public int? Duration { get; set; }
     }

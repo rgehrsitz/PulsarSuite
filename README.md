@@ -72,7 +72,13 @@ dotnet publish output/dist/TemperatureExample/Beacon/Beacon.Runtime/Beacon.Runti
 dotnet test output/dist/TemperatureExample/Beacon/Beacon.Tests/Beacon.Tests.csproj
 ```
 
-### 6. Generate & Run BeaconTester Scenarios
+### 6. **Start the Beacon Runtime**
+> **Important:** You must start the Beacon runtime before running BeaconTester scenarios. Leave this process running in a separate terminal.
+```sh
+./output/dist/TemperatureExample/Beacon/Beacon.Runtime/Beacon.Runtime
+```
+
+### 7. Generate & Run BeaconTester Scenarios
 ```sh
 dotnet run --project BeaconTester/BeaconTester.Runner/BeaconTester.Runner.csproj generate --rules=src/Rules/TemperatureExample/rules/temperature_rules.yaml --output=output/dist/TemperatureExample/test_scenarios.json
 
@@ -123,7 +129,11 @@ dotnet publish output/dist/TemperatureExample/Beacon/Beacon.Runtime/Beacon.Runti
 # 5. Run Beacon unit tests
 dotnet test output/dist/TemperatureExample/Beacon/Beacon.Tests/Beacon.Tests.csproj
 
-# 6. Generate & Run BeaconTester Scenarios
+# 6. **Start the Beacon runtime**
+# IMPORTANT: You must start the Beacon runtime before running BeaconTester scenarios. Leave this process running in a separate terminal.
+./output/dist/TemperatureExample/Beacon/Beacon.Runtime/Beacon.Runtime
+
+# 7. Generate & Run BeaconTester Scenarios
 dotnet run --project BeaconTester/BeaconTester.Runner/BeaconTester.Runner.csproj generate --rules=src/Rules/TemperatureExample/rules/temperature_rules.yaml --output=output/dist/TemperatureExample/test_scenarios.json
 
 dotnet run --project BeaconTester/BeaconTester.Runner/BeaconTester.Runner.csproj run --scenarios=output/dist/TemperatureExample/test_scenarios.json --output=output/dist/TemperatureExample/test_results.json

@@ -296,48 +296,89 @@ namespace BeaconTester.RuleAnalyzer.Generation
                 // Check if this is a temporal rule
                 bool isTemporalRule = _ruleAnalyzer.ConditionAnalyzer.HasTemporalCondition(rule.Conditions);
                 
-                if (testCase.Inputs.Count > 0)
+                // For temporal rules, the basic test should be minimal or modified 
+                if (isTemporalRule)
                 {
-                    // For temporal rules, the basic test should be minimal or modified
-                    if (isTemporalRule)
+                    _logger.Debug("Rule {RuleName} has temporal conditions - adding temporal step", rule.Name);
+                    
+                    // For temporal rules, generate a sequence of steps that satisfy the temporal condition
+                    var temporalConditions = _testCaseGenerator.FindTemporalConditions(rule.Conditions);
+                    if (temporalConditions.Count > 0)
                     {
-                        _logger.Debug("Rule {RuleName} has temporal conditions - modifying basic test", rule.Name);
-                        
-                        // For temporal rules, add a note but don't add expectations that would fail
-                        // The proper test will be generated in the temporal scenario
+                        foreach (var temporal in temporalConditions)
+                        {
+                            var sensor = temporal.Sensor;
+                            var threshold = temporal.Threshold;
+                            var duration = temporal.Duration;
+                            var steps = Math.Max(3, duration / 500); // At least 3 steps, or more for longer durations
+                            var comparisonOperator = temporal.Operator ?? ">";
+                            _logger.Warning("[TEMPORAL TEST GEN] Rule: {Rule}, Sensor: {Sensor}, Threshold: {Threshold}, Duration: {Duration}, Steps: {Steps}", rule.Name, sensor, threshold, duration, steps);
+                            for (int i = 0; i < steps; i++)
+                            {
+                                double margin = Math.Max(threshold * 0.1, 5); // At least 5 or 10% of threshold
+                                var value = threshold + margin + 1; // Always above threshold for every step
+                                _logger.Warning("[TEMPORAL TEST GEN] Step {Step}: Using value {Value} for sensor {Sensor} (threshold: {Threshold})", i+1, value, sensor, threshold);
+                                var stepInputs = new List<TestInput>();
+                                // Set all required inputs to default, then override the temporal sensor
+                                foreach (var s in allRequiredInputs)
+                                {
+                                    var v = s == sensor ? value : GetDefaultValueForSensor(s, rule);
+                                    stepInputs.Add(new TestInput { Key = s, Value = v });
+                                }
+                                var temporalStep = new TestStep
+                                {
+                                    Name = $"Temporal step {i+1}/{steps}",
+                                    Description = $"Step {i+1} for temporal rule: {sensor} {comparisonOperator} {threshold}",
+                                    Inputs = stepInputs,
+                                    Delay = duration / steps,
+                                    DelayMultiplier = null,
+                                    Expectations = new List<TestExpectation>(),
+                                    Result = null
+                                };
+                                scenario.Steps.Add(temporalStep);
+                            }
+                        }
+                    } else {
+                        // fallback to old single step if no temporal conditions detected
                         var temporalStep = new TestStep
                         {
                             Name = "Basic test for temporal rule",
                             Description = "Note: This is a temporal rule that requires a sequence of values over time. See the temporal test scenario.",
-                            Inputs = EnsureAllRequiredInputs(testCase.Inputs, true),
-                            Delay = 500, // Default delay
-                            // Don't add expectations for temporal outputs - they'll likely fail
+                            Inputs = testCase.Inputs.Count > 0 
+                                ? EnsureAllRequiredInputs(testCase.Inputs, true)
+                                : allRequiredInputs.Select(s => new TestInput { 
+                                    Key = s, 
+                                    Value = GetDefaultValueForSensor(s, rule)
+                                }).ToList(),
+                            Delay = 500,
+                            DelayMultiplier = null,
+                            Expectations = new List<TestExpectation>(),
+                            Result = null
                         };
-                        
                         scenario.Steps.Add(temporalStep);
                     }
-                    else
+                }
+                else if (testCase.Inputs.Count > 0)
+                {
+                    // Regular non-temporal rules get a normal positive test step
+                    var positiveStep = new TestStep
                     {
-                        // Regular non-temporal rules get a normal positive test step
-                        var positiveStep = new TestStep
-                        {
-                            Name = "Positive test case",
-                            Description = "Test inputs that should trigger the rule",
-                            Inputs = EnsureAllRequiredInputs(testCase.Inputs, true),
-                            Delay = 500, // Default delay
-                            Expectations = testCase
-                                .Outputs.Select(o => new TestExpectation
-                                {
-                                    Key = o.Key,
-                                    Expected = o.Value,
-                                    Validator = GetValidatorType(o.Value),
-                                    TimeoutMs = 1000 // Add timeout for rules to process
-                                })
-                                .ToList(),
-                        };
+                        Name = "Positive test case",
+                        Description = "Test inputs that should trigger the rule",
+                        Inputs = EnsureAllRequiredInputs(testCase.Inputs, true),
+                        Delay = 500, // Default delay
+                        Expectations = testCase
+                            .Outputs.Select(o => new TestExpectation
+                            {
+                                Key = o.Key,
+                                Expected = o.Value,
+                                Validator = GetValidatorType(o.Value),
+                                TimeoutMs = 1000 // Add timeout for rules to process
+                            })
+                            .ToList(),
+                    };
 
-                        scenario.Steps.Add(positiveStep);
-                    }
+                    scenario.Steps.Add(positiveStep);
                 }
 
                 // Generate negative test case if possible
@@ -417,126 +458,157 @@ namespace BeaconTester.RuleAnalyzer.Generation
                 {
                     Name = $"{targetRuleName}DependencyTest",
                     Description = $"Tests dependencies for rule {targetRuleName}",
+                    Steps = new List<TestStep>()
                 };
 
+                // Declare all locals outside try so they're available after
+                var dependencySteps = new List<TestStep>();
+                var dependencyOutputsToProduce = new Dictionary<string, object>();
+                var preSetOutputs = new Dictionary<string, object>();
+                var requiredInputs = new Dictionary<string, object>();
+                var dependencyRules = dependencies.ToDictionary(d => d.Key, d => d.SourceRule);
+                TestCase testCase = null;
                 try
                 {
-                    // We'll use preSetOutputs to simulate the outputs of dependency rules
-                    var preSetOutputs = new Dictionary<string, object>();
-
-                    // Get all the target rule's dependency requirements
-                    // by analyzing its conditions
-                    Dictionary<string, object> dependencyRequirements = new Dictionary<string, object>();
+                    // Collect all outputs referenced in the target rule's conditions
+                    HashSet<string> allReferencedOutputs = new HashSet<string>();
+                    foreach (var dependency in dependencies)
+                        allReferencedOutputs.Add(dependency.Key);
                     if (targetRule.Conditions != null)
                     {
-                        dependencyRequirements = _ruleAnalyzer.ConditionAnalyzer.AnalyzeConditionRequirements(targetRule.Conditions);
+                        var outputSensors = _ruleAnalyzer.ConditionAnalyzer.ExtractSensors(targetRule.Conditions)
+                            .Where(s => s.StartsWith("output:"))
+                            .ToList();
+                        foreach (var outputSensor in outputSensors)
+                            allReferencedOutputs.Add(outputSensor);
                     }
 
-                    // For each dependency, set appropriate values based on analysis
-                    foreach (var dependency in dependencies)
+                    // Build dependency-producing steps
+                    foreach (var key in allReferencedOutputs)
                     {
-                        var key = dependency.Key;
-                        object value;
-
-                        // First, try to get the value from our analyzed requirements
-                        if (dependencyRequirements.TryGetValue(key, out var requiredValue))
+                        var sourceRule = analysis.Rules.FirstOrDefault(r => r.Actions.OfType<SetValueAction>().Any(a => a.Key == key));
+                        if (sourceRule != null)
                         {
-                            value = requiredValue;
-                            _logger.Debug("Using dependency value {Key} = {Value} based on target rule condition requirements", 
-                                key, value);
+                            var dependencyTestCase = _testCaseGenerator.GenerateBasicTestCase(sourceRule);
+                            if (dependencyTestCase.Inputs.Count > 0)
+                            {
+                                var dependencyStep = new TestStep
+                                {
+                                    Name = $"Produce dependency {key}",
+                                    Description = $"Step to trigger rule {sourceRule.Name} to produce {key}",
+                                    Inputs = dependencyTestCase.Inputs.Select(i => new TestInput { Key = i.Key, Value = i.Value }).ToList(),
+                                    Delay = 500,
+                                    Expectations = new List<TestExpectation>
+                                    {
+                                        new TestExpectation
+                                        {
+                                            Key = key,
+                                            Expected = dependencyTestCase.Outputs.ContainsKey(key) ? dependencyTestCase.Outputs[key] : true,
+                                            Validator = "boolean",
+                                            TimeoutMs = 1000
+                                        }
+                                    }
+                                };
+                                dependencySteps.Add(dependencyStep);
+                                dependencyOutputsToProduce[key] = dependencyTestCase.Outputs.ContainsKey(key) ? dependencyTestCase.Outputs[key] : true;
+                            }
                         }
                         else
                         {
-                            // Otherwise try to find the value in the source rule's actions
-                            var sourceRule = dependency.SourceRule;
-                            var setValueAction = sourceRule.Actions
-                                .OfType<SetValueAction>()
-                                .FirstOrDefault(a => a.Key == key);
-
-                            if (setValueAction?.Value != null)
-                            {
-                                // Use the direct value from the action
-                                value = setValueAction.Value;
-                                _logger.Debug("Using dependency value {Key} = {Value} from source rule direct action", 
-                                    key, value);
-                            }
-                            else
-                            {
-                                // Last resort: use a default value based on analyzed rules
-                                // Check if it's a boolean and use true, otherwise use 1.0
-                                if (key.Contains("enabled") || key.Contains("status") || 
-                                    key.Contains("active") || key.Contains("alarm") || 
-                                    key.Contains("alert") || key.Contains("normal"))
-                                {
-                                    value = true;
-                                }
-                                else
-                                {
-                                    value = 1.0;
-                                }
-                                _logger.Debug("No direct value found for {Key}, using default value {Value}", key, value);
-                            }
-                        }
-
-                        // Ensure the value is properly normalized (especially string booleans to real booleans)
-                        preSetOutputs[key] = _ruleAnalyzer.ConditionAnalyzer.NormalizeValue(value);
-                    }
-
-                    scenario.PreSetOutputs = preSetOutputs;
-
-                    // Generate a basic test case for the target rule
-                    var testCase = _testCaseGenerator.GenerateBasicTestCase(targetRule);
-                    
-                    // For all actions in the target rule that use value expressions,
-                    // find any input sensors referenced in those expressions
-                    Dictionary<string, object> requiredInputs = new Dictionary<string, object>();
-                    
-                    // First, analyze the dependencies and identify which rules produced the dependency outputs
-                    var dependencyRules = new Dictionary<string, RuleDefinition>();
-                    foreach (var dependencyKey in preSetOutputs.Keys)
-                    {
-                        // Find which rule produces this output
-                        foreach (var rule in analysis.Rules)
-                        {
-                            if (rule == targetRule) continue; // Skip the target rule itself
-                            
-                            // Check if this rule produces the dependency output
-                            var producesOutput = false;
-                            foreach (var action in rule.Actions)
-                            {
-                                if (action is SetValueAction setAction && setAction.Key == dependencyKey)
-                                {
-                                    producesOutput = true;
-                                    dependencyRules[dependencyKey] = rule;
-                                    _logger.Debug("Found dependency rule {Rule} that produces {Output}", rule.Name, dependencyKey);
-                                    break;
-                                }
-                            }
-                            
-                            if (producesOutput) break;
+                            // If no rule produces this output, fall back to preSetOutputs as before
+                            object value = (key.Contains("enabled") || key.Contains("status") || key.Contains("active") || key.Contains("alarm") || key.Contains("alert") || key.Contains("normal")) ? true :
+                                (key.Contains("stress_alert")) ? true : 1.0;
+                            dependencyOutputsToProduce[key] = value;
                         }
                     }
-                    
-                    // Extract input references from all rule actions in the target rule
-                    foreach (var action in targetRule.Actions)
+
+                    // Main step to trigger the target rule
+                    testCase = _testCaseGenerator.GenerateBasicTestCase(targetRule);
+                    var mainStep = new TestStep
                     {
-                        if (action is SetValueAction setAction && !string.IsNullOrEmpty(setAction.ValueExpression))
+                        Name = "Test with dependencies",
+                        Description = "Tests rule with dependencies satisfied",
+                        Inputs = testCase.Inputs.Select(i => new TestInput { Key = i.Key, Value = i.Value }).ToList(),
+                        Delay = 500,
+                        Expectations = testCase.Outputs.Select(o => new TestExpectation
                         {
-                            // Extract sensor references from the expression
-                            var sensors = _ruleAnalyzer.ConditionAnalyzer.ExtractSensorsFromExpression(setAction.ValueExpression);
-                            foreach (var sensor in sensors)
+                            Key = o.Key,
+                            Expected = o.Value,
+                            Validator = o.Value is bool ? "boolean" : "string",
+                            TimeoutMs = 1000
+                        }).ToList()
+                    };
+
+                    scenario.Steps.AddRange(dependencySteps);
+                    scenario.Steps.Add(mainStep);
+
+                    // Only use preSetOutputs for outputs that cannot be produced by rules
+                    foreach (var kvp in dependencyOutputsToProduce)
+                    {
+                        if (!dependencySteps.Any(s => s.Expectations.Any(e => e.Key == kvp.Key)))
+                        {
+                            preSetOutputs[kvp.Key] = kvp.Value;
+                        }
+                    }
+                    scenario.PreSetOutputs = preSetOutputs.Count > 0 ? preSetOutputs : null;
+                }
+                catch (Exception ex)
+                {
+                    _logger.Error(ex, "Error generating dependency scenario for rule {RuleName}", targetRuleName);
+                }
+
+                scenarios.Add(scenario);
+
+                // Post-processing: handle value expressions using unique variable names
+                foreach (var act in targetRule.Actions)
+                {
+                    if (act is SetValueAction svc && !string.IsNullOrEmpty(svc.ValueExpression))
+                    {
+                        var sensors = _ruleAnalyzer.ConditionAnalyzer.ExtractSensorsFromExpression(svc.ValueExpression);
+                        foreach (var sensor in sensors)
+                        {
+                            if (sensor.StartsWith("input:") && !requiredInputs.ContainsKey(sensor))
                             {
-                                if (sensor.StartsWith("input:") && !requiredInputs.ContainsKey(sensor))
+                                // CRITICAL: For dependency tests, we need to ensure values are consistent with pre-set outputs
+                                // First check if any of our dependency rules consume this input
+                                bool foundConsistentValue = false;
+                                
+                                foreach (var dependencyPair in dependencyRules)
                                 {
-                                    // CRITICAL: For dependency tests, we need to ensure values are consistent with pre-set outputs
-                                    // First check if any of our dependency rules consume this input
-                                    bool foundConsistentValue = false;
+                                    var outputKey = dependencyPair.Key; // outputKey is valid here
+                                    var rule = dependencyPair.Value;
+                                    var expectedOutputValue = preSetOutputs[outputKey];
                                     
-                                    foreach (var dependencyPair in dependencyRules)
+                                    // Check if this rule uses this input
+                                    if (rule.Conditions != null)
                                     {
-                                        var outputKey = dependencyPair.Key;
-                                        var rule = dependencyPair.Value;
-                                        var expectedOutputValue = preSetOutputs[outputKey];
+                                        var ruleSensors = _ruleAnalyzer.ConditionAnalyzer.ExtractSensors(rule.Conditions);
+                                        if (ruleSensors.Contains(sensor))
+                                        {
+                                            // We have a rule that both: 
+                                            // 1. Produces a dependency output we're pre-setting, and
+                                            // 2. Consumes the input we need to set
+                                            
+                                            // We need to set the input value to ensure the rule produces our expected output
+                                            var sensorValue = GetConsistentInputValue(rule, sensor, outputKey, expectedOutputValue);
+                                            if (sensorValue != null)
+                                            {
+                                                requiredInputs[sensor] = sensorValue;
+                                                _logger.Debug("Using dependency-consistent value {Value} for input {Sensor} to maintain {Output}={ExpectedValue}", sensorValue, sensor, outputKey, expectedOutputValue);
+                                                foundConsistentValue = true;
+                                                break;
+                                            }
+                                        }
+                                    }
+                                }
+                                
+                                if (!foundConsistentValue)
+                                {
+                                    // If no dependency rules consume this input, fall back to regular value generation
+                                    foreach (var rule in analysis.Rules)
+                                    {
+                                        var outputKey = svc.Key;
+                                        var expectedOutputValue = preSetOutputs.ContainsKey(outputKey) ? preSetOutputs[outputKey] : null;
                                         
                                         // Check if this rule uses this input
                                         if (rule.Conditions != null)
@@ -553,8 +625,7 @@ namespace BeaconTester.RuleAnalyzer.Generation
                                                 if (sensorValue != null)
                                                 {
                                                     requiredInputs[sensor] = sensorValue;
-                                                    _logger.Debug("Using dependency-consistent value {Value} for input {Sensor} to maintain {Output}={ExpectedValue}", 
-                                                        sensorValue, sensor, outputKey, expectedOutputValue);
+                                                    _logger.Debug("Using dependency-consistent value {Value} for input {Sensor} to maintain {Output}={ExpectedValue}", sensorValue, sensor, outputKey, expectedOutputValue);
                                                     foundConsistentValue = true;
                                                     break;
                                                 }
@@ -760,14 +831,6 @@ namespace BeaconTester.RuleAnalyzer.Generation
 
                     negativeScenario.Steps.Add(negativeStep);
                     scenarios.Add(negativeScenario);
-                }
-                catch (Exception ex)
-                {
-                    _logger.Error(
-                        ex,
-                        "Error generating dependency scenario for rule {RuleName}",
-                        targetRuleName
-                    );
                 }
             }
 
@@ -1100,6 +1163,70 @@ namespace BeaconTester.RuleAnalyzer.Generation
             // For other outputs, prefer numeric values that won't trigger edge conditions
             // Use a mid-range value to minimize chance of unexpected interactions
             return 50.0;
+        }
+        
+        /// <summary>
+        /// Gets a default value for a sensor, attempting to make a smart guess based on the sensor name and rule
+        /// </summary>
+        private object GetDefaultValueForSensor(string sensor, RuleDefinition rule)
+        {
+            // First try to find a condition that uses this sensor
+            var conditions = rule.Conditions != null 
+                ? FindConditionsForSensor(rule.Conditions, sensor)
+                : new List<ConditionDefinition>();
+                
+            // If we found conditions, try to generate a suitable value
+            if (conditions.Count > 0)
+            {
+                foreach (var condition in conditions)
+                {
+                    if (condition is ComparisonCondition comparison)
+                    {
+                        return _testCaseGenerator.GenerateValueForSensor(sensor, comparison, ValueTarget.Positive);
+                    }
+                    else if (condition is ThresholdOverTimeCondition threshold)
+                    {
+                        // Create a value that exceeds the threshold
+                        var thresholdValue = Convert.ToDouble(threshold.Threshold);
+                        var op = threshold.Operator?.ToLowerInvariant() ?? ">";
+                        
+                        if (op == "greater_than" || op == ">" || op == "gt")
+                        {
+                            return thresholdValue + 10.0; // Safely above threshold
+                        }
+                        else if (op == "less_than" || op == "<" || op == "lt")
+                        {
+                            return Math.Max(1.0, thresholdValue - 10.0); // Safely below threshold
+                        }
+                        else
+                        {
+                            return thresholdValue; // For equals, use exact match
+                        }
+                    }
+                }
+            }
+            
+            // If no conditions found, fall back to heuristics based on sensor name
+            if (sensor.Contains("temperature"))
+            {
+                return 35.0; // Common temperature value above typical thresholds
+            }
+            else if (sensor.Contains("humidity"))
+            {
+                return 50.0; // Middle of typical humidity range
+            }
+            else if (sensor.Contains("level") || sensor.Contains("percent"))
+            {
+                return 75.0; // High enough to trigger most threshold conditions
+            }
+            else if (sensor.Contains("enabled") || sensor.Contains("active") || 
+                     sensor.Contains("status") || sensor.Contains("alert"))
+            {
+                return true; // Boolean sensors default to true
+            }
+            
+            // Generic fallback that's identifiable in logs
+            return 42.0;
         }
         
         /// <summary>
