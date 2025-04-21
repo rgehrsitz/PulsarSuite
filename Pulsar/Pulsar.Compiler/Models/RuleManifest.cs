@@ -208,6 +208,7 @@ namespace Pulsar.Compiler.Models
 
         public RuleManifest GenerateManifest()
         {
+            Console.WriteLine("[CONSOLE DIAGNOSTIC] Manifest generation starting...");
             var manifest = new RuleManifest();
             var ruleLayerMap = BuildRuleLayerMap();
 
@@ -244,6 +245,9 @@ namespace Pulsar.Compiler.Models
             // Process each rule's metadata
             foreach (var rule in _rules)
             {
+                Serilog.Log.Information("[DIAGNOSTIC] Rule '{RuleName}' InputSensors: [{InputSensors}], OutputSensors: [{OutputSensors}]", rule.Name, string.Join(", ", rule.InputSensors ?? new List<string>()), string.Join(", ", rule.OutputSensors ?? new List<string>()));
+                Console.WriteLine($"[CONSOLE DIAGNOSTIC] Rule '{rule.Name}' InputSensors: [{string.Join(", ", rule.InputSensors ?? new List<string>())}], OutputSensors: [{string.Join(", ", rule.OutputSensors ?? new List<string>())}]");
+
                 var metadata = new RuleMetadata
                 {
                     SourceFile = rule.SourceFile ?? "unknown",
@@ -411,42 +415,14 @@ namespace Pulsar.Compiler.Models
 
         private List<string> GetRuleInputs(RuleDefinition rule)
         {
-            var inputs = new HashSet<string>();
-
-            void AddConditionInputs(ConditionDefinition condition)
-            {
-                if (condition is ComparisonCondition comp)
-                {
-                    inputs.Add(comp.Sensor);
-                }
-                else if (condition is ThresholdOverTimeCondition temporal)
-                {
-                    inputs.Add(temporal.Sensor);
-                }
-            }
-
-            if (rule.Conditions?.All != null)
-            {
-                foreach (var cond in rule.Conditions.All)
-                {
-                    AddConditionInputs(cond);
-                }
-            }
-
-            if (rule.Conditions?.Any != null)
-            {
-                foreach (var cond in rule.Conditions.Any)
-                {
-                    AddConditionInputs(cond);
-                }
-            }
-
-            return inputs.ToList();
+            // Use the InputSensors property populated during parsing
+            return rule.InputSensors ?? new List<string>();
         }
 
         private List<string> GetRuleOutputs(RuleDefinition rule)
         {
-            return rule.Actions.OfType<SetValueAction>().Select(a => a.Key).ToList();
+            // Use the OutputSensors property populated during parsing
+            return rule.OutputSensors ?? new List<string>();
         }
 
         private bool HasTemporalConditions(RuleDefinition rule)

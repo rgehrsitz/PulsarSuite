@@ -491,6 +491,52 @@ https://github.com/yourusername/pulsar/docs"
                 logger.Information("Included debug symbols and enhanced logging");
             }
 
+            // --- Manifest Generation Patch ---
+            try
+            {
+                Console.WriteLine("[CONSOLE DIAGNOSTIC] Entered manifest-writing try block (Program.cs)." );
+                Console.WriteLine($"[CONSOLE DIAGNOSTIC] buildConfig.OutputPath: {buildConfig.OutputPath}");
+                Console.WriteLine($"[CONSOLE DIAGNOSTIC] result.Rules.Count: {result.Rules?.Count ?? -1}");
+                var ruleManifest = new RuleManifest { GeneratedAt = DateTime.UtcNow };
+                ruleManifest.BuildMetrics.TotalRules = result.Rules?.Count ?? 0;
+                Console.WriteLine("[CONSOLE DIAGNOSTIC] Manifest generation starting (compile, Program.cs)...");
+                foreach (var rule in result.Rules ?? new List<RuleDefinition>())
+                {
+                    Console.WriteLine($"[CONSOLE DIAGNOSTIC] Rule '{rule.Name}' InputSensors: [{string.Join(", ", rule.InputSensors ?? new List<string>())}], OutputSensors: [{string.Join(", ", rule.OutputSensors ?? new List<string>())}]");
+                    ruleManifest.Rules[rule.Name] = new RuleMetadata
+                    {
+                        SourceFile = rule.SourceFile,
+                        SourceLineNumber = rule.LineNumber,
+                        Description = rule.Description,
+                        InputSensors = rule.InputSensors ?? new List<string>(),
+                        OutputSensors = rule.OutputSensors ?? new List<string>(),
+                    };
+                }
+                var manifestPath = Path.Combine(buildConfig.OutputPath, "rules.manifest.json");
+                Console.WriteLine($"[CONSOLE DIAGNOSTIC] Intended manifest path: {manifestPath}");
+                var manifestDir = Path.GetDirectoryName(manifestPath);
+                if (!Directory.Exists(manifestDir))
+                {
+                    Console.WriteLine($"[CONSOLE DIAGNOSTIC] Manifest directory does NOT exist: {manifestDir}");
+                }
+                else
+                {
+                    Console.WriteLine($"[CONSOLE DIAGNOSTIC] Manifest directory exists: {manifestDir}");
+                }
+                var manifestJson = System.Text.Json.JsonSerializer.Serialize(
+                    ruleManifest,
+                    new System.Text.Json.JsonSerializerOptions { WriteIndented = true }
+                );
+                File.WriteAllText(manifestPath, manifestJson);
+                logger.Information("Created rule manifest at {Path}", manifestPath);
+            }
+            catch (Exception ex)
+            {
+                logger.Error(ex, "Failed to generate rules.manifest.json");
+                Console.WriteLine($"[CONSOLE DIAGNOSTIC] Exception in manifest-writing: {ex.Message}\n{ex.StackTrace}");
+            }
+            // --- End Patch ---
+
             return 0;
         }
         else

@@ -142,13 +142,17 @@ namespace Pulsar.Compiler.Config
                     ruleManifest.BuildMetrics.TotalRules = config.RuleDefinitions.Count;
 
                     // Add basic rule metadata
+                    Console.WriteLine("[CONSOLE DIAGNOSTIC] Manifest generation starting...");
                     foreach (var rule in config.RuleDefinitions)
                     {
+                        Console.WriteLine($"[CONSOLE DIAGNOSTIC] Rule '{rule.Name}' InputSensors: [{string.Join(", ", rule.InputSensors ?? new List<string>())}], OutputSensors: [{string.Join(", ", rule.OutputSensors ?? new List<string>())}]");
                         ruleManifest.Rules[rule.Name] = new RuleMetadata
                         {
                             SourceFile = rule.SourceFile,
                             SourceLineNumber = rule.LineNumber,
                             Description = rule.Description,
+                            InputSensors = rule.InputSensors ?? new List<string>(),
+                            OutputSensors = rule.OutputSensors ?? new List<string>(),
                         };
                     }
 

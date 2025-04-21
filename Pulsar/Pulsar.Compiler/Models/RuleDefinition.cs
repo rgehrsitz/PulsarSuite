@@ -17,6 +17,16 @@ namespace Pulsar.Compiler.Models
         public string SourceFile { get; set; } = string.Empty;
         public int LineNumber { get; set; }
 
+        /// <summary>
+        /// List of input sensors referenced by this rule's conditions.
+        /// </summary>
+        public List<string> InputSensors { get; set; } = new List<string>();
+
+        /// <summary>
+        /// List of output sensors written by this rule's actions.
+        /// </summary>
+        public List<string> OutputSensors { get; set; } = new List<string>();
+
         public void Validate()
         {
             try

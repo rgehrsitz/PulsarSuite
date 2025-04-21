@@ -502,43 +502,14 @@ namespace Pulsar.Compiler.Generation.Helpers
 
         public static List<string> GetInputSensors(RuleDefinition rule)
         {
-            var sensors = new HashSet<string>();
-
-            // Extract sensors from conditions
-            if (rule.Conditions != null)
-            {
-                if (rule.Conditions.All != null)
-                {
-                    foreach (var condition in rule.Conditions.All)
-                    {
-                        AddConditionSensors(condition, sensors);
-                    }
-                }
-
-                if (rule.Conditions.Any != null)
-                {
-                    foreach (var condition in rule.Conditions.Any)
-                    {
-                        AddConditionSensors(condition, sensors);
-                    }
-                }
-            }
-            
-            // Also extract sensors from actions - vital for rules that use inputs in their actions
-            if (rule.Actions != null)
-            {
-                foreach (var action in rule.Actions)
-                {
-                    AddActionSensors(action, sensors);
-                }
-            }
-
-            return sensors.ToList();
+            // Use the InputSensors property populated during parsing
+            return rule.InputSensors ?? new List<string>();
         }
 
         public static List<string> GetOutputSensors(RuleDefinition rule)
         {
-            return rule.Actions.OfType<SetValueAction>().Select(a => a.Key).ToList();
+            // Use the OutputSensors property populated during parsing
+            return rule.OutputSensors ?? new List<string>();
         }
 
         public static bool HasTemporalConditions(RuleDefinition rule)

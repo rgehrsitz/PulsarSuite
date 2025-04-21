@@ -47,7 +47,7 @@ namespace BeaconTester.RuleAnalyzer.Generation
                 // Generate basic test for each rule
                 foreach (var rule in rules)
                 {
-                    var scenario = GenerateBasicScenario(rule, allRequiredInputs, inputConditionMap);
+                    var scenario = GenerateBasicScenario(rule, allRequiredInputs, rules, inputConditionMap);
                     scenarios.Add(scenario);
                 }
 
@@ -201,10 +201,12 @@ namespace BeaconTester.RuleAnalyzer.Generation
         /// </summary>
         /// <param name="rule">The rule to generate a test scenario for</param>
         /// <param name="allRequiredInputs">The complete set of input sensors required by all rules</param>
+        /// <param name="allRules">The list of all rules</param>
         /// <param name="inputConditionMap">Map of input sensors to the conditions that reference them</param>
         private TestScenario GenerateBasicScenario(
             RuleDefinition rule, 
             HashSet<string> allRequiredInputs,
+            List<RuleDefinition> allRules,
             Dictionary<string, List<RuleConditionPair>>? inputConditionMap = null
         )
         {
@@ -254,6 +256,22 @@ namespace BeaconTester.RuleAnalyzer.Generation
                     }
                 }
                 
+                // Pre-set required output dependencies for this rule (e.g., output:stress_alert = true)
+                if (rule.Conditions != null)
+                {
+                    var preSetOutputDependencies = _ruleAnalyzer.ConditionAnalyzer.ExtractSensors(rule.Conditions)
+                        .Where(s => s.StartsWith("output:"));
+                    foreach (var dep in preSetOutputDependencies)
+                    {
+                        // Only set if not already preset
+                        if (!preSetOutputs.ContainsKey(dep))
+                        {
+                            // Default to true for typical boolean dependencies, or "triggered" for shutdown
+                            preSetOutputs[dep] = dep.Contains("shutdown") ? "triggered" : true;
+                        }
+                    }
+                }
+                
                 // Add the preSetOutputs to the scenario if we have any
                 if (preSetOutputs.Count > 0)
                 {
@@ -296,6 +314,40 @@ namespace BeaconTester.RuleAnalyzer.Generation
                 // Check if this is a temporal rule
                 bool isTemporalRule = _ruleAnalyzer.ConditionAnalyzer.HasTemporalCondition(rule.Conditions);
                 
+                // For rules with output dependencies, add a step to trigger the dependency rule first
+                var outputDependencies = rule.Conditions != null ? _ruleAnalyzer.ConditionAnalyzer.ExtractSensors(rule.Conditions).Where(s => s.StartsWith("output:")).ToList() : new List<string>();
+                if (outputDependencies.Count > 0)
+                {
+                    foreach (var dep in outputDependencies)
+                    {
+                        // Find the rule that produces this dependency output
+                        var depRule = allRules.FirstOrDefault(r => r.Actions.OfType<SetValueAction>().Any(a => a.Key == dep));
+                        if (depRule != null)
+                        {
+                            var depTestCase = _testCaseGenerator.GenerateBasicTestCase(depRule);
+                            var depStep = new TestStep
+                            {
+                                Name = $"Produce dependency {dep}",
+                                Description = $"Step to trigger rule {depRule.Name} to produce {dep} (with required inputs)",
+                                // Ensure all required inputs for the dependency rule are included
+                                Inputs = EnsureAllRequiredInputs(depTestCase.Inputs, true),
+                                Delay = 500,
+                                Expectations = new List<TestExpectation>
+                                {
+                                    new TestExpectation
+                                    {
+                                        Key = dep,
+                                        Expected = depTestCase.Outputs.ContainsKey(dep) ? depTestCase.Outputs[dep] : true,
+                                        Validator = (depTestCase.Outputs.ContainsKey(dep) && depTestCase.Outputs[dep] is string) ? "string" : "boolean",
+                                        TimeoutMs = 1000
+                                    }
+                                }
+                            };
+                            scenario.Steps = scenario.Steps ?? new List<TestStep>();
+                            scenario.Steps.Add(depStep);
+                        }
+                    }
+                }
                 // For temporal rules, the basic test should be minimal or modified 
                 if (isTemporalRule)
                 {
@@ -499,15 +551,15 @@ namespace BeaconTester.RuleAnalyzer.Generation
                                     Inputs = dependencyTestCase.Inputs.Select(i => new TestInput { Key = i.Key, Value = i.Value }).ToList(),
                                     Delay = 500,
                                     Expectations = new List<TestExpectation>
-                                    {
-                                        new TestExpectation
-                                        {
-                                            Key = key,
-                                            Expected = dependencyTestCase.Outputs.ContainsKey(key) ? dependencyTestCase.Outputs[key] : true,
-                                            Validator = "boolean",
-                                            TimeoutMs = 1000
-                                        }
-                                    }
+                            {
+                                new TestExpectation
+                                {
+                                    Key = key,
+                                    Expected = dependencyTestCase.Outputs.ContainsKey(key) ? dependencyTestCase.Outputs[key] : true,
+                                    Validator = (dependencyTestCase.Outputs.ContainsKey(key) && dependencyTestCase.Outputs[key] is string) ? "string" : "boolean",
+                                    TimeoutMs = 1000
+                                }
+                            }
                                 };
                                 dependencySteps.Add(dependencyStep);
                                 dependencyOutputsToProduce[key] = dependencyTestCase.Outputs.ContainsKey(key) ? dependencyTestCase.Outputs[key] : true;
@@ -516,9 +568,18 @@ namespace BeaconTester.RuleAnalyzer.Generation
                         else
                         {
                             // If no rule produces this output, fall back to preSetOutputs as before
-                            object value = (key.Contains("enabled") || key.Contains("status") || key.Contains("active") || key.Contains("alarm") || key.Contains("alert") || key.Contains("normal")) ? true :
-                                (key.Contains("stress_alert")) ? true : 1.0;
-                            dependencyOutputsToProduce[key] = value;
+                            object value;
+                    // Check if the targetRule has an action for this key that sets a string value
+                    var stringAction = targetRule.Actions?.OfType<SetValueAction>()
+                        .FirstOrDefault(a => a.Key == key && a.Value is string);
+                    if (key.Contains("enabled") || key.Contains("status") || key.Contains("active") || key.Contains("alarm") || key.Contains("alert") || key.Contains("normal") || key.Contains("stress_alert")) {
+                        value = true;
+                    } else if (stringAction != null) {
+                        value = "initial_value";
+                    } else {
+                        value = 1.0;
+                    }
+                    dependencyOutputsToProduce[key] = value;
                         }
                     }
 
@@ -540,6 +601,34 @@ namespace BeaconTester.RuleAnalyzer.Generation
                     };
 
                     scenario.Steps.AddRange(dependencySteps);
+
+                    // For each dependency output produced, add a step to explicitly set it in the system (if not already)
+                    foreach (var dep in dependencyOutputsToProduce)
+                    {
+                        // Only add if not already expected in the last dependency step
+                        if (!dependencySteps.Any(s => s.Expectations.Any(e => e.Key == dep.Key)))
+                        {
+                            var setOutputStep = new TestStep
+                            {
+                                Name = $"Set dependency output {dep.Key}",
+                                Description = $"Explicitly set {dep.Key} to {dep.Value} before main step",
+                                Inputs = new List<TestInput>(),
+                                Delay = 100,
+                                Expectations = new List<TestExpectation>
+                                {
+                                    new TestExpectation
+                                    {
+                                        Key = dep.Key,
+                                        Expected = dep.Value,
+                                        Validator = dep.Value is string ? "string" : "boolean",
+                                        TimeoutMs = 500
+                                    }
+                                }
+                            };
+                            scenario.Steps.Add(setOutputStep);
+                        }
+                    }
+
                     scenario.Steps.Add(mainStep);
 
                     // Only use preSetOutputs for outputs that cannot be produced by rules

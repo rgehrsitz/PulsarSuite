@@ -906,6 +906,23 @@ namespace BeaconTester.Core.Redis
             return false;
         }
 
+        /// <summary>
+        /// Gets the value of an output key from Redis as a string
+        /// </summary>
+        public async Task<string?> GetOutputValueAsync(string key)
+        {
+            try
+            {
+                var value = await _db.StringGetAsync(key);
+                return value.HasValue ? value.ToString() : null;
+            }
+            catch (Exception ex)
+            {
+                _logger.Warning(ex, "Failed to get output value for key {Key}", key);
+                return null;
+            }
+        }
+
         public void Dispose()
         {
             if (_disposed)

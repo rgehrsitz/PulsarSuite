@@ -1,6 +1,7 @@
 rules:
   - name: "SustainedHighTempRule"
     description: "Temperature > 75°C for at least 10 seconds"
+    allowInvalidSensors: false
     conditions:
       all:
         - condition:
@@ -16,6 +17,7 @@ rules:
 
   - name: "TempSpikeRule"
     description: "Temperature > 90°C at any instant"
+    allowInvalidSensors: false
     conditions:
       all:
         - condition:
@@ -30,6 +32,7 @@ rules:
 
   - name: "HeatStressRule"
     description: "Both sustained high and spike occurred"
+    allowInvalidSensors: false
     conditions:
       all:
         - condition:
@@ -49,6 +52,7 @@ rules:
 
   - name: "CriticalShutdownRule"
     description: "Trigger shutdown if stress_alert and fan slows"
+    allowInvalidSensors: false
     conditions:
       all:
         - condition:

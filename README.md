@@ -39,59 +39,64 @@ This project no longer requires a build script or MSBuild file. Instead, simply 
 ### 1. Validate Rules
 ```sh
 dotnet run --project Pulsar/Pulsar.Compiler/Pulsar.Compiler.csproj validate \
-    --rules=src/Rules/TemperatureExample/rules/temperature_rules.yaml \
-    --config=src/Rules/TemperatureExample/config/system_config.yaml
+    --rules=src/Rules/ThresholdOverTimeExample/rules/threshold_over_time_rules.yaml \
+    --config=src/Rules/ThresholdOverTimeExample/config/system_config.yaml
 ```
 
 ### 2. Compile Rules
 ```sh
 dotnet run --project Pulsar/Pulsar.Compiler/Pulsar.Compiler.csproj compile \
-    --rules=src/Rules/TemperatureExample/rules/temperature_rules.yaml \
-    --config=src/Rules/TemperatureExample/config/system_config.yaml \
-    --output=output/Bin/TemperatureExample
+    --rules=src/Rules/ThresholdOverTimeExample/rules/threshold_over_time_rules.yaml \
+    --config=src/Rules/ThresholdOverTimeExample/config/system_config.yaml \
+    --output=output/Bin/ThresholdOverTimeExample
 ```
 
 ### 3. Generate Beacon Solution
 ```sh
 dotnet run --project Pulsar/Pulsar.Compiler/Pulsar.Compiler.csproj beacon \
-    --rules=src/Rules/TemperatureExample/rules/temperature_rules.yaml \
-    --compiled-rules-dir=output/Bin/TemperatureExample \
-    --output=output/dist/TemperatureExample \
-    --config=src/Rules/TemperatureExample/config/system_config.yaml \
+    --rules=src/Rules/ThresholdOverTimeExample/rules/threshold_over_time_rules.yaml \
+    --compiled-rules-dir=output/Bin/ThresholdOverTimeExample \
+    --output=output/dist/ThresholdOverTimeExample \
+    --config=src/Rules/ThresholdOverTimeExample/config/system_config.yaml \
     --target=linux-x64
 ```
 
 ### 4. Build Beacon Runtime
 ```sh
-dotnet publish output/dist/TemperatureExample/Beacon/Beacon.Runtime/Beacon.Runtime.csproj \
+dotnet publish output/dist/ThresholdOverTimeExample/Beacon/Beacon.Runtime/Beacon.Runtime.csproj \
     -c Release -r linux-x64 --self-contained true /p:PublishSingleFile=true
 ```
 
 ### 5. Run Beacon Unit Tests
 ```sh
-dotnet test output/dist/TemperatureExample/Beacon/Beacon.Tests/Beacon.Tests.csproj
+dotnet test output/dist/ThresholdOverTimeExample/Beacon/Beacon.Tests/Beacon.Tests.csproj
 ```
 
 ### 6. **Start the Beacon Runtime**
 > **Important:** You must start the Beacon runtime before running BeaconTester scenarios. Leave this process running in a separate terminal.
+> **Note:** The published runtime is located at:
+> `output/dist/ThresholdOverTimeExample/Beacon/Beacon.Runtime/bin/Release/net9.0/linux-x64/publish/Beacon.Runtime`
+> If you see `No such file or directory`, check this path and ensure you are running the correct file and that it is executable (`chmod +x ...`).
 ```sh
-./output/dist/TemperatureExample/Beacon/Beacon.Runtime/Beacon.Runtime
+./output/dist/ThresholdOverTimeExample/Beacon/Beacon.Runtime/bin/Release/net9.0/linux-x64/publish/Beacon.Runtime
 ```
 
 ### 7. Generate & Run BeaconTester Scenarios
 ```sh
-dotnet run --project BeaconTester/BeaconTester.Runner/BeaconTester.Runner.csproj generate --rules=src/Rules/TemperatureExample/rules/temperature_rules.yaml --output=output/dist/TemperatureExample/test_scenarios.json
+dotnet run --project BeaconTester/BeaconTester.Runner/BeaconTester.Runner.csproj generate --rules=src/Rules/ThresholdOverTimeExample/rules/threshold_over_time_rules.yaml --output=output/dist/ThresholdOverTimeExample/test_scenarios.json
 
-dotnet run --project BeaconTester/BeaconTester.Runner/BeaconTester.Runner.csproj run --scenarios=output/dist/TemperatureExample/test_scenarios.json --output=output/dist/TemperatureExample/test_results.json
+dotnet run --project BeaconTester/BeaconTester.Runner/BeaconTester.Runner.csproj run --scenarios=output/dist/ThresholdOverTimeExample/test_scenarios.json --output=output/dist/ThresholdOverTimeExample/test_results.json
 ```
 
 ---
 
 ### Output Locations
-- Compiled rules: `output/Bin/[ProjectName]/`
-- Distributable Beacon: `output/dist/[ProjectName]/`
-- Test results (Beacon unit tests): `output/dist/[ProjectName]/Beacon/Beacon.Tests/TestResults/`
-- Test results (BeaconTester): `output/dist/[ProjectName]/test_results.json`
+- Compiled rules: `output/Bin/ThresholdOverTimeExample/`
+- Distributable Beacon: `output/dist/ThresholdOverTimeExample/`
+- Published Beacon runtime: `output/dist/ThresholdOverTimeExample/Beacon/Beacon.Runtime/bin/Release/net9.0/linux-x64/publish/Beacon.Runtime`
+- Manifest file: `output/dist/ThresholdOverTimeExample/Beacon/Beacon.Runtime/Generated/rules.manifest.json`
+- Test results (Beacon unit tests): `output/dist/ThresholdOverTimeExample/Beacon/Beacon.Tests/TestResults/`
+- Test results (BeaconTester): `output/dist/ThresholdOverTimeExample/test_results.json`
 
 ---
 
@@ -102,41 +107,45 @@ dotnet run --project BeaconTester/BeaconTester.Runner/BeaconTester.Runner.csproj
 
 ---
 
-## Example: Full Workflow for TemperatureExample
+## Example: Full Workflow for ThresholdOverTimeExample
 
 ```sh
 # 1. Validate rules
 dotnet run --project Pulsar/Pulsar.Compiler/Pulsar.Compiler.csproj validate \
-    --rules=src/Rules/TemperatureExample/rules/temperature_rules.yaml
+    --rules=src/Rules/ThresholdOverTimeExample/rules/threshold_over_time_rules.yaml \
+    --config=src/Rules/ThresholdOverTimeExample/config/system_config.yaml
 
 # 2. Compile rules
 dotnet run --project Pulsar/Pulsar.Compiler/Pulsar.Compiler.csproj compile \
-    --rules=src/Rules/TemperatureExample/rules/temperature_rules.yaml \
-    --output=output/Bin/TemperatureExample
+    --rules=src/Rules/ThresholdOverTimeExample/rules/threshold_over_time_rules.yaml \
+    --config=src/Rules/ThresholdOverTimeExample/config/system_config.yaml \
+    --output=output/Bin/ThresholdOverTimeExample
 
 # 3. Generate Beacon solution
 dotnet run --project Pulsar/Pulsar.Compiler/Pulsar.Compiler.csproj beacon \
-    --rules=src/Rules/TemperatureExample/rules/temperature_rules.yaml \
-    --compiled-rules-dir=output/Bin/TemperatureExample \
-    --output=output/dist/TemperatureExample \
-    --config=src/Rules/TemperatureExample/config/system_config.yaml \
+    --rules=src/Rules/ThresholdOverTimeExample/rules/threshold_over_time_rules.yaml \
+    --compiled-rules-dir=output/Bin/ThresholdOverTimeExample \
+    --output=output/dist/ThresholdOverTimeExample \
+    --config=src/Rules/ThresholdOverTimeExample/config/system_config.yaml \
     --target=linux-x64
 
 # 4. Build Beacon runtime
-dotnet publish output/dist/TemperatureExample/Beacon/Beacon.Runtime/Beacon.Runtime.csproj \
+dotnet publish output/dist/ThresholdOverTimeExample/Beacon/Beacon.Runtime/Beacon.Runtime.csproj \
     -c Release -r linux-x64 --self-contained true /p:PublishSingleFile=true
 
 # 5. Run Beacon unit tests
-dotnet test output/dist/TemperatureExample/Beacon/Beacon.Tests/Beacon.Tests.csproj
+dotnet test output/dist/ThresholdOverTimeExample/Beacon/Beacon.Tests/Beacon.Tests.csproj
 
 # 6. **Start the Beacon runtime**
 # IMPORTANT: You must start the Beacon runtime before running BeaconTester scenarios. Leave this process running in a separate terminal.
-./output/dist/TemperatureExample/Beacon/Beacon.Runtime/Beacon.Runtime
+# NOTE: The published runtime is located at:
+# output/dist/ThresholdOverTimeExample/Beacon/Beacon.Runtime/bin/Release/net9.0/linux-x64/publish/Beacon.Runtime
+./output/dist/ThresholdOverTimeExample/Beacon/Beacon.Runtime/bin/Release/net9.0/linux-x64/publish/Beacon.Runtime
 
 # 7. Generate & Run BeaconTester Scenarios
-dotnet run --project BeaconTester/BeaconTester.Runner/BeaconTester.Runner.csproj generate --rules=src/Rules/TemperatureExample/rules/temperature_rules.yaml --output=output/dist/TemperatureExample/test_scenarios.json
+dotnet run --project BeaconTester/BeaconTester.Runner/BeaconTester.Runner.csproj generate --rules=src/Rules/ThresholdOverTimeExample/rules/threshold_over_time_rules.yaml --output=output/dist/ThresholdOverTimeExample/test_scenarios.json
 
-dotnet run --project BeaconTester/BeaconTester.Runner/BeaconTester.Runner.csproj run --scenarios=output/dist/TemperatureExample/test_scenarios.json --output=output/dist/TemperatureExample/test_results.json
+dotnet run --project BeaconTester/BeaconTester.Runner/BeaconTester.Runner.csproj run --scenarios=output/dist/ThresholdOverTimeExample/test_scenarios.json --output=output/dist/ThresholdOverTimeExample/test_results.json
 ```
 
 ---

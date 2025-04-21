@@ -92,6 +92,7 @@ namespace Pulsar.Compiler.Core
             bool allowInvalidSensors
         )
         {
+            Console.WriteLine("[CONSOLE DIAGNOSTIC] Entered LoadRulesFromPaths");
             try
             {
                 var rules = new List<RuleDefinition>();
@@ -157,6 +158,14 @@ namespace Pulsar.Compiler.Core
                                 allowInvalidSensors
                             );
                             rules.AddRange(parsedRules);
+                    foreach (var rule in parsedRules)
+                    {
+                        Console.WriteLine($"[CONSOLE DIAGNOSTIC][ParseFile] Rule '{rule.Name}' InputSensors: [{string.Join(", ", rule.InputSensors ?? new List<string>())}], OutputSensors: [{string.Join(", ", rule.OutputSensors ?? new List<string>())}]");
+                    }
+                            foreach (var rule in parsedRules)
+                            {
+                                Console.WriteLine($"[CONSOLE DIAGNOSTIC][ParseDir] Rule '{rule.Name}' InputSensors: [{string.Join(", ", rule.InputSensors ?? new List<string>())}], OutputSensors: [{string.Join(", ", rule.OutputSensors ?? new List<string>())}]");
+                            }
                         }
                         catch (Exception ex) when (ex is not ValidationException)
                         {
@@ -175,6 +184,10 @@ namespace Pulsar.Compiler.Core
                         allowInvalidSensors
                     );
                     rules.AddRange(parsedRules);
+                    foreach (var rule in parsedRules)
+                    {
+                        Console.WriteLine($"[CONSOLE DIAGNOSTIC][ParseFile] Rule '{rule.Name}' InputSensors: [{string.Join(", ", rule.InputSensors ?? new List<string>())}], OutputSensors: [{string.Join(", ", rule.OutputSensors ?? new List<string>())}]");
+                    }
                 }
                 else
                 {

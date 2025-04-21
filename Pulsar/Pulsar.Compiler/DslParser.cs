@@ -148,6 +148,39 @@ namespace Pulsar.Compiler.Parsers
                     }
 
                     // Convert to RuleDefinition
+                    // Extract input sensors from conditions
+                    var inputSensors = new HashSet<string>();
+                    if (rule.Conditions != null)
+                    {
+                        if (rule.Conditions.All != null)
+                        {
+                            foreach (var condition in rule.Conditions.All)
+                            {
+                                if (!string.IsNullOrEmpty(condition?.ConditionDetails?.Sensor))
+                                    inputSensors.Add(condition.ConditionDetails.Sensor);
+                            }
+                        }
+                        if (rule.Conditions.Any != null)
+                        {
+                            foreach (var condition in rule.Conditions.Any)
+                            {
+                                if (!string.IsNullOrEmpty(condition?.ConditionDetails?.Sensor))
+                                    inputSensors.Add(condition.ConditionDetails.Sensor);
+                            }
+                        }
+                    }
+
+                    // Extract output sensors from SetValue actions
+                    var outputSensors = new HashSet<string>();
+                    if (rule.Actions != null)
+                    {
+                        foreach (var action in rule.Actions)
+                        {
+                            if (action?.SetValue != null && !string.IsNullOrEmpty(action.SetValue.Key))
+                                outputSensors.Add(action.SetValue.Key);
+                        }
+                    }
+
                     var ruleDefinition = new RuleDefinition
                     {
                         Name = rule.Name,
@@ -156,6 +189,8 @@ namespace Pulsar.Compiler.Parsers
                         Actions = ConvertActions(rule.Actions ?? new List<ActionListItem>()),
                         SourceFile = _currentFile,
                         LineNumber = rule.LineNumber,
+                        InputSensors = inputSensors.ToList(),
+                        OutputSensors = outputSensors.ToList(),
                     };
 
                     ruleDefinitions.Add(ruleDefinition);
