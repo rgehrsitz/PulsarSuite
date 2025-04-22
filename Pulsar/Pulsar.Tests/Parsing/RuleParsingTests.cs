@@ -83,7 +83,7 @@ rules:
 
             Assert.Equal(ComparisonOperator.GreaterThan, condition.Operator);
 
-            Assert.Equal(30.0, condition.Value);
+            Assert.Equal(30.0, Convert.ToDouble(condition.Value));
 
             Assert.NotNull(rule.Actions);
 

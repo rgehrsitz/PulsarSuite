@@ -6,8 +6,10 @@ using Xunit.Abstractions;
 
 namespace Pulsar.Tests.RuntimeValidation
 {
-    public class PerformanceBenchmarkTests(RuntimeValidationFixture fixture, ITestOutputHelper output)
-        : IClassFixture<RuntimeValidationFixture>
+    public class PerformanceBenchmarkTests(
+        RuntimeValidationFixture fixture,
+        ITestOutputHelper output
+    ) : IClassFixture<RuntimeValidationFixture>
     {
         [Fact(Skip = "Performance tests are currently disabled for this PR")]
         public async Task Benchmark_IncreasingRuleCount_MeasuresScalability()
