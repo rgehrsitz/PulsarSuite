@@ -59,6 +59,33 @@ Key aspects tested:
 - Memory efficiency with large datasets
 - Proper handling of time windows and thresholds
 
+## End-to-End Tests via MSBuild
+
+You can run the full end-to-end testing pipeline (code generation → compile → execute) via MSBuild:
+
+```bash
+dotnet msbuild build/PulsarSuite.core.build /t:RunEndToEnd -p:ProjectName=MyProject
+```
+
+Or run individual MSBuild targets:
+
+```bash
+# Validate rules
+dotnet msbuild build/PulsarSuite.core.build /t:ValidateRules -p:ProjectName=MyProject
+
+# Compile rules
+dotnet msbuild build/PulsarSuite.core.build /t:CompileRules -p:ProjectName=MyProject
+
+# Build Beacon
+dotnet msbuild build/PulsarSuite.core.build /t:BuildBeacon -p:ProjectName=MyProject
+
+# Generate tests
+dotnet msbuild build/PulsarSuite.core.build /t:GenerateTests -p:ProjectName=MyProject
+
+# Run tests
+dotnet msbuild build/PulsarSuite.core.build /t:RunTests -p:ProjectName=MyProject
+```
+
 ## Running Tests
 
 ### Basic Tests

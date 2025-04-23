@@ -133,24 +133,30 @@ Beacon/
 
 ## How to Use
 
-### Generating a Beacon Solution
+### Full Workflow via MSBuild
 
 ```bash
-dotnet run --project Pulsar.Compiler -- beacon --rules=rules.yaml --config=system_config.yaml --output=TestOutput/aot-beacon
+# Run end-to-end build & test
+dotnet msbuild build/PulsarSuite.core.build /t:RunEndToEnd -p:ProjectName=MyProject
 ```
 
-### Building the Solution
+### Or run individual MSBuild targets:
 
 ```bash
-cd <output-dir>/Beacon
-dotnet build
-```
+# Validate rules
+dotnet msbuild build/PulsarSuite.core.build /t:ValidateRules -p:ProjectName=MyProject
 
-### Creating a Standalone Executable
+# Compile rules
+dotnet msbuild build/PulsarSuite.core.build /t:CompileRules -p:ProjectName=MyProject
 
-```bash
-cd <output-dir>/Beacon
-dotnet publish -c Release -r <runtime> --self-contained true
+# Build Beacon application
+dotnet msbuild build/PulsarSuite.core.build /t:BuildBeacon -p:ProjectName=MyProject
+
+# Generate tests
+dotnet msbuild build/PulsarSuite.core.build /t:GenerateTests -p:ProjectName=MyProject
+
+# Run tests
+dotnet msbuild build/PulsarSuite.core.build /t:RunTests -p:ProjectName=MyProject
 ```
 
 ## Testing the Implementation

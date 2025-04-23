@@ -4,7 +4,7 @@ This repository provides a modern development environment for Pulsar/Beacon rule
 
 ## Project Structure
 
-```
+```bash
 PulsarSuite/
 ├── src/                 # Source code and input files
 │   ├── Rules/          # Rule definitions
@@ -26,7 +26,7 @@ PulsarSuite/
 
 ### Prerequisites
 
-- .NET SDK 7.0 or higher (install from https://dotnet.microsoft.com/download)
+- .NET SDK 7.0 or higher (install from <https://dotnet.microsoft.com/download>)
 - Redis server (required by Beacon runtime)
   - You can run Redis locally or via Docker
 
@@ -34,9 +34,10 @@ PulsarSuite/
 
 ## Manual Build & Test Workflow (Recommended)
 
-This project no longer requires a build script or MSBuild file. Instead, simply follow the step-by-step commands below for a full end-to-end build and test.
+While an MSBuild system exists, manual dotnet CLI commands are currently the most reliable approach. Follow the step-by-step commands below for a full end-to-end build and test.
 
 ### 1. Validate Rules
+
 ```sh
 dotnet run --project Pulsar/Pulsar.Compiler/Pulsar.Compiler.csproj validate \
     --rules=src/Rules/ThresholdOverTimeExample/rules/threshold_over_time_rules.yaml \
@@ -44,6 +45,7 @@ dotnet run --project Pulsar/Pulsar.Compiler/Pulsar.Compiler.csproj validate \
 ```
 
 ### 2. Compile Rules
+
 ```sh
 dotnet run --project Pulsar/Pulsar.Compiler/Pulsar.Compiler.csproj compile \
     --rules=src/Rules/ThresholdOverTimeExample/rules/threshold_over_time_rules.yaml \
@@ -52,6 +54,7 @@ dotnet run --project Pulsar/Pulsar.Compiler/Pulsar.Compiler.csproj compile \
 ```
 
 ### 3. Generate Beacon Solution
+
 ```sh
 dotnet run --project Pulsar/Pulsar.Compiler/Pulsar.Compiler.csproj beacon \
     --rules=src/Rules/ThresholdOverTimeExample/rules/threshold_over_time_rules.yaml \
@@ -62,26 +65,31 @@ dotnet run --project Pulsar/Pulsar.Compiler/Pulsar.Compiler.csproj beacon \
 ```
 
 ### 4. Build Beacon Runtime
+
 ```sh
 dotnet publish output/dist/ThresholdOverTimeExample/Beacon/Beacon.Runtime/Beacon.Runtime.csproj \
     -c Release -r linux-x64 --self-contained true /p:PublishSingleFile=true
 ```
 
 ### 5. Run Beacon Unit Tests
+
 ```sh
 dotnet test output/dist/ThresholdOverTimeExample/Beacon/Beacon.Tests/Beacon.Tests.csproj
 ```
 
 ### 6. **Start the Beacon Runtime**
+>
 > **Important:** You must start the Beacon runtime before running BeaconTester scenarios. Leave this process running in a separate terminal.
 > **Note:** The published runtime is located at:
 > `output/dist/ThresholdOverTimeExample/Beacon/Beacon.Runtime/bin/Release/net9.0/linux-x64/publish/Beacon.Runtime`
 > If you see `No such file or directory`, check this path and ensure you are running the correct file and that it is executable (`chmod +x ...`).
+
 ```sh
 ./output/dist/ThresholdOverTimeExample/Beacon/Beacon.Runtime/bin/Release/net9.0/linux-x64/publish/Beacon.Runtime
 ```
 
 ### 7. Generate & Run BeaconTester Scenarios
+
 ```sh
 dotnet run --project BeaconTester/BeaconTester.Runner/BeaconTester.Runner.csproj generate --rules=src/Rules/ThresholdOverTimeExample/rules/threshold_over_time_rules.yaml --output=output/dist/ThresholdOverTimeExample/test_scenarios.json
 
@@ -91,6 +99,7 @@ dotnet run --project BeaconTester/BeaconTester.Runner/BeaconTester.Runner.csproj
 ---
 
 ### Output Locations
+
 - Compiled rules: `output/Bin/ThresholdOverTimeExample/`
 - Distributable Beacon: `output/dist/ThresholdOverTimeExample/`
 - Published Beacon runtime: `output/dist/ThresholdOverTimeExample/Beacon/Beacon.Runtime/bin/Release/net9.0/linux-x64/publish/Beacon.Runtime`
@@ -101,6 +110,7 @@ dotnet run --project BeaconTester/BeaconTester.Runner/BeaconTester.Runner.csproj
 ---
 
 ### Troubleshooting
+
 - If you see errors about missing files or directories, ensure you have run all previous steps in order.
 - If you change your rules or config, re-run the relevant steps above.
 - For cross-platform builds, adjust the `--target` and `-r` arguments as needed (e.g., `win-x64`, `osx-x64`).
@@ -152,7 +162,7 @@ dotnet run --project BeaconTester/BeaconTester.Runner/BeaconTester.Runner.csproj
 
 ## Project Structure (unchanged)
 
-```
+```bash
 PulsarSuite/
 ├── src/                 # Source code and input files
 │   ├── Rules/          # Rule definitions
@@ -168,6 +178,7 @@ PulsarSuite/
 ---
 
 ## Notes
+
 - No scripting or build system is required—just run the commands above.
 - All outputs are placed in the `output/` directory.
 - For custom projects, substitute your own `[ProjectName]` and file paths.

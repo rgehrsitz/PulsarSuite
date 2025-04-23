@@ -29,26 +29,23 @@ BeaconTester consists of several components:
 - Redis server running with admin commands enabled (AllowAdmin=true in RedisConfiguration)
 - .NET SDK installed
 
-### Step 1: Generate Tests from Rules
+### Run full workflow via MSBuild:
 ```bash
-dotnet run --project BeaconTester/BeaconTester.Runner/BeaconTester.Runner.csproj generate --rules=path/to/rules.yaml --output=test_scenarios.json
+dotnet msbuild build/PulsarSuite.core.build /t:RunEndToEnd -p:ProjectName=MyProject
 ```
 
-### Step 2: Compile and Run Beacon
+Or run individual targets:
 ```bash
-dotnet run --project Pulsar.Compiler beacon --config=system_config.yaml --rules=path/to/rules.yaml --output=./Beacon
-cd ./Beacon/Beacon && dotnet build
-cd ./Beacon.Runtime && dotnet run
-```
-
-### Step 3: Run Tests Against Beacon
-```bash
-dotnet run --project BeaconTester/BeaconTester.Runner/BeaconTester.Runner.csproj run --scenarios=test_scenarios.json --output=test_results.json
-```
-
-### Step 4: Generate Report
-```bash
-dotnet run --project BeaconTester.Runner -- report --results=test_results.json --output=report.html --format=html
+# Validate rules
+# dotnet msbuild build/PulsarSuite.core.build /t:ValidateRules -p:ProjectName=MyProject
+# Compile rules
+dotnet msbuild build/PulsarSuite.core.build /t:CompileRules -p:ProjectName=MyProject
+# Build Beacon
+dotnet msbuild build/PulsarSuite.core.build /t:BuildBeacon -p:ProjectName=MyProject
+# Generate tests
+dotnet msbuild build/PulsarSuite.core.build /t:GenerateTests -p:ProjectName=MyProject
+# Run tests
+dotnet msbuild build/PulsarSuite.core.build /t:RunTests -p:ProjectName=MyProject
 ```
 
 ## Automated End-to-End Testing

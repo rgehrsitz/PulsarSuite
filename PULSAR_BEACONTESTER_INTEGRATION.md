@@ -14,16 +14,24 @@ We successfully fixed several critical issues that were preventing the end-to-en
 ## End-to-End Test Results
 We successfully demonstrated that the entire pipeline works with the following updated steps:
 
-1. **Compilation**: Compile rules and Beacon runtime:
+1. **Compilation**: Compile rules and build Beacon via MSBuild:
    ```bash
-   dotnet run --project Pulsar.Compiler beacon --config=system_config.yaml --rules=path/to/rules.yaml --output=./Beacon
-   dotnet build ./Beacon/Beacon && dotnet run --project ./Beacon/Beacon.Runtime
+   # Compile rules
+   dotnet msbuild build/PulsarSuite.core.build /t:CompileRules -p:ProjectName=MyProject
+   # Build Beacon
+   dotnet msbuild build/PulsarSuite.core.build /t:BuildBeacon -p:ProjectName=MyProject
    ```
 
-2. **Test Generation**: Generate and run tests with BeaconTester:
+2. **Test Generation**: Generate and run tests via MSBuild:
    ```bash
-   dotnet run --project BeaconTester/BeaconTester.Runner/BeaconTester.Runner.csproj generate --rules=path/to/rules.yaml --output=test_scenarios.json
-   dotnet run --project BeaconTester/BeaconTester.Runner/BeaconTester.Runner.csproj run --scenarios=test_scenarios.json --output=test_results.json
+   # Generate tests
+   dotnet msbuild build/PulsarSuite.core.build /t:GenerateTests -p:ProjectName=MyProject
+   # Run tests
+   dotnet msbuild build/PulsarSuite.core.build /t:RunTests -p:ProjectName=MyProject
+   ```
+   Or run the entire end-to-end workflow in one step:
+   ```bash
+   dotnet msbuild build/PulsarSuite.core.build /t:RunEndToEnd -p:ProjectName=MyProject
    ```
 
 ## Remaining Work

@@ -66,6 +66,25 @@ logFile: logs/pulsar.log  # Optional log file path
 
 ## 3. Compiling with Pulsar
 
+You can manually validate, compile, and generate the Beacon solution using dotnet CLI:
+
+```bash
+# 1. Validate rules
+dotnet run --project Pulsar/Pulsar.Compiler/Pulsar.Compiler.csproj validate --rules=my-rules.yaml --config=system_config.yaml
+
+# 2. Compile rules
+dotnet run --project Pulsar/Pulsar.Compiler/Pulsar.Compiler.csproj compile --rules=my-rules.yaml --config=system_config.yaml --output=output/Bin
+
+# 3. Generate Beacon solution
+dotnet run --project Pulsar/Pulsar.Compiler/Pulsar.Compiler.csproj beacon --rules=my-rules.yaml --compiled-rules-dir=output/Bin --output=MyBeacon --config=system_config.yaml --target=linux-x64
+```
+
+Or, if you have a published standalone version of Pulsar:
+
+```bash
+Pulsar.Compiler beacon --rules=my-rules.yaml --config=system_config.yaml --output=MyBeacon
+```
+
 ### Required Template Files
 
 Pulsar requires specific template files to be present in order to generate code correctly. These templates are searched for in the following locations:
@@ -80,7 +99,7 @@ When using Pulsar from source, these files are automatically available. For comp
 
 The required template structure is:
 
-```
+```bash
 Pulsar.Compiler/Config/Templates/
 ├── Interfaces/
 │   ├── ICompiledRules.cs
@@ -119,7 +138,14 @@ Pulsar.Compiler/Config/Templates/
 Run the Pulsar compiler to generate a Beacon solution:
 
 ```bash
-dotnet run --project Pulsar.Compiler -- beacon --rules=my-rules.yaml --config=system_config.yaml --output=MyBeacon
+# 1. Validate rules
+dotnet run --project Pulsar.Compiler -- validate --rules=my-rules.yaml --config=system_config.yaml
+
+# 2. Compile rules
+dotnet run --project Pulsar.Compiler -- compile --rules=my-rules.yaml --config=system_config.yaml --output=output/Bin
+
+# 3. Generate Beacon solution
+dotnet run --project Pulsar.Compiler -- beacon --rules=my-rules.yaml --compiled-rules-dir=output/Bin --output=MyBeacon --config=system_config.yaml --target=linux-x64
 ```
 
 If using a standalone published version of Pulsar:
@@ -129,6 +155,7 @@ Pulsar.Compiler beacon --rules=my-rules.yaml --config=system_config.yaml --outpu
 ```
 
 This will create a directory structure in `MyBeacon/` containing:
+
 - `Beacon/` - The main solution directory
   - `Beacon.sln` - The solution file
   - `Beacon.Runtime/` - The runtime project
@@ -148,7 +175,7 @@ When working with Pulsar and Beacon in a version-controlled environment, follow 
    - Generated output directories (e.g., `MyBeacon/`)
    - Build artifacts (bin, obj folders)
    - Log files
-   
+
 The standard `.gitignore` for Pulsar already excludes these generated directories. If you need to share generated code with others, consider documenting the exact command used to generate it rather than committing the generated files themselves.
 
 ## 4. Building the Solution
@@ -204,7 +231,7 @@ Beacon.Runtime.exe  # Windows
 
 The Beacon application supports these command-line arguments:
 
-```
+```bash
 --config=<path>     Path to a custom runtime configuration JSON file
 --redis=<endpoint>  Override the Redis endpoint (format: host:port)
 --verbose           Enable verbose logging
@@ -213,6 +240,7 @@ The Beacon application supports these command-line arguments:
 ```
 
 Example:
+
 ```bash
 ./Beacon.Runtime --redis=myredis.example.com:6379 --verbose --interval=200
 ```
@@ -254,6 +282,7 @@ For advanced settings, create a runtime configuration JSON file:
 ```
 
 Run with this configuration:
+
 ```bash
 ./Beacon.Runtime --config=runtime-config.json
 ```
@@ -301,6 +330,7 @@ ENTRYPOINT ["./Beacon.Runtime", "--redis=redis-host:6379"]
 ```
 
 Build and run:
+
 ```bash
 docker build -t beacon-app .
 docker run -d --name beacon beacon-app
@@ -342,6 +372,7 @@ CMD ["--help"]
 ```
 
 With this Docker image, you can compile rules like this:
+
 ```bash
 docker run -v $(pwd):/data pulsar-compiler beacon --rules=/data/my-rules.yaml --config=/data/system_config.yaml --output=/data/output
 ```
@@ -414,6 +445,7 @@ You can now zip this folder and deploy it to any compatible system. The template
 ### High Availability Setup
 
 For production environments, consider:
+
 - Using Redis Cluster or Redis Sentinel
 - Deploying multiple Beacon instances with load balancing
 - Setting up monitoring and alerting
@@ -423,6 +455,7 @@ See [Redis-Integration.md](Redis-Integration.md) for detailed Redis configuratio
 ### Performance Tuning
 
 For optimal performance:
+
 - Adjust Redis poolSize based on your workload
 - Optimize cycleTime for your specific use case
 - Consider adding more instances for high-throughput applications
@@ -434,12 +467,14 @@ Consult the testing guide for adding custom functionality to the Beacon runtime.
 ### Template Customization
 
 Advanced users can customize the templates to:
+
 - Add custom monitoring integration
 - Modify the Redis service implementation
 - Extend the CircularBuffer implementation
 - Add custom metrics collection
 
 To customize templates:
+
 1. Copy the original templates from `Pulsar.Compiler/Config/Templates/`
 2. Modify as needed
 3. Place them in the same relative path structure
