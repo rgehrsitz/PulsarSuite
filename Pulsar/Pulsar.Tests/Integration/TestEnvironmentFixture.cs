@@ -2,6 +2,7 @@
 
 using System.Diagnostics;
 using Pulsar.Compiler;
+using Pulsar.Compiler.Commands;
 using Serilog;
 using StackExchange.Redis;
 using Testcontainers.Redis;
@@ -119,8 +120,10 @@ namespace Pulsar.Tests.Integration
                 { "config", Path.Combine("TestData", "system_config.yaml") },
             };
 
-            var result = await Program.GenerateBuildableProject(options, Logger);
-            if (!result)
+            var generateCommand = new Pulsar.Compiler.Commands.GenerateCommand(Logger);
+            var result = await generateCommand.RunAsync(options);
+            var success = result == 0;
+            if (!success)
             {
                 throw new InvalidOperationException("Failed to generate project");
             }
@@ -148,7 +151,13 @@ namespace Pulsar.Tests.Integration
             Directory.CreateDirectory("TestOutput");
 
             var options = new Dictionary<string, string> { { "output", "TestData" } };
-            var result = Program.InitializeProject(options, Logger).Result;
+            var initCommand = new Pulsar.Compiler.Commands.InitCommand(Logger);
+            var result = await initCommand.RunAsync(options);
+            var success = result == 0;
+            if (!success)
+            {
+                throw new InvalidOperationException("Failed to initialize project");
+            }
 
             // Create system configuration file
             await CreateSystemConfig();

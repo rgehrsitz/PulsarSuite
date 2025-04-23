@@ -1,6 +1,7 @@
 // File: Pulsar.Tests/Integration/CodeGenerationTests.cs
 using System.Diagnostics;
 using Pulsar.Compiler;
+using Pulsar.Compiler.Commands;
 
 namespace Pulsar.Tests.Integration
 {
@@ -31,10 +32,16 @@ namespace Pulsar.Tests.Integration
                 { "output", OutputPath },
                 { "config", Path.Combine("TestData", "system_config.yaml") },
             };
-            var result = await Program.GenerateBuildableProject(options, _fixture.Logger);
+            
+            // Use the new command pattern
+            var generateCommand = new Pulsar.Compiler.Commands.GenerateCommand(_fixture.Logger);
+            var result = await generateCommand.RunAsync(options);
+            
+            // Convert result to expected format for this test
+            var success = result == 0;
 
             // Assert
-            Assert.True(result, "Project generation failed");
+            Assert.True(success, "Project generation failed");
             Assert.True(
                 File.Exists(Path.Combine(OutputPath, "Generated.sln")),
                 "Generated.sln not found"
@@ -80,8 +87,10 @@ namespace Pulsar.Tests.Integration
                 { "output", outputPath },
                 { "config", Path.Combine("TestData", "system_config.yaml") },
             };
-            var result = await Program.GenerateBuildableProject(options, _fixture.Logger);
-            Assert.True(result, "Project generation failed");
+            var generateCommand = new Pulsar.Compiler.Commands.GenerateCommand(_fixture.Logger);
+            var result = await generateCommand.RunAsync(options);
+            var success = result == 0;
+            Assert.True(success, "Project generation failed");
 
             // Create the missing services required for AOT compilation
             Assert.True(Directory.Exists(outputPath), "Output directory not created");
