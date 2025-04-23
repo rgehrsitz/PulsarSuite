@@ -55,7 +55,7 @@ namespace Pulsar.Compiler.Commands
                 }
 
                 // Generate project files
-                var templateManager = new TemplateManager();
+                var templateManager = new TemplateManagerV2(_logger);
                 templateManager.GenerateProjectFiles(buildConfig.OutputPath, buildConfig);
 
                 return 0;
