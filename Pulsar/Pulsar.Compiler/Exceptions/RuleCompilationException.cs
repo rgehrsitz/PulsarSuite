@@ -1,20 +1,49 @@
 // File: Pulsar.Compiler/Exceptions/RuleCompilationException.cs
+// Version: 1.1.0 - Enhanced exception handling
 
 using Serilog;
+using System;
+using System.Collections.Generic;
+using System.Linq;
 
 namespace Pulsar.Compiler.Exceptions
 {
-    public class RuleCompilationException : Exception
+    /// <summary>
+    /// Exception thrown when rule compilation fails
+    /// </summary>
+    public class RuleCompilationException : ValidationException
     {
-        public string RuleName { get; } = string.Empty; // Initialize to avoid CS8618
+        /// <summary>
+        /// Gets the name of the rule
+        /// </summary>
+        public string RuleName { get; } = string.Empty;
+
+        /// <summary>
+        /// Gets the source file of the rule
+        /// </summary>
         public string? RuleSource { get; }
+
+        /// <summary>
+        /// Gets the line number where the error occurred
+        /// </summary>
         public int? LineNumber { get; }
-        public string? ErrorType { get; }
-        public Dictionary<string, object>? Context { get; }
-        public string? SourceCode { get; private set; } // Add missing SourceCode property
+
+        /// <summary>
+        /// Gets the source code snippet
+        /// </summary>
+        public string? SourceCode { get; }
 
         private static readonly ILogger _logger = LoggingConfig.GetLogger();
 
+        /// <summary>
+        /// Creates a new rule compilation exception
+        /// </summary>
+        /// <param name="message">The error message</param>
+        /// <param name="ruleName">The name of the rule</param>
+        /// <param name="ruleSource">The source file of the rule</param>
+        /// <param name="lineNumber">The line number where the error occurred</param>
+        /// <param name="errorType">The type of error</param>
+        /// <param name="context">Additional context</param>
         public RuleCompilationException(
             string message,
             string ruleName,
@@ -23,17 +52,23 @@ namespace Pulsar.Compiler.Exceptions
             string? errorType = "CompilationError",
             Dictionary<string, object>? context = null
         )
-            : base(message)
+            : base(message, errorType ?? "CompilationError", MergeContext(ruleName, ruleSource, lineNumber, context))
         {
             RuleName = ruleName;
             RuleSource = ruleSource;
             LineNumber = lineNumber;
-            ErrorType = errorType ?? "CompilationError";
-            Context = context ?? new Dictionary<string, object>();
-
-            LogError();
         }
 
+        /// <summary>
+        /// Creates a new rule compilation exception with an inner exception
+        /// </summary>
+        /// <param name="message">The error message</param>
+        /// <param name="ruleName">The name of the rule</param>
+        /// <param name="innerException">The inner exception</param>
+        /// <param name="ruleSource">The source file of the rule</param>
+        /// <param name="lineNumber">The line number where the error occurred</param>
+        /// <param name="errorType">The type of error</param>
+        /// <param name="context">Additional context</param>
         public RuleCompilationException(
             string message,
             string ruleName,
@@ -43,70 +78,83 @@ namespace Pulsar.Compiler.Exceptions
             string? errorType = "CompilationError",
             Dictionary<string, object>? context = null
         )
-            : base(message, innerException)
+            : base(message, innerException, errorType ?? "CompilationError", MergeContext(ruleName, ruleSource, lineNumber, context))
         {
             RuleName = ruleName;
             RuleSource = ruleSource;
             LineNumber = lineNumber;
-            ErrorType = errorType ?? "CompilationError";
-            Context = context ?? new Dictionary<string, object>();
-
-            LogError();
         }
 
+        /// <summary>
+        /// Creates a new rule compilation exception with context
+        /// </summary>
+        /// <param name="message">The error message</param>
+        /// <param name="context">Additional context</param>
         public RuleCompilationException(string message, IDictionary<string, object>? context = null)
-            : base(message)
+            : base(message, "CompilationError", ConvertToDictionary(context))
         {
-            RuleName = string.Empty; // Set default for non-nullable property
-            // Fix CS8604: Ensure context is not null before creating Dictionary
-            Context =
-                context != null
-                    ? new Dictionary<string, object>(context)
-                    : new Dictionary<string, object>();
-
-            // Fix CS8601: Add proper null checks
-            if (context != null && context.TryGetValue("SourceCode", out var sourceCode))
+            if (context != null)
             {
-                SourceCode = sourceCode?.ToString();
-            }
+                if (context.TryGetValue("SourceCode", out var sourceCode))
+                {
+                    SourceCode = sourceCode?.ToString();
+                }
 
-            if (
-                context != null
-                && context.TryGetValue("RuleName", out var ruleName)
-                && ruleName is string ruleName2
-            )
-            {
-                RuleName = ruleName2;
-            }
+                if (context.TryGetValue("RuleName", out var ruleName) && ruleName is string ruleNameStr)
+                {
+                    RuleName = ruleNameStr;
+                }
 
-            // Set default for ErrorType
-            ErrorType = "CompilationError";
+                if (context.TryGetValue("RuleSource", out var ruleSource) && ruleSource is string ruleSourceStr)
+                {
+                    RuleSource = ruleSourceStr;
+                }
+
+                if (context.TryGetValue("LineNumber", out var lineNumber) && lineNumber is int lineNumberInt)
+                {
+                    LineNumber = lineNumberInt;
+                }
+            }
         }
 
-        private void LogError()
+        /// <summary>
+        /// Merges the context with the rule information
+        /// </summary>
+        private static Dictionary<string, object> MergeContext(
+            string ruleName, 
+            string? ruleSource, 
+            int? lineNumber, 
+            Dictionary<string, object>? context)
         {
-            var errorContext = new Dictionary<string, object>(Context)
-            {
-                ["RuleName"] = RuleName,
-                ["ErrorType"] = ErrorType,
-            };
+            var result = context != null 
+                ? new Dictionary<string, object>(context) 
+                : new Dictionary<string, object>();
 
-            if (RuleSource != null)
-                errorContext["RuleSource"] = RuleSource;
+            result["RuleName"] = ruleName;
+            
+            if (ruleSource != null)
+                result["RuleSource"] = ruleSource;
+                
+            if (lineNumber.HasValue)
+                result["LineNumber"] = lineNumber.Value;
 
-            if (LineNumber.HasValue)
-                errorContext["LineNumber"] = LineNumber.Value;
-
-            if (InnerException != null)
-                errorContext["InnerError"] = InnerException.Message;
-
-            _logger.Error(
-                "Rule compilation error: {ErrorMessage} {@Context}",
-                Message,
-                errorContext
-            );
+            return result;
         }
 
+        /// <summary>
+        /// Converts an IDictionary to a Dictionary
+        /// </summary>
+        private static Dictionary<string, object> ConvertToDictionary(IDictionary<string, object>? source)
+        {
+            if (source == null)
+                return new Dictionary<string, object>();
+                
+            return source.ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
+        }
+
+        /// <summary>
+        /// Returns a string representation of the exception
+        /// </summary>
         public override string ToString()
         {
             var location = LineNumber.HasValue ? $" at line {LineNumber}" : "";
