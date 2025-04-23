@@ -16,10 +16,12 @@ namespace Pulsar.Compiler.Commands
     public class BeaconCommand : ICommand
     {
         private readonly ILogger _logger;
+        private readonly ConfigurationService _configService;
 
         public BeaconCommand(ILogger logger)
         {
             _logger = logger.ForContext<BeaconCommand>();
+            _configService = new ConfigurationService(_logger);
         }
 
         public async Task<int> RunAsync(Dictionary<string, string> options)
@@ -78,23 +80,15 @@ namespace Pulsar.Compiler.Commands
                     _logger.Debug("Config file content:\n{Content}", configContent);
                 }
 
-                var systemConfig = SystemConfig.Load(configPath);
+                var systemConfig = await _configService.LoadSystemConfig(configPath);
 
-                // Debug validSensors
                 _logger.Information(
                     "System configuration loaded with {SensorCount} valid sensors: {Sensors}",
                     systemConfig.ValidSensors?.Count ?? 0,
                     string.Join(", ", systemConfig.ValidSensors ?? new List<string>())
                 );
 
-                // Ensure validSensors is not null and contains required sensors
-                if (systemConfig.ValidSensors == null)
-                {
-                    systemConfig.ValidSensors = new List<string>();
-                    _logger.Warning("ValidSensors was null, creating new empty list");
-                }
-
-                // Manually add required sensors if they're not already in the list
+                // Ensure required sensors exist
                 var requiredSensors = new List<string>
                 {
                     "temperature_f",
@@ -102,28 +96,16 @@ namespace Pulsar.Compiler.Commands
                     "humidity",
                     "pressure",
                 };
-                foreach (var sensor in requiredSensors)
-                {
-                    if (!systemConfig.ValidSensors.Contains(sensor))
-                    {
-                        systemConfig.ValidSensors.Add(sensor);
-                        _logger.Warning("Added missing required sensor: {Sensor}", sensor);
-                    }
-                }
+                _configService.EnsureRequiredSensors(systemConfig, requiredSensors);
 
                 // Parse rules
                 var parser = new DslParser();
                 var rules = new List<RuleDefinition>();
 
                 // Create compiler options with validation disabled
-                var compilerOptions = new CompilerOptions
-                {
-                    ValidSensors = systemConfig.ValidSensors,
-                    AllowInvalidSensors = true, // Bypass sensor validation
-                    OutputDirectory = outputPath,
-                    TargetFramework = "net9.0",
-                    RuntimeIdentifier = target,
-                };
+                var buildConfig = _configService.CreateBuildConfig(options);
+                var compilerOptions = _configService.CreateCompilerOptions(buildConfig, systemConfig);
+                compilerOptions.AllowInvalidSensors = true; // Bypass sensor validation for Beacon
 
                 // Try to load rules directly first
                 if (File.Exists(rulesPath))
@@ -179,64 +161,28 @@ namespace Pulsar.Compiler.Commands
                     rules = compilationResult.Rules;
                 }
 
-                // Parse compiled-rules-dir
-                var compiledRulesDir = options.GetValueOrDefault("compiled-rules-dir", "");
-
-                var buildConfig = new BuildConfig
-                {
-                    OutputPath = outputPath,
-                    Target = target,
-                    ProjectName = "Beacon.Runtime",
-                    AssemblyName = "Beacon.Runtime",
-                    TargetFramework = "net9.0",
-                    RulesPath = rulesPath,
-                    RuleDefinitions = rules,
-                    SystemConfig = systemConfig, // Ensure SystemConfig is set here
-                    StandaloneExecutable = true,
-                    GenerateDebugInfo = false,
-                    OptimizeOutput = true,
-                    Namespace = "Beacon.Runtime",
-                    RedisConnection = 
-                        systemConfig.Redis != null && systemConfig.Redis.TryGetValue("endpoints", out var endpoints) && endpoints is List<string> endpointList && endpointList.Count > 0
-                            ? endpointList[0].ToString()
-                            : "localhost:6379",
-                    CycleTime = systemConfig.CycleTime,
-                    BufferCapacity = systemConfig.BufferCapacity,
-                    MaxRulesPerFile = 50,
-                    MaxLinesPerFile = 1000,
-                    ComplexityThreshold = 10,
-                    GroupParallelRules = true,
-                    GenerateTestProject = true,
-                    CreateSeparateDirectory = true,
-                    SolutionName = "Beacon",
-                    CompiledRulesDir = compiledRulesDir,
-                };
+                // Create the Beacon-specific build config
+                var beaconBuildConfig = _configService.CreateBeaconBuildConfig(options, systemConfig, rules);
 
                 // Double-check that system config is properly set
-                if (buildConfig.SystemConfig == null)
+                if (beaconBuildConfig.SystemConfig == null)
                 {
-                    _logger.Warning("SystemConfig is null in BuildConfig, initializing it");
-                    buildConfig.SystemConfig = systemConfig;
+                    _logger.Warning("SystemConfig is null in BeaconBuildConfig, initializing it");
+                    beaconBuildConfig.SystemConfig = systemConfig;
                 }
 
                 // Ensure validSensors is populated
                 if (
-                    buildConfig.SystemConfig.ValidSensors == null
-                    || buildConfig.SystemConfig.ValidSensors.Count == 0
+                    beaconBuildConfig.SystemConfig.ValidSensors == null
+                    || beaconBuildConfig.SystemConfig.ValidSensors.Count == 0
                 )
                 {
                     _logger.Warning("ValidSensors is empty in SystemConfig, adding required sensors");
-                    buildConfig.SystemConfig.ValidSensors = new List<string>
-                    {
-                        "temperature_f",
-                        "temperature_c",
-                        "humidity",
-                        "pressure",
-                    };
+                    _configService.EnsureRequiredSensors(beaconBuildConfig.SystemConfig, requiredSensors);
                 }
 
                 var orchestrator = new BeaconBuildOrchestrator();
-                var buildResult = await orchestrator.BuildBeaconAsync(buildConfig);
+                var buildResult = await orchestrator.BuildBeaconAsync(beaconBuildConfig);
 
                 if (buildResult.Success)
                 {

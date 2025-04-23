@@ -15,10 +15,12 @@ namespace Pulsar.Compiler.Commands
     public class GenerateCommand : ICommand
     {
         private readonly ILogger _logger;
+        private readonly ConfigurationService _configService;
 
         public GenerateCommand(ILogger logger)
         {
             _logger = logger.ForContext<GenerateCommand>();
+            _configService = new ConfigurationService(_logger);
         }
 
         public async Task<int> RunAsync(Dictionary<string, string> options)
@@ -27,8 +29,8 @@ namespace Pulsar.Compiler.Commands
 
             try
             {
-                var buildConfig = CreateBuildConfig(options);
-                var systemConfig = await LoadSystemConfig(
+                var buildConfig = _configService.CreateBuildConfig(options);
+                var systemConfig = await _configService.LoadSystemConfig(
                     options.GetValueOrDefault("config", "system_config.yaml")
                 );
                 _logger.Information(
@@ -37,11 +39,7 @@ namespace Pulsar.Compiler.Commands
                 );
 
                 // Use the new CompilationPipeline instead of BuildTimeOrchestrator.
-                var compilerOptions = new Models.CompilerOptions
-                {
-                    BuildConfig = buildConfig,
-                    ValidSensors = systemConfig.ValidSensors.ToList(),
-                };
+                var compilerOptions = _configService.CreateCompilerOptions(buildConfig, systemConfig);
                 var pipeline = new Core.CompilationPipeline(
                     new Core.AOTRuleCompiler(),
                     new Parsers.DslParser()
@@ -69,52 +67,6 @@ namespace Pulsar.Compiler.Commands
             }
         }
 
-        private BuildConfig CreateBuildConfig(Dictionary<string, string> options)
-        {
-            return new BuildConfig
-            {
-                OutputPath = options.GetValueOrDefault("output", "Generated"),
-                Target = options.GetValueOrDefault("target", "win-x64"),
-                ProjectName = "Generated",
-                TargetFramework = options.GetValueOrDefault("targetframework", "net9.0"),
-                RulesPath = options.GetValueOrDefault("rules", "Rules"),
-                MaxRulesPerFile = int.Parse(options.GetValueOrDefault("max-rules", "100")),
-                GenerateDebugInfo = options.GetValueOrDefault("debug") == "true",
-                StandaloneExecutable = true,
-                Namespace = "Generated",
-                GroupParallelRules = options.GetValueOrDefault("parallel") == "true",
-                OptimizeOutput = options.GetValueOrDefault("aot") == "true",
-                ComplexityThreshold = int.Parse(
-                    options.GetValueOrDefault("complexity-threshold", "100")
-                ),
-            };
-        }
-
-        private async Task<SystemConfig> LoadSystemConfig(string configPath)
-        {
-            if (!File.Exists(configPath))
-            {
-                // Try looking in the parent directory
-                string parentPath = Path.Combine(
-                    Directory.GetParent(Directory.GetCurrentDirectory())?.FullName
-                        ?? throw new InvalidOperationException("Parent directory not found"),
-                    configPath
-                );
-                if (File.Exists(parentPath))
-                {
-                    configPath = parentPath;
-                }
-                else
-                {
-                    throw new FileNotFoundException(
-                        $"System configuration file not found: {configPath}"
-                    );
-                }
-            }
-
-            var yaml = await File.ReadAllTextAsync(configPath);
-            var deserializer = new YamlDotNet.Serialization.DeserializerBuilder().Build();
-            return deserializer.Deserialize<SystemConfig>(yaml);
-        }
+        // Configuration methods moved to ConfigurationService
     }
 }

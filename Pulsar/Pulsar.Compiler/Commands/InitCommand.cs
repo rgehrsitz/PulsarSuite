@@ -1,5 +1,6 @@
 // File: Pulsar.Compiler/Commands/InitCommand.cs
 
+using Pulsar.Compiler.Config;
 using Serilog;
 using System;
 using System.Collections.Generic;

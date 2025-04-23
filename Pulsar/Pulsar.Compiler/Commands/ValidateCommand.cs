@@ -1,5 +1,6 @@
 // File: Pulsar.Compiler/Commands/ValidateCommand.cs
 
+using Pulsar.Compiler.Config;
 using Pulsar.Compiler.Models;
 using Pulsar.Compiler.Parsers;
 using Serilog;
@@ -15,17 +16,19 @@ namespace Pulsar.Compiler.Commands
     public class ValidateCommand : ICommand
     {
         private readonly ILogger _logger;
+        private readonly ConfigurationService _configService;
 
         public ValidateCommand(ILogger logger) 
         {
             _logger = logger.ForContext<ValidateCommand>();
+            _configService = new ConfigurationService(_logger);
         }
 
         public async Task<int> RunAsync(Dictionary<string, string> options)
         {
             _logger.Information("Validating rules...");
 
-            var systemConfig = await LoadSystemConfig(
+            var systemConfig = await _configService.LoadSystemConfig(
                 options.GetValueOrDefault("config", "system_config.yaml")
             );
             var parser = new DslParser();
@@ -51,32 +54,7 @@ namespace Pulsar.Compiler.Commands
             }
         }
 
-        private async Task<SystemConfig> LoadSystemConfig(string configPath)
-        {
-            if (!File.Exists(configPath))
-            {
-                // Try looking in the parent directory
-                string parentPath = Path.Combine(
-                    Directory.GetParent(Directory.GetCurrentDirectory())?.FullName
-                        ?? throw new InvalidOperationException("Parent directory not found"),
-                    configPath
-                );
-                if (File.Exists(parentPath))
-                {
-                    configPath = parentPath;
-                }
-                else
-                {
-                    throw new FileNotFoundException(
-                        $"System configuration file not found: {configPath}"
-                    );
-                }
-            }
-
-            var yaml = await File.ReadAllTextAsync(configPath);
-            var deserializer = new DeserializerBuilder().Build();
-            return deserializer.Deserialize<SystemConfig>(yaml);
-        }
+        // Configuration methods moved to ConfigurationService
 
         private async Task<List<RuleDefinition>> ParseAndValidateRules(
             string rulesPath,

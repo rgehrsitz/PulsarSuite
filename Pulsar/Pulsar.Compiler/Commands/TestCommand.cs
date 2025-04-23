@@ -1,5 +1,6 @@
 // File: Pulsar.Compiler/Commands/TestCommand.cs
 
+using Pulsar.Compiler.Config;
 using Serilog;
 using System;
 using System.Collections.Generic;
@@ -14,10 +15,12 @@ namespace Pulsar.Compiler.Commands
     public class TestCommand : ICommand
     {
         private readonly ILogger _logger;
+        private readonly ConfigurationService _configService;
 
         public TestCommand(ILogger logger)
         {
             _logger = logger.ForContext<TestCommand>();
+            _configService = new ConfigurationService(_logger);
         }
 
         /// <summary>
