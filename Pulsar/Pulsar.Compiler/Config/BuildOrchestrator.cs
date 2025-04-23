@@ -17,14 +17,14 @@ namespace Pulsar.Compiler.Config
         {
             _logger = LoggingConfig.GetLogger();
             _pipeline = new CompilationPipeline(new AOTRuleCompiler(), new Parsers.DslParser());
-            _templateManager = new TemplateManager();
+            _templateManager = new TemplateManager(_logger);
         }
 
         public BuildOrchestrator(BuildConfig config)
         {
             _logger = LoggingConfig.GetLogger();
             _pipeline = new CompilationPipeline(new AOTRuleCompiler(), new Parsers.DslParser());
-            _templateManager = new TemplateManager();
+            _templateManager = new TemplateManager(_logger);
         }
 
         public BuildResult BuildProject(BuildConfig config)

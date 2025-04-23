@@ -11,8 +11,14 @@ namespace Pulsar.Compiler.Config
     /// </summary>
     public class BeaconTemplateManager
     {
-        private readonly ILogger _logger = LoggingConfig.GetLogger().ForContext<BeaconTemplateManager>();
-        private readonly TemplateManager _originalTemplateManager = new();
+        private readonly ILogger _logger;
+        private readonly TemplateManager _templateManager;
+        
+        public BeaconTemplateManager(ILogger? logger = null)
+        {
+            _logger = logger ?? LoggingConfig.GetLogger().ForContext<BeaconTemplateManager>();
+            _templateManager = new TemplateManager(_logger);
+        }
 
         /// <summary>
         /// Creates the complete Beacon solution structure

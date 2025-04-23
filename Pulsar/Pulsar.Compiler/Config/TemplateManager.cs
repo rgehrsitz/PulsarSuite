@@ -1,14 +1,55 @@
-// File: Pulsar.Compiler/Config/TemplateManager.cs
+// File: Pulsar.Compiler/Config/TemplateManagerV2.cs
 
-using System.Text;
+using Pulsar.Compiler.Models;
 using Serilog;
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Text;
+using System.Threading.Tasks;
 
 namespace Pulsar.Compiler.Config
 {
+    /// <summary>
+    /// Template manager that centralizes template handling.
+    /// </summary>
     public class TemplateManager
     {
-        private readonly ILogger _logger = LoggingConfig.GetLogger().ForContext<TemplateManager>();
+        private readonly ILogger _logger;
+        
+        // Template versions and source paths
+        private static readonly Dictionary<string, string> TemplateVersions = new Dictionary<string, string>
+        {
+            ["Program.cs"] = "1.2.0",
+            ["RuntimeConfig.cs"] = "1.1.0",
+            ["RuleBase.cs"] = "1.0.5",
+            ["TemplateRuleCoordinator.cs"] = "1.1.1",
+            ["TemplateRuleGroup.cs"] = "1.0.2",
+            ["CircularBuffer.cs"] = "1.3.0",
+            ["RedisService.cs"] = "1.0.0",
+            ["RedisHealthCheck.cs"] = "1.0.0",
+            ["RedisMetrics.cs"] = "1.0.0",
+            ["ConfigurationService.cs"] = "1.0.2",
+            ["RuntimeOrchestrator.cs"] = "1.0.0",
+            ["ICompiledRules.cs"] = "1.0.0",
+            ["IRuleCoordinator.cs"] = "1.0.0",
+            ["IRuleGroup.cs"] = "1.0.1",
+            ["IRedisService.cs"] = "1.0.0",
+            ["Project.csproj"] = "2.0.0"
+        };
 
+        public TemplateManager(ILogger logger)
+        {
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            
+            // We don't actually set _templateBasePath here since we use a dynamic
+            // lookup mechanism in GetTemplatePath to find the templates
+            EnsureTemplateDirectoryExists();
+        }
+        
+        /// <summary>
+        /// Generates a solution file at the specified path.
+        /// </summary>
         public void GenerateSolutionFile(string path)
         {
             var content =
@@ -40,63 +81,57 @@ Global
                 + Guid.NewGuid().ToString().ToUpper()
                 + @"}.Release|Any CPU.Build.0 = Release|Any CPU
     EndGlobalSection
-EndGlobal";
-
-            File.WriteAllText(path, content.TrimStart());
+EndGlobal
+";
+            File.WriteAllText(path, content);
+            _logger.Information("Generated solution file: {Path}", path);
         }
-
+        
+        /// <summary>
+        /// Generates a project file at the specified path.
+        /// </summary>
         public void GenerateProjectFile(string path, BuildConfig buildConfig)
         {
             var sb = new StringBuilder();
             sb.AppendLine("<Project Sdk=\"Microsoft.NET.Sdk\">");
-            sb.AppendLine("  <PropertyGroup>");
+            sb.AppendLine("\n  <PropertyGroup>");
+            sb.AppendLine($"    <OutputType>Exe</OutputType>");
             sb.AppendLine($"    <TargetFramework>{buildConfig.TargetFramework}</TargetFramework>");
-            sb.AppendLine("    <ImplicitUsings>enable</ImplicitUsings>");
-            sb.AppendLine("    <Nullable>enable</Nullable>");
-            sb.AppendLine("    <OutputType>Exe</OutputType>");
-
-            // Always add AOT compatibility properties
-            sb.AppendLine("    <EnableTrimAnalyzer>true</EnableTrimAnalyzer>");
-            sb.AppendLine("    <IsTrimmable>true</IsTrimmable>");
-            sb.AppendLine("    <TrimmerSingleWarn>false</TrimmerSingleWarn>");
-
-            if (buildConfig.StandaloneExecutable)
-            {
-                sb.AppendLine("    <PublishSingleFile>true</PublishSingleFile>");
-                sb.AppendLine("    <SelfContained>true</SelfContained>");
-                sb.AppendLine($"    <RuntimeIdentifier>{buildConfig.Target}</RuntimeIdentifier>");
-            }
-
+            sb.AppendLine($"    <ImplicitUsings>enable</ImplicitUsings>");
+            sb.AppendLine($"    <Nullable>enable</Nullable>");
+            
+            // Add AOT settings if optimized
             if (buildConfig.OptimizeOutput)
             {
-                sb.AppendLine("    <PublishReadyToRun>true</PublishReadyToRun>");
-                sb.AppendLine("    <PublishTrimmed>true</PublishTrimmed>");
-                sb.AppendLine("    <TrimMode>link</TrimMode>");
-                sb.AppendLine("    <TrimmerRemoveSymbols>true</TrimmerRemoveSymbols>");
-                sb.AppendLine("    <DebuggerSupport>false</DebuggerSupport>");
-                sb.AppendLine(
-                    "    <EnableUnsafeBinaryFormatterSerialization>false</EnableUnsafeBinaryFormatterSerialization>"
-                );
-                sb.AppendLine("    <EnableUnsafeUTF7Encoding>false</EnableUnsafeUTF7Encoding>");
-                sb.AppendLine("    <InvariantGlobalization>true</InvariantGlobalization>");
-                sb.AppendLine(
-                    "    <HttpActivityPropagationSupport>false</HttpActivityPropagationSupport>"
-                );
+                sb.AppendLine($"    <PublishAot>true</PublishAot>");
+                sb.AppendLine($"    <IlcGenerateStackTraceData>false</IlcGenerateStackTraceData>");
+                sb.AppendLine($"    <IlcDisableReflection>true</IlcDisableReflection>");
+                sb.AppendLine($"    <IlcFoldIdenticalMethodBodies>true</IlcFoldIdenticalMethodBodies>");
+                sb.AppendLine($"    <DebugType>none</DebugType>");
+                sb.AppendLine($"    <DebugSymbols>false</DebugSymbols>");
+                sb.AppendLine($"    <TrimMode>link</TrimMode>");
+                sb.AppendLine($"    <InvariantGlobalization>true</InvariantGlobalization>");
+                sb.AppendLine($"    <OptimizationPreference>Speed</OptimizationPreference>");
+                sb.AppendLine($"    <IlcOptimizationPreference>Speed</IlcOptimizationPreference>");
+                sb.AppendLine($"    <TrimmerRootAssembly Include=\"$(MSBuildProjectName)\" />");
             }
-
+            else
+            {
+                sb.AppendLine($"    <PublishAot>false</PublishAot>");
+                sb.AppendLine($"    <DebugType>portable</DebugType>");
+                sb.AppendLine($"    <DebugSymbols>true</DebugSymbols>");
+            }
+            
+            sb.AppendLine($"    <RootNamespace>{buildConfig.Namespace}</RootNamespace>");
             sb.AppendLine("  </PropertyGroup>");
-            sb.AppendLine();
-
-            // Add trimming configuration
-            sb.AppendLine("  <ItemGroup>");
-            sb.AppendLine("    <TrimmerRootDescriptor Include=\"trimming.xml\" />");
-            sb.AppendLine("  </ItemGroup>");
-            sb.AppendLine();
-
+            
             // Add package references
-            sb.AppendLine("  <ItemGroup>");
+            sb.AppendLine("\n  <ItemGroup>");
             sb.AppendLine(
-                "    <PackageReference Include=\"Microsoft.Extensions.Logging\" Version=\"8.0.0\" />"
+                "    <PackageReference Include=\"Microsoft.Extensions.DependencyInjection\" Version=\"9.0.0-preview.3.24163.7\" />"
+            );
+            sb.AppendLine(
+                "    <PackageReference Include=\"Microsoft.Extensions.Logging\" Version=\"9.0.0-preview.3.24163.7\" />"
             );
             sb.AppendLine("    <PackageReference Include=\"NRedisStack\" Version=\"0.13.1\" />");
             sb.AppendLine("    <PackageReference Include=\"Polly\" Version=\"8.3.0\" />");
@@ -122,212 +157,219 @@ EndGlobal";
             sb.AppendLine("</Project>");
 
             File.WriteAllText(path, sb.ToString());
-        }
-
-        public void GenerateProjectFiles(string outputPath, BuildConfig buildConfig)
-        {
-            // Create solution file
-            GenerateSolutionFile(Path.Combine(outputPath, "Generated.sln"));
-
-            // Create project file
-            GenerateProjectFile(Path.Combine(outputPath, "Generated.csproj"), buildConfig);
-
-            // Copy Program.cs template
-            CopyTemplateFile("Program.cs", outputPath);
-
-            // Copy RuntimeOrchestrator.cs template
-            CopyTemplateFile(
-                "Runtime/RuntimeOrchestrator.cs",
-                outputPath,
-                "RuntimeOrchestrator.cs"
-            );
-
-            // Copy other necessary template files
-            CopyTemplateFile("RuntimeConfig.cs", outputPath);
-
-            // Create directories for additional files
-            Directory.CreateDirectory(Path.Combine(outputPath, "Services"));
-            Directory.CreateDirectory(Path.Combine(outputPath, "Buffers"));
-            Directory.CreateDirectory(Path.Combine(outputPath, "Interfaces"));
-
-            // Copy interface templates
-            CopyTemplateFile(
-                "Interfaces/IRuleCoordinator.cs",
-                outputPath,
-                "Interfaces/IRuleCoordinator.cs"
-            );
-            CopyTemplateFile("Interfaces/IRuleGroup.cs", outputPath, "Interfaces/IRuleGroup.cs");
-            CopyTemplateFile(
-                "Interfaces/ICompiledRules.cs",
-                outputPath,
-                "Interfaces/ICompiledRules.cs"
-            );
-
-            // Copy service templates
-            CopyTemplateFile(
-                "Runtime/Services/RedisConfiguration.cs",
-                outputPath,
-                "Services/RedisConfiguration.cs"
-            );
-            CopyTemplateFile(
-                "Runtime/Services/RedisService.cs",
-                outputPath,
-                "Services/RedisService.cs"
-            );
-            CopyTemplateFile(
-                "Runtime/Services/RedisMonitoring.cs",
-                outputPath,
-                "Services/RedisMonitoring.cs"
-            );
-            CopyTemplateFile(
-                "Runtime/Services/RedisLoggingConfiguration.cs",
-                outputPath,
-                "Services/RedisLoggingConfiguration.cs"
-            );
-
-            // Copy buffer templates
-            CopyTemplateFile(
-                "Runtime/Buffers/CircularBuffer.cs",
-                outputPath,
-                "Buffers/CircularBuffer.cs"
-            );
-            CopyTemplateFile(
-                "Runtime/Buffers/IDateTimeProvider.cs",
-                outputPath,
-                "Buffers/IDateTimeProvider.cs"
-            );
-            CopyTemplateFile(
-                "Runtime/Buffers/SystemDateTimeProvider.cs",
-                outputPath,
-                "Buffers/SystemDateTimeProvider.cs"
-            );
-
-            // Copy trimming.xml file for AOT compatibility
-            CopyTemplateFile("trimming.xml", outputPath, "trimming.xml");
+            _logger.Information("Generated project file: {Path}", path);
         }
 
         /// <summary>
-        /// Copies all templates to the output directory
+        /// Get a template file path based on its logical name.
         /// </summary>
-        public void CopyTemplates(string outputDirectory)
+        public string GetTemplatePath(string templateName)
         {
-            _logger.Information("Copying templates to {Destination}", outputDirectory);
-
-            // Create output directory if it doesn't exist
-            if (!Directory.Exists(outputDirectory))
+            var path = ResolveTemplatePath(templateName);
+            
+            if (!File.Exists(path))
             {
-                Directory.CreateDirectory(outputDirectory);
+                throw new FileNotFoundException($"Template {templateName} not found at path: {path}");
             }
+            
+            return path;
+        }
 
+        /// <summary>
+        /// Read a template by name.
+        /// </summary>
+        public async Task<string> ReadTemplateAsync(string templateName)
+        {
+            var path = GetTemplatePath(templateName);
+            return await File.ReadAllTextAsync(path);
+        }
+
+        /// <summary>
+        /// Generate project files for a buildable output.
+        /// </summary>
+        public void GenerateProjectFiles(string outputPath, BuildConfig config)
+        {
+            _logger.Information("Generating project files in {Path}", outputPath);
+            
+            if (!Directory.Exists(outputPath))
+            {
+                Directory.CreateDirectory(outputPath);
+            }
+            
+            // Special handling for solution and project files
+            GenerateSolutionFile(Path.Combine(outputPath, "Generated.sln"));
+            GenerateProjectFile(Path.Combine(outputPath, "Generated.csproj"), config);
+            
+            // Copy Program.cs template
+            CopyTemplateFile("Program.cs", Path.Combine(outputPath, "Program.cs"));
+            
+            // Generate interface files in Interfaces directory
+            Directory.CreateDirectory(Path.Combine(outputPath, "Interfaces"));
+            CopyTemplateFile("Interfaces/ICompiledRules.cs", Path.Combine(outputPath, "Interfaces/ICompiledRules.cs"));
+            CopyTemplateFile("Interfaces/IRuleCoordinator.cs", Path.Combine(outputPath, "Interfaces/IRuleCoordinator.cs"));
+            CopyTemplateFile("Interfaces/IRuleGroup.cs", Path.Combine(outputPath, "Interfaces/IRuleGroup.cs"));
+            CopyTemplateFile("Interfaces/IRedisService.cs", Path.Combine(outputPath, "Interfaces/IRedisService.cs"));
+            
+            // Generate Services directory
+            Directory.CreateDirectory(Path.Combine(outputPath, "Services"));
+            
+            // Redis services
+            CopyTemplateFile("Runtime/Services/RedisService.cs", Path.Combine(outputPath, "Services/RedisService.cs"));
+            CopyTemplateFile("Runtime/Services/RedisHealthCheck.cs", Path.Combine(outputPath, "Services/RedisHealthCheck.cs"));
+            CopyTemplateFile("Runtime/Services/RedisMetrics.cs", Path.Combine(outputPath, "Services/RedisMetrics.cs"));
+            CopyTemplateFile("Runtime/Services/MetricsService.cs", Path.Combine(outputPath, "Services/MetricsService.cs"));
+            
+            // Configuration
+            CopyTemplateFile("Runtime/Configuration/ConfigurationService.cs", Path.Combine(outputPath, "Configuration/ConfigurationService.cs"));
+            
+            // Buffer implementation
+            Directory.CreateDirectory(Path.Combine(outputPath, "Buffers"));
+            CopyTemplateFile("Runtime/Buffers/CircularBuffer.cs", Path.Combine(outputPath, "Buffers/CircularBuffer.cs"));
+            CopyTemplateFile("Runtime/Buffers/IDateTimeProvider.cs", Path.Combine(outputPath, "Buffers/IDateTimeProvider.cs"));
+            CopyTemplateFile("Runtime/Buffers/SystemDateTimeProvider.cs", Path.Combine(outputPath, "Buffers/SystemDateTimeProvider.cs"));
+            
+            // Models
+            Directory.CreateDirectory(Path.Combine(outputPath, "Models"));
+            CopyTemplateFile("Runtime/Models/RuntimeConfig.cs", Path.Combine(outputPath, "Models/RuntimeConfig.cs"));
+            CopyTemplateFile("Runtime/Models/RedisConfiguration.cs", Path.Combine(outputPath, "Models/RedisConfiguration.cs"));
+            
+            // Rules base implementation
+            Directory.CreateDirectory(Path.Combine(outputPath, "Rules"));
+            CopyTemplateFile("Runtime/Rules/RuleBase.cs", Path.Combine(outputPath, "Rules/RuleBase.cs"));
+            
+            // Template rule classes
+            CopyTemplateFile("Runtime/TemplateRuleCoordinator.cs", Path.Combine(outputPath, "TemplateRuleCoordinator.cs"));
+            CopyTemplateFile("Runtime/TemplateRuleGroup.cs", Path.Combine(outputPath, "TemplateRuleGroup.cs"));
+            CopyTemplateFile("Runtime/RuntimeOrchestrator.cs", Path.Combine(outputPath, "RuntimeOrchestrator.cs"));
+        }
+
+        /// <summary>
+        /// Copy a template file to the specified path, applying any required transformations.
+        /// </summary>
+        private void CopyTemplateFile(string templatePath, string outputPath)
+        {
             try
             {
-                // Generate project files at the output directory
-                var config = new BuildConfig
+                // Ensure the output directory exists
+                var directory = Path.GetDirectoryName(outputPath);
+                if (!string.IsNullOrEmpty(directory) && !Directory.Exists(directory))
                 {
-                    OutputPath = outputDirectory,
-                    ProjectName = "RuntimeTest",
-                    RulesPath = outputDirectory,
-                    TargetFramework = "net9.0",
-                    StandaloneExecutable = false,
-                    OptimizeOutput = false,
-                    Target = "linux-x64",
-                };
+                    Directory.CreateDirectory(directory);
+                }
 
-                GenerateProjectFiles(outputDirectory, config);
-
-                // Generate specifically named project file
-                GenerateProjectFile(Path.Combine(outputDirectory, "RuntimeTest.csproj"), config);
-
-                _logger.Information("Templates copied successfully");
+                // Find the source template
+                string sourceTemplate;
+                try 
+                {
+                    sourceTemplate = GetTemplatePath(templatePath);
+                }
+                catch (FileNotFoundException)
+                {
+                    _logger.Warning("Template file not found: {Path}", templatePath);
+                    return;
+                }
+                
+                // Read the content
+                string content = File.ReadAllText(sourceTemplate);
+                
+                // Add version header if not present
+                if (Path.GetFileName(templatePath) is string fileName && 
+                    TemplateVersions.TryGetValue(fileName, out var version))
+                {
+                    if (!content.Contains("// Version:"))
+                    {
+                        // Add version if there's already a file comment
+                        if (content.StartsWith("// "))
+                        {
+                            var lines = content.Split('\n');
+                            lines[0] = lines[0] + "\n// Version: " + version;
+                            content = string.Join('\n', lines);
+                        }
+                        else
+                        {
+                            content = $"// File: {fileName}\n// Version: {version}\n\n{content}";
+                        }
+                    }
+                }
+                
+                File.WriteAllText(outputPath, content);
+                _logger.Debug("Copied template {Template} to {Output}", templatePath, outputPath);
             }
             catch (Exception ex)
             {
-                _logger.Error(ex, "Error copying templates");
-                throw;
+                _logger.Error(ex, "Failed to copy template file {Template} to {Output}", templatePath, outputPath);
             }
         }
 
-        private void CopyTemplateFile(
-            string templateRelativePath,
-            string outputPath,
-            string? outputRelativePath = null
-        )
+        /// <summary>
+        /// Maps logical template names to their file paths.
+        /// </summary>
+        private string ResolveTemplatePath(string templateName)
         {
-            try
+            // Map logical template names to file paths
+            var templatePathMap = new Dictionary<string, string>
             {
-                var templatePath = GetTemplatePath(templateRelativePath);
-                var destinationPath = Path.Combine(
-                    outputPath,
-                    outputRelativePath ?? Path.GetFileName(templateRelativePath)
-                );
-
-                // Create directory if it doesn't exist
-                Directory.CreateDirectory(Path.GetDirectoryName(destinationPath) ?? outputPath);
-
-                // Copy the template file
-                var templateContent = File.ReadAllText(templatePath);
-                File.WriteAllText(destinationPath, templateContent);
-
-                _logger.Debug(
-                    "Copied template file: {Source} to {Destination}",
-                    templateRelativePath,
-                    destinationPath
-                );
-            }
-            catch (FileNotFoundException ex)
+                ["Program.cs"] = "Program.cs",
+                ["RuntimeConfig.cs"] = "RuntimeConfig.cs",
+                ["RuleCoordinator.cs"] = "Runtime/TemplateRuleCoordinator.cs",
+                ["RuleGroup.cs"] = "Runtime/TemplateRuleGroup.cs",
+                ["CircularBuffer.cs"] = "Runtime/Buffers/CircularBuffer.cs",
+                ["RedisService.cs"] = "Runtime/Services/RedisService.cs",
+                ["RedisHealthCheck.cs"] = "Runtime/Services/RedisHealthCheck.cs",
+                ["RedisMetrics.cs"] = "Runtime/Services/RedisMetrics.cs",
+                ["ICompiledRules.cs"] = "Interfaces/ICompiledRules.cs",
+                ["IRuleCoordinator.cs"] = "Interfaces/IRuleCoordinator.cs",
+                ["IRuleGroup.cs"] = "Interfaces/IRuleGroup.cs",
+                ["IRedisService.cs"] = "Interfaces/IRedisService.cs",
+                ["RuleBase.cs"] = "Runtime/Rules/RuleBase.cs",
+                ["RuntimeOrchestrator.cs"] = "Runtime/RuntimeOrchestrator.cs",
+                ["Project.csproj"] = "Project/Runtime.csproj",
+                ["Solution.sln"] = "Project/Generated.sln"
+            };
+            
+            // Resolve the template path based on the logical name
+            string templateRelativePath = templateName;
+            if (templatePathMap.TryGetValue(templateName, out var mappedPath))
             {
-                // Log the error but continue - some templates might be optional
-                _logger.Warning(
-                    "Could not find template file: {TemplatePath}. {Message}",
-                    templateRelativePath,
-                    ex.Message
-                );
+                templateRelativePath = mappedPath;
             }
-        }
-
-        private string GetTemplatePath(string templateFileName)
-        {
+            
             // Try multiple possible locations for the template files
             var possiblePaths = new[]
             {
                 // Direct path from working directory
-                Path.Combine("Pulsar.Compiler", "Config", "Templates", templateFileName),
+                Path.Combine("Pulsar.Compiler", "Config", "Templates", templateRelativePath),
                 // Path relative to assembly location
                 Path.Combine(
                     Path.GetDirectoryName(typeof(TemplateManager).Assembly.Location) ?? "",
                     "Config",
                     "Templates",
-                    templateFileName
+                    templateRelativePath
                 ),
                 // Path from assembly base directory
                 Path.Combine(
                     AppDomain.CurrentDomain.BaseDirectory,
                     "Config",
                     "Templates",
-                    templateFileName
+                    templateRelativePath
                 ),
                 // Path relative to project root (go up from bin directory)
                 Path.Combine(
                     Directory.GetCurrentDirectory(),
-                    "..",
-                    "..",
-                    "..",
+                    "..", "..", "..",
                     "Pulsar.Compiler",
                     "Config",
                     "Templates",
-                    templateFileName
+                    templateRelativePath
                 ),
                 // Absolute path based on solution directory structure
                 Path.Combine(
                     Directory.GetCurrentDirectory(),
-                    "..",
-                    "..",
-                    "..",
-                    "..",
+                    "..", "..", "..", "..",
                     "Pulsar.Compiler",
                     "Config",
                     "Templates",
-                    templateFileName
+                    templateRelativePath
                 ),
             };
 
@@ -340,16 +382,66 @@ EndGlobal";
                     return normalizedPath;
                 }
             }
-
-            _logger.Error(
-                "Template file not found: {TemplateFile}. Searched in: {Paths}",
-                templateFileName,
-                string.Join(", ", possiblePaths)
-            );
-
+            
             throw new FileNotFoundException(
-                $"Template file not found: {templateFileName}. Searched in: {string.Join(", ", possiblePaths)}"
+                $"Template file not found: {templateName} at {templateRelativePath}. " +
+                $"Searched in: {string.Join(", ", possiblePaths.Select(p => Path.GetFullPath(p)))}"
             );
+        }
+
+        private void EnsureTemplateDirectoryExists()
+        {
+            // Verify key template files exist by trying to resolve them
+            var requiredTemplates = new[]
+            {
+                "Program.cs",
+                "Runtime/TemplateRuleCoordinator.cs",
+                "Interfaces/ICompiledRules.cs"
+            };
+            
+            var missingTemplates = new List<string>();
+            
+            foreach (var template in requiredTemplates)
+            {
+                try 
+                {
+                    GetTemplatePath(template);
+                }
+                catch (FileNotFoundException)
+                {
+                    missingTemplates.Add(template);
+                }
+            }
+            
+            if (missingTemplates.Count > 0)
+            {
+                _logger.Warning("Some required template files could not be found: {MissingTemplates}", 
+                    string.Join(", ", missingTemplates));
+            }
+        }
+        
+        /// <summary>
+        /// Copies all necessary template files to the output directory.
+        /// </summary>
+        /// <param name="outputPath">The directory to copy templates to</param>
+        public void CopyTemplates(string outputPath)
+        {
+            _logger.Information("Copying templates to output directory: {OutputPath}", outputPath);
+            
+            // Generate all project files which includes copying all necessary templates
+            var defaultConfig = new BuildConfig
+            {
+                TargetFramework = "net8.0",
+                OptimizeOutput = false,
+                Namespace = "Pulsar.Runtime",
+                ProjectName = "Generated",
+                AssemblyName = "Generated",
+                OutputPath = outputPath,
+                Target = "linux-x64",  // Default target platform
+                RulesPath = Path.Combine(outputPath, "rules")  // Provide a valid path even if not used
+            };
+            
+            GenerateProjectFiles(outputPath, defaultConfig);
         }
     }
 }
