@@ -1,4 +1,5 @@
 // File: Pulsar.Compiler/Config/Templates/Interfaces/IRedisService.cs
+// Version: 1.1.0
 
 using System;
 using System.Collections.Generic;
@@ -7,15 +8,32 @@ using System.Threading.Tasks;
 namespace Beacon.Runtime.Interfaces
 {
     /// <summary>
-    /// Interface for Redis service operations
+    /// Interface for Redis service operations that provides consistent access patterns
+    /// throughout the application. Implementations of this interface handle Redis operations
+    /// and data transfer.
     /// </summary>
-    public interface IRedisService
+    public interface IRedisService : IDisposable
     {
         /// <summary>
         /// Gets all input values from Redis
         /// </summary>
         /// <returns>Dictionary of input values</returns>
         Task<Dictionary<string, object>> GetAllInputsAsync();
+        
+        /// <summary>
+        /// Gets input values (alias for GetAllInputsAsync)
+        /// </summary>
+        Task<Dictionary<string, object>> GetInputsAsync();
+        
+        /// <summary>
+        /// Gets output values from Redis
+        /// </summary>
+        Task<Dictionary<string, object>> GetOutputsAsync();
+        
+        /// <summary>
+        /// Gets state values from Redis
+        /// </summary>
+        Task<Dictionary<string, object>> GetStateAsync();
 
         /// <summary>
         /// Sets output values in Redis
@@ -39,6 +57,11 @@ namespace Beacon.Runtime.Interfaces
         /// <param name="outputs">Dictionary of output values</param>
         /// <returns>Task representing the asynchronous operation</returns>
         Task SetOutputValuesAsync(Dictionary<string, double> outputs);
+        
+        /// <summary>
+        /// Sets state values in Redis
+        /// </summary>
+        Task SetStateAsync(Dictionary<string, object> state);
 
         /// <summary>
         /// Gets the values for a sensor over time
@@ -61,5 +84,25 @@ namespace Beacon.Runtime.Interfaces
         /// <param name="message">The message to publish</param>
         /// <returns>The number of clients that received the message</returns>
         Task<long> PublishAsync(string channel, string message);
+        
+        /// <summary>
+        /// Sets a hash field in Redis
+        /// </summary>
+        Task<bool> HashSetAsync(string key, string field, string value);
+        
+        /// <summary>
+        /// Gets a hash field from Redis
+        /// </summary>
+        Task<string?> HashGetAsync(string key, string field);
+        
+        /// <summary>
+        /// Gets all hash fields from Redis
+        /// </summary>
+        Task<Dictionary<string, string>?> HashGetAllAsync(string key);
+        
+        /// <summary>
+        /// Deletes a key from Redis
+        /// </summary>
+        Task<bool> DeleteKeyAsync(string key);
     }
 }

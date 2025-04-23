@@ -1,6 +1,8 @@
 using Microsoft.Extensions.Logging;
-// Fix the namespace reference
 using Pulsar.Tests.Mocks; // Use our mock classes instead
+using System;
+using System.Threading.Tasks;
+using Xunit;
 
 namespace Pulsar.Tests.Integration
 {

@@ -3,7 +3,10 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Pulsar.Tests.Mocks;
 using Pulsar.Tests.TestUtilities;
 using StackExchange.Redis;
+using System;
+using System.Threading.Tasks;
 using Testcontainers.Redis;
+using Xunit;
 // Use fully qualified names to avoid ambiguity
 using RedisConfig = Pulsar.Tests.Mocks.RedisConfiguration;
 
