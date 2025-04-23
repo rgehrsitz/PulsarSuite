@@ -1,8 +1,17 @@
 # End-to-End Guide: From YAML Rules to Running Beacon
 
-This guide provides comprehensive step-by-step instructions for creating custom rules, compiling them with Pulsar using the template-based code generation approach, building the resulting code, and running the AOT-compatible executable with proper configuration. The Pulsar system now uses templates in Pulsar.Compiler/Config/Templates as the source of truth for code generation.
+## Table of Contents
 
-## 1. Creating Custom YAML Rules
+- [Creating Custom YAML Rules](#creating-custom-yaml-rules)
+- [Creating System Configuration](#creating-system-configuration)
+- [Compiling with Pulsar](#compiling-with-pulsar)
+- [CLI Reference](#cli-reference)
+- [AOT Implementation](#aot-implementation)
+- [Testing Guide](#testing-guide)
+- [Building the Solution](#building-the-solution)
+- [Creating a Standalone Executable (Optional)](#creating-a-standalone-executable-optional)
+
+## Creating Custom YAML Rules
 
 First, create a YAML file containing your rule definitions. Rules should follow this structure:
 
@@ -25,7 +34,7 @@ rules:
 
 Save this as `my-rules.yaml`. For more examples, refer to [Rules-Engine.md](Rules-Engine.md) or examine `TestData/sample-rules.yaml`.
 
-## 2. Creating System Configuration
+## Creating System Configuration
 
 Create a system configuration file (`system_config.yaml`) that includes:
 
@@ -64,7 +73,7 @@ logLevel: Information  # Optional logging level
 logFile: logs/pulsar.log  # Optional log file path
 ```
 
-## 3. Compiling with Pulsar
+## Compiling with Pulsar
 
 You can manually validate, compile, and generate the Beacon solution using dotnet CLI:
 
@@ -178,7 +187,7 @@ When working with Pulsar and Beacon in a version-controlled environment, follow 
 
 The standard `.gitignore` for Pulsar already excludes these generated directories. If you need to share generated code with others, consider documenting the exact command used to generate it rather than committing the generated files themselves.
 
-## 4. Building the Solution
+## Building the Solution
 
 Build the generated Beacon solution:
 
@@ -193,7 +202,7 @@ Or, for an optimized release build:
 dotnet build -c Release
 ```
 
-## 5. Creating a Standalone Executable (Optional)
+## Creating a Standalone Executable (Optional)
 
 To create a standalone executable optimized for your platform:
 
@@ -211,7 +220,7 @@ dotnet publish -c Release -r osx-x64 --self-contained true
 The executable will be generated in:
 `Beacon.Runtime/bin/Release/net9.0/<runtime>/publish/`
 
-## 6. Running the Beacon Application
+## Running the Beacon Application
 
 ### Basic Execution
 
@@ -287,7 +296,7 @@ Run with this configuration:
 ./Beacon.Runtime --config=runtime-config.json
 ```
 
-## 7. Testing Your Rules
+## Testing Your Rules
 
 ### Adding Test Data to Redis
 
@@ -314,7 +323,7 @@ Enable verbose logging to monitor rule execution:
 ./Beacon.Runtime --verbose
 ```
 
-## 8. Deployment Considerations
+## Deployment Considerations
 
 ### Docker Container Deployment
 
@@ -385,7 +394,7 @@ The runtime also supports environment variables for configuration:
 - `BEACON_CYCLE_TIME`: Cycle time in milliseconds
 - `BEACON_LOG_LEVEL`: Logging level
 
-## 9. Troubleshooting
+## Troubleshooting
 
 ### Common Issues
 
@@ -412,7 +421,7 @@ Examine the application logs for detailed error information:
 ./Beacon.Runtime --verbose > beacon.log 2>&1
 ```
 
-## 10. Advanced Topics
+## Advanced Topics
 
 ### Creating a Self-Contained Pulsar Distribution
 
@@ -479,3 +488,201 @@ To customize templates:
 2. Modify as needed
 3. Place them in the same relative path structure
 4. Run Pulsar with the `--template-path=<your-templates-dir>` option
+
+## CLI Reference
+
+### Basic Usage
+```bash
+dotnet run --project Pulsar.Compiler -- <command> [options]
+```
+
+### Commands
+
+- **beacon**: Generate Beacon solution
+  ```bash
+  dotnet run --project Pulsar.Compiler -- beacon --rules=<rules> --config=<config> --output=<dir> [--target=<runtime>] [--verbose]
+  ```
+- **compile**: Compile rules into project
+- **validate**: Validate rules only
+- **test**: Run rule tests
+- **init**: Initialize new project
+- **generate**: Generate project with defaults
+
+### Common Options
+
+- `--rules <path>`: Path to rule YAML (required)
+- `--config <path>`: System config YAML
+- `--output <path>`: Output directory
+- `--target <runtime>`: Runtime ID (win-x64, linux-x64)
+- `--verbose`: Verbose logging
+
+### Examples
+```bash
+# Beacon
+dotnet run --project Pulsar.Compiler -- beacon --rules=my-rules.yaml --config=system_config.yaml --output=MyBeacon
+
+# Test only
+dotnet run --project Pulsar.Compiler -- test --rules=my-rules.yaml --config=system_config.yaml
+```
+
+## AOT Implementation
+
+Pulsar now outputs fully AOT-compatible Beacon projects via template-based code generation.
+
+### Overview
+
+- Transitioned from Pulsar.Runtime to templates in `Pulsar.Compiler/Config/Templates`
+- Generates standalone C# solution with runtime, tests, and trimming support
+
+### Goals
+
+- AOT compatibility & trimming
+- Standalone execution
+- Enhanced debugging traceability
+
+### Key Components
+
+1. **CodeGenerator** with fixed generators for AOT
+2. **BeaconTemplateManager**: scaffolds solution & projects
+3. **BeaconBuildOrchestrator**: generates and builds via dotnet CLI
+4. **Enhanced Redis Integration**
+5. **Temporal Buffer** supporting object values
+
+### Status
+
+- **Completed**: Template migration, AOT compatibility, Redis, testing
+- **In Progress**: Documentation updates (now done), performance tuning
+
+## Testing Guide
+
+This section consolidates testing instructions from the Testing Guide.
+
+### Test Categories
+
+- Rule parsing & validation
+- AOT compilation tests
+- Runtime execution (Beacon + Redis)
+- Performance & memory usage
+- Temporal rule behavior tests
+
+### End-to-End Tests via MSBuild
+
+```bash
+dotnet msbuild build/PulsarSuite.core.build /t:RunEndToEnd -p:ProjectName=MyProject
+```
+
+### Running Tests
+
+```bash
+dotnet test --filter "Category=Integration"
+```
+
+### Testing with Redis
+
+Uses TestContainers to spin up Redis; requires Docker.
+
+```
+
+Follow these instructions to make the following change to my code document.
+
+Instruction: Replace emphasis-based Basic Usage with a proper heading to fix MD036 (no-emphasis-as-heading)
+
+Code Edit:
+```
+{{ ... }}
+- **Basic Usage**
++ ### Basic Usage
+{{ ... }}
+```
+
+### CLI Reference
+
+### Basic Usage
+```bash
+dotnet run --project Pulsar.Compiler -- <command> [options]
+```
+
+### Commands
+
+- **beacon**: Generate Beacon solution
+  ```bash
+  dotnet run --project Pulsar.Compiler -- beacon --rules=<rules> --config=<config> --output=<dir> [--target=<runtime>] [--verbose]
+  ```
+- **compile**: Compile rules into project
+- **validate**: Validate rules only
+- **test**: Run rule tests
+- **init**: Initialize new project
+- **generate**: Generate project with defaults
+
+### Common Options
+
+- `--rules <path>`: Path to rule YAML (required)
+- `--config <path>`: System config YAML
+- `--output <path>`: Output directory
+- `--target <runtime>`: Runtime ID (win-x64, linux-x64)
+- `--verbose`: Verbose logging
+
+### Examples
+```bash
+# Beacon
+dotnet run --project Pulsar.Compiler -- beacon --rules=my-rules.yaml --config=system_config.yaml --output=MyBeacon
+
+# Test only
+dotnet run --project Pulsar.Compiler -- test --rules=my-rules.yaml --config=system_config.yaml
+```
+
+## AOT Implementation
+
+Pulsar now outputs fully AOT-compatible Beacon projects via template-based code generation.
+
+### Overview
+
+- Transitioned from Pulsar.Runtime to templates in `Pulsar.Compiler/Config/Templates`
+- Generates standalone C# solution with runtime, tests, and trimming support
+
+### Goals
+
+- AOT compatibility & trimming
+- Standalone execution
+- Enhanced debugging traceability
+
+### Key Components
+
+1. **CodeGenerator** with fixed generators for AOT
+2. **BeaconTemplateManager**: scaffolds solution & projects
+3. **BeaconBuildOrchestrator**: generates and builds via dotnet CLI
+4. **Enhanced Redis Integration**
+5. **Temporal Buffer** supporting object values
+
+### Status
+
+- **Completed**: Template migration, AOT compatibility, Redis, testing
+- **In Progress**: Documentation updates (now done), performance tuning
+
+## Testing Guide
+
+This section consolidates testing instructions from the Testing Guide.
+
+### Test Categories
+
+- Rule parsing & validation
+- AOT compilation tests
+- Runtime execution (Beacon + Redis)
+- Performance & memory usage
+- Temporal rule behavior tests
+
+### End-to-End Tests via MSBuild
+
+```bash
+dotnet msbuild build/PulsarSuite.core.build /t:RunEndToEnd -p:ProjectName=MyProject
+```
+
+### Running Tests
+
+```bash
+dotnet test --filter "Category=Integration"
+```
+
+### Testing with Redis
+
+Uses TestContainers to spin up Redis; requires Docker.
