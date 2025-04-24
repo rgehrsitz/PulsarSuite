@@ -401,8 +401,17 @@ namespace Pulsar.Tests.Mocks
 
         public async Task<long> PublishAsync(string channel, string message)
         {
+            if (!_subscribers.TryGetValue(channel, out var handlers) || handlers.Count == 0)
+            {
+                // If there are no subscribers, return 0 as per Redis behavior
+                return 0L;
+            }
+            
+            // Deliver message to subscribers
             await SendMessage(channel, message);
-            return 1L; // Assume message was delivered to one subscriber
+            
+            // Return the number of subscribers that received the message
+            return handlers.Count;
         }
 
         public Task<bool> HashSetAsync(string key, string field, string value)

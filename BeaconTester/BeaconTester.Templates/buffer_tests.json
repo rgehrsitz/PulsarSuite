@@ -3,29 +3,90 @@
   "description": "Comprehensive tests for temporal buffer functionality",
   "steps": [
     {
-      "name": "Initialize buffer with values",
-      "description": "Set initial values for buffer testing",
+      "name": "Initialize buffer with initial values",
+      "description": "Set up the buffer with a mix of values above and below threshold",
       "inputs": [
         {
-          "key": "input:sensor",
-          "value": 100,
+          "key": "input:temperature",
+          "value": 20.0,
+          "format": "double"
+        },
+        {
+          "key": "input:sensor1",
+          "value": 40.0,
+          "format": "double"
+        },
+        {
+          "key": "input:sensor2",
+          "value": 60.0,
           "format": "double"
         },
         {
           "key": "input:timestamp",
-          "value": "${now-3500}",
+          "value": "${now-6000}",
           "format": "long"
         }
       ],
-      "delay": 100
+      "delay": 100,
+      "expectations": [
+        {
+          "key": "output:value_stored",
+          "expected": true,
+          "validator": "boolean"
+        }
+      ]
     },
     {
-      "name": "Add second value in window",
-      "description": "Add value within the time window",
+      "name": "Add values above threshold",
+      "description": "Add values that are all above the threshold",
       "inputs": [
         {
-          "key": "input:sensor",
-          "value": 200,
+          "key": "input:temperature",
+          "value": 55.0,
+          "format": "double"
+        },
+        {
+          "key": "input:sensor1",
+          "value": 65.0,
+          "format": "double"
+        },
+        {
+          "key": "input:sensor2",
+          "value": 75.0,
+          "format": "double"
+        },
+        {
+          "key": "input:timestamp",
+          "value": "${now-4000}",
+          "format": "long"
+        }
+      ],
+      "delay": 100,
+      "expectations": [
+        {
+          "key": "output:value_stored",
+          "expected": true,
+          "validator": "boolean"
+        }
+      ]
+    },
+    {
+      "name": "Add more values above threshold",
+      "description": "Continue adding values above threshold to create duration",
+      "inputs": [
+        {
+          "key": "input:temperature",
+          "value": 58.0,
+          "format": "double"
+        },
+        {
+          "key": "input:sensor1",
+          "value": 68.0,
+          "format": "double"
+        },
+        {
+          "key": "input:sensor2",
+          "value": 78.0,
           "format": "double"
         },
         {
@@ -34,15 +95,351 @@
           "format": "long"
         }
       ],
-      "delay": 100
+      "delay": 100,
+      "expectations": [
+        {
+          "key": "output:value_stored",
+          "expected": true,
+          "validator": "boolean"
+        }
+      ]
     },
     {
-      "name": "Add third value in window",
-      "description": "Add another value within the time window",
+      "name": "Validate threshold exceeded for duration",
+      "description": "Check that the temperature is above threshold for the required duration",
       "inputs": [
         {
-          "key": "input:sensor",
-          "value": 300,
+          "key": "input:command",
+          "value": "check_threshold_duration",
+          "format": "string"
+        },
+        {
+          "key": "input:sensor_key",
+          "value": "temperature",
+          "format": "string"
+        },
+        {
+          "key": "input:threshold",
+          "value": 50.0,
+          "format": "double"
+        },
+        {
+          "key": "input:duration_ms",
+          "value": 4000,
+          "format": "long"
+        },
+        {
+          "key": "input:extend_last_known",
+          "value": false,
+          "format": "boolean"
+        },
+        {
+          "key": "input:timestamp",
+          "value": "${now}",
+          "format": "long"
+        }
+      ],
+      "delay": 200,
+      "expectations": [
+        {
+          "key": "output:is_above_threshold",
+          "expected": true,
+          "validator": "boolean"
+        }
+      ]
+    },
+    {
+      "name": "Test guard value behavior",
+      "description": "Test with a value below threshold followed by values above threshold",
+      "inputs": [
+        {
+          "key": "input:guard_test",
+          "value": 25.0,
+          "format": "double"
+        },
+        {
+          "key": "input:timestamp",
+          "value": "${now-6000}",
+          "format": "long"
+        }
+      ],
+      "delay": 100,
+      "expectations": [
+        {
+          "key": "output:value_stored",
+          "expected": true,
+          "validator": "boolean"
+        }
+      ]
+    },
+    {
+      "name": "Add values above threshold after guard",
+      "description": "Add values above threshold after the guard value",
+      "inputs": [
+        {
+          "key": "input:guard_test",
+          "value": 60.0,
+          "format": "double"
+        },
+        {
+          "key": "input:timestamp",
+          "value": "${now-4000}",
+          "format": "long"
+        }
+      ],
+      "delay": 100,
+      "expectations": [
+        {
+          "key": "output:value_stored",
+          "expected": true,
+          "validator": "boolean"
+        }
+      ]
+    },
+    {
+      "name": "Continue adding values above threshold",
+      "description": "More values above threshold to build duration",
+      "inputs": [
+        {
+          "key": "input:guard_test",
+          "value": 65.0,
+          "format": "double"
+        },
+        {
+          "key": "input:timestamp",
+          "value": "${now-2000}",
+          "format": "long"
+        }
+      ],
+      "delay": 100,
+      "expectations": [
+        {
+          "key": "output:value_stored",
+          "expected": true,
+          "validator": "boolean"
+        }
+      ]
+    },
+    {
+      "name": "Validate includeOlder with guard value works",
+      "description": "Verify that the guard value is correctly included for validation",
+      "inputs": [
+        {
+          "key": "input:command",
+          "value": "check_guard_behavior",
+          "format": "string"
+        },
+        {
+          "key": "input:sensor_key",
+          "value": "guard_test",
+          "format": "string"
+        },
+        {
+          "key": "input:threshold",
+          "value": 50.0,
+          "format": "double"
+        },
+        {
+          "key": "input:duration_ms",
+          "value": 4000,
+          "format": "long"
+        },
+        {
+          "key": "input:include_older",
+          "value": true,
+          "format": "boolean"
+        },
+        {
+          "key": "input:timestamp",
+          "value": "${now}",
+          "format": "long"
+        }
+      ],
+      "delay": 200,
+      "expectations": [
+        {
+          "key": "output:include_older_working",
+          "expected": true,
+          "validator": "boolean"
+        },
+        {
+          "key": "output:guard_value_count",
+          "expected": 3,
+          "validator": "numeric"
+        }
+      ]
+    },
+    {
+      "name": "Test below threshold condition",
+      "description": "Test the below threshold condition with includeOlder",
+      "inputs": [
+        {
+          "key": "input:below_test",
+          "value": 80.0,
+          "format": "double"
+        },
+        {
+          "key": "input:timestamp",
+          "value": "${now-6000}",
+          "format": "long"
+        }
+      ],
+      "delay": 100,
+      "expectations": [
+        {
+          "key": "output:value_stored",
+          "expected": true,
+          "validator": "boolean"
+        }
+      ]
+    },
+    {
+      "name": "Add values below threshold",
+      "description": "Add values below the specified threshold",
+      "inputs": [
+        {
+          "key": "input:below_test",
+          "value": 30.0,
+          "format": "double"
+        },
+        {
+          "key": "input:timestamp",
+          "value": "${now-4000}",
+          "format": "long"
+        }
+      ],
+      "delay": 100,
+      "expectations": [
+        {
+          "key": "output:value_stored",
+          "expected": true,
+          "validator": "boolean"
+        }
+      ]
+    },
+    {
+      "name": "Continue with values below threshold",
+      "description": "Add more values below threshold",
+      "inputs": [
+        {
+          "key": "input:below_test",
+          "value": 25.0,
+          "format": "double"
+        },
+        {
+          "key": "input:timestamp",
+          "value": "${now-2000}",
+          "format": "long"
+        }
+      ],
+      "delay": 100,
+      "expectations": [
+        {
+          "key": "output:value_stored",
+          "expected": true,
+          "validator": "boolean"
+        }
+      ]
+    },
+    {
+      "name": "Validate below threshold condition",
+      "description": "Verify that below threshold condition works correctly",
+      "inputs": [
+        {
+          "key": "input:command",
+          "value": "check_below_threshold",
+          "format": "string"
+        },
+        {
+          "key": "input:sensor_key",
+          "value": "below_test",
+          "format": "string"
+        },
+        {
+          "key": "input:threshold",
+          "value": 50.0,
+          "format": "double"
+        },
+        {
+          "key": "input:duration_ms",
+          "value": 4000,
+          "format": "long"
+        },
+        {
+          "key": "input:include_older",
+          "value": true,
+          "format": "boolean"
+        },
+        {
+          "key": "input:timestamp",
+          "value": "${now}",
+          "format": "long"
+        }
+      ],
+      "delay": 200,
+      "expectations": [
+        {
+          "key": "output:is_below_threshold",
+          "expected": true,
+          "validator": "boolean"
+        }
+      ]
+    },
+    {
+      "name": "Test window function",
+      "description": "Test the window function for filtering values by time",
+      "inputs": [
+        {
+          "key": "input:window_test",
+          "value": 10.0,
+          "format": "double"
+        },
+        {
+          "key": "input:timestamp",
+          "value": "${now-4000}",
+          "format": "long"
+        }
+      ],
+      "delay": 100,
+      "expectations": [
+        {
+          "key": "output:value_stored",
+          "expected": true,
+          "validator": "boolean"
+        }
+      ]
+    },
+    {
+      "name": "Add more values for window test",
+      "description": "Add additional values at different timestamps",
+      "inputs": [
+        {
+          "key": "input:window_test",
+          "value": 20.0,
+          "format": "double"
+        },
+        {
+          "key": "input:timestamp",
+          "value": "${now-2000}",
+          "format": "long"
+        }
+      ],
+      "delay": 100,
+      "expectations": [
+        {
+          "key": "output:value_stored",
+          "expected": true,
+          "validator": "boolean"
+        }
+      ]
+    },
+    {
+      "name": "Add more values for window test",
+      "description": "Add current value",
+      "inputs": [
+        {
+          "key": "input:window_test",
+          "value": 30.0,
           "format": "double"
         },
         {
@@ -51,41 +448,38 @@
           "format": "long"
         }
       ],
-      "delay": 100
-    },
-    {
-      "name": "Compute window average",
-      "description": "Compute average of values in the time window",
-      "inputs": [
-        {
-          "key": "input:command",
-          "value": "compute",
-          "format": "string"
-        },
-        {
-          "key": "input:timestamp",
-          "value": "${now}",
-          "format": "long"
-        }
-      ],
-      "delay": 300,
+      "delay": 100,
       "expectations": [
         {
-          "key": "output:window_avg",
-          "expected": 200,
-          "validator": "numeric",
-          "tolerance": 0.1
+          "key": "output:value_stored",
+          "expected": true,
+          "validator": "boolean"
         }
       ]
     },
     {
-      "name": "Check guard value",
-      "description": "Verify the guard value (oldest value outside window) is available with includeOlder",
+      "name": "Validate window function",
+      "description": "Verify that window function correctly filters values by time",
       "inputs": [
         {
           "key": "input:command",
-          "value": "check_guard",
+          "value": "check_window_function",
           "format": "string"
+        },
+        {
+          "key": "input:sensor_key",
+          "value": "window_test",
+          "format": "string"
+        },
+        {
+          "key": "input:window_ms",
+          "value": 3000,
+          "format": "long"
+        },
+        {
+          "key": "input:include_older",
+          "value": false,
+          "format": "boolean"
         },
         {
           "key": "input:timestamp",
@@ -93,12 +487,56 @@
           "format": "long"
         }
       ],
-      "delay": 300,
+      "delay": 200,
       "expectations": [
         {
-          "key": "output:guard_value",
-          "expected": 100,
+          "key": "output:window_value_count",
+          "expected": 2,
           "validator": "numeric"
+        }
+      ]
+    },
+    {
+      "name": "Validate window function with includeOlder",
+      "description": "Verify window function includes guard value when requested",
+      "inputs": [
+        {
+          "key": "input:command",
+          "value": "check_window_with_guard",
+          "format": "string"
+        },
+        {
+          "key": "input:sensor_key",
+          "value": "window_test",
+          "format": "string"
+        },
+        {
+          "key": "input:window_ms",
+          "value": 3000,
+          "format": "long"
+        },
+        {
+          "key": "input:include_older",
+          "value": true,
+          "format": "boolean"
+        },
+        {
+          "key": "input:timestamp",
+          "value": "${now}",
+          "format": "long"
+        }
+      ],
+      "delay": 200,
+      "expectations": [
+        {
+          "key": "output:window_value_count",
+          "expected": 3,
+          "validator": "numeric"
+        },
+        {
+          "key": "output:includes_guard_value",
+          "expected": true,
+          "validator": "boolean"
         }
       ]
     }

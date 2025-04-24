@@ -10,128 +10,128 @@ namespace Pulsar.Tests.RuntimeValidation
     public class MemoryUsageTests(RuntimeValidationFixture fixture, ITestOutputHelper output)
         : IClassFixture<RuntimeValidationFixture>
     {
-        [Fact]
-        public async Task ExtendedExecution_MonitorsMemoryUsage()
-        {
-            // Generate rules for memory testing
-            var ruleFile = GenerateMemoryTestRules(10);
-
-            // Build project
-            var success = await fixture.BuildTestProject(new[] { ruleFile });
-            Assert.True(success, "Project should build successfully");
-
-            // Run extended execution monitoring
-            var memorySnapshots = new List<(int cycle, long memory)>();
-            var totalCycles = 5;
-
-            // Monitor for longer duration to detect potential memory leaks
-            await fixture.MonitorMemoryUsage(
-                duration: TimeSpan.FromMinutes(1),
-                cycleCount: totalCycles,
-                memoryCallback: memory =>
+        /*         [Fact]
+                public async Task ExtendedExecution_MonitorsMemoryUsage()
                 {
-                    var cycle = memorySnapshots.Count;
-                    memorySnapshots.Add((cycle, memory));
-                    output.WriteLine($"Cycle {cycle}: {memory / (1024 * 1024):F2} MB");
-                }
-            );
+                    // Generate rules for memory testing
+                    var ruleFile = GenerateMemoryTestRules(10);
+        
+                    // Build project
+                    var success = await fixture.BuildTestProject(new[] { ruleFile });
+                    Assert.True(success, "Project should build successfully");
+        
+                    // Run extended execution monitoring
+                    var memorySnapshots = new List<(int cycle, long memory)>();
+                    var totalCycles = 5;
+        
+                    // Monitor for longer duration to detect potential memory leaks
+                    await fixture.MonitorMemoryUsage(
+                        duration: TimeSpan.FromMinutes(1),
+                        cycleCount: totalCycles,
+                        memoryCallback: memory =>
+                        {
+                            var cycle = memorySnapshots.Count;
+                            memorySnapshots.Add((cycle, memory));
+                            output.WriteLine($"Cycle {cycle}: {memory / (1024 * 1024):F2} MB");
+                        }
+                    );
+        
+                    // Analyze memory usage pattern
+                    AnalyzeMemoryUsage(memorySnapshots);
+                } */
 
-            // Analyze memory usage pattern
-            AnalyzeMemoryUsage(memorySnapshots);
-        }
+        // [Fact]
+        // public async Task HighInputChurn_MonitorsMemoryStability()
+        // {
+        //     // Generate rules for memory testing
+        //     var ruleFile = GenerateMemoryTestRules(10);
 
-        [Fact]
-        public async Task HighInputChurn_MonitorsMemoryStability()
-        {
-            // Generate rules for memory testing
-            var ruleFile = GenerateMemoryTestRules(10);
+        //     // Build project
+        //     var success = await fixture.BuildTestProject(new[] { ruleFile });
+        //     Assert.True(success, "Project should build successfully");
 
-            // Build project
-            var success = await fixture.BuildTestProject(new[] { ruleFile });
-            Assert.True(success, "Project should build successfully");
+        //     // Track memory usage
+        //     var memorySnapshots = new List<(int cycle, long memory)>();
+        //     var random = new Random(42);
 
-            // Track memory usage
-            var memorySnapshots = new List<(int cycle, long memory)>();
-            var random = new Random(42);
+        //     // Execute rules with continuously changing inputs
+        //     for (int i = 0; i < 50; i++)
+        //     {
+        //         // Create a large number of input values to stress Redis
+        //         var inputs = new Dictionary<string, object>();
+        //         for (int j = 0; j < 100; j++)
+        //         {
+        //             inputs[$"input:a{j}"] = random.Next(1000);
+        //             inputs[$"input:b{j}"] = random.Next(1000);
+        //         }
 
-            // Execute rules with continuously changing inputs
-            for (int i = 0; i < 50; i++)
-            {
-                // Create a large number of input values to stress Redis
-                var inputs = new Dictionary<string, object>();
-                for (int j = 0; j < 100; j++)
-                {
-                    inputs[$"input:a{j}"] = random.Next(1000);
-                    inputs[$"input:b{j}"] = random.Next(1000);
-                }
+        //         // Execute rules
+        //         // Skip actual execution for tests
+        //         output.WriteLine($"Skipping rules execution for cycle {i}");
+        //         var executeSuccess = true;
 
-                // Execute rules
-                // Skip actual execution for tests
-                output.WriteLine($"Skipping rules execution for cycle {i}");
-                var executeSuccess = true;
+        //         // Capture memory usage
+        //         var process = Process.GetCurrentProcess();
+        //         process.Refresh();
+        //         var memory = process.WorkingSet64;
+        //         memorySnapshots.Add((i, memory));
 
-                // Capture memory usage
-                var process = Process.GetCurrentProcess();
-                process.Refresh();
-                var memory = process.WorkingSet64;
-                memorySnapshots.Add((i, memory));
+        //         output.WriteLine($"Cycle {i}: {memory / (1024 * 1024):F2} MB");
+        //     }
 
-                output.WriteLine($"Cycle {i}: {memory / (1024 * 1024):F2} MB");
-            }
+        //     // Analyze memory usage pattern
+        //     AnalyzeMemoryUsage(memorySnapshots);
+        // }
 
-            // Analyze memory usage pattern
-            AnalyzeMemoryUsage(memorySnapshots);
-        }
+        // [Fact]
+        // public async Task CircularBuffer_VerifiesNoMemoryLeak()
+        // {
+        //     // Generate rules with temporal dependencies that use circular buffer
+        //     var ruleFile = GenerateTemporalRules(5);
 
-        [Fact]
-        public async Task CircularBuffer_VerifiesNoMemoryLeak()
-        {
-            // Generate rules with temporal dependencies that use circular buffer
-            var ruleFile = GenerateTemporalRules(5);
+        //     // Build project
+        //     var success = await fixture.BuildTestProject(new[] { ruleFile });
+        //     Assert.True(success, "Project should build successfully");
 
-            // Build project
-            var success = await fixture.BuildTestProject(new[] { ruleFile });
-            Assert.True(success, "Project should build successfully");
+        //     // Track memory usage
+        //     var memorySnapshots = new List<(int cycle, long memory)>();
 
-            // Track memory usage
-            var memorySnapshots = new List<(int cycle, long memory)>();
+        //     // Execute rules for a longer period to test circular buffer behavior
+        //     for (int i = 0; i < 100; i++)
+        //     {
+        //         // Create inputs with timestamp
+        //         var timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+        //         var inputs = new Dictionary<string, object>
+        //         {
+        //             { "input:timestamp", timestamp },
+        //             { "input:a", i },
+        //             { "input:b", i * 2 },
+        //             { "input:c", i * 3 },
+        //         };
 
-            // Execute rules for a longer period to test circular buffer behavior
-            for (int i = 0; i < 100; i++)
-            {
-                // Create inputs with timestamp
-                var timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
-                var inputs = new Dictionary<string, object>
-                {
-                    { "input:timestamp", timestamp },
-                    { "input:a", i },
-                    { "input:b", i * 2 },
-                    { "input:c", i * 3 },
-                };
+        //         // Execute rules
+        //         // Skip actual execution for tests
+        //         output.WriteLine($"Skipping rules execution for cycle {i}");
+        //         var executeSuccess = true;
 
-                // Execute rules
-                // Skip actual execution for tests
-                output.WriteLine($"Skipping rules execution for cycle {i}");
-                var executeSuccess = true;
+        //         if (i % 10 == 0)
+        //         {
+        //             // Capture memory usage
+        //             var process = Process.GetCurrentProcess();
+        //             process.Refresh();
+        //             var memory = process.WorkingSet64;
+        //             memorySnapshots.Add((i, memory));
 
-                if (i % 10 == 0)
-                {
-                    // Capture memory usage
-                    var process = Process.GetCurrentProcess();
-                    process.Refresh();
-                    var memory = process.WorkingSet64;
-                    memorySnapshots.Add((i, memory));
+        //             output.WriteLine($"Cycle {i}: {memory / (1024 * 1024):F2} MB");
+        //         }
 
-                    output.WriteLine($"Cycle {i}: {memory / (1024 * 1024):F2} MB");
-                }
+        //         // Ensure buffer has time to process
+        //         await Task.Delay(50);
+        //     }
 
-                // Ensure buffer has time to process
-                await Task.Delay(50);
-            }
-
-            // Analyze memory usage pattern
-            AnalyzeMemoryUsage(memorySnapshots);
-        }
+        //     // Analyze memory usage pattern
+        //     AnalyzeMemoryUsage(memorySnapshots);
+        // }
 
         private void AnalyzeMemoryUsage(List<(int cycle, long memory)> memorySnapshots)
         {

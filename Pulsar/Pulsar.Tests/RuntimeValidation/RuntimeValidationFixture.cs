@@ -2,6 +2,7 @@
 
 
 using System.Diagnostics;
+using System.Text;
 using Microsoft.Extensions.Logging;
 using Pulsar.Compiler.Config;
 using Pulsar.Compiler.Core;
@@ -209,6 +210,64 @@ namespace Pulsar.Tests.RuntimeValidation
                     return false;
                 }
                 
+                // Actually build the generated project
+                var beaconDir = Path.Combine(_testOutputPath, "Beacon");
+                if (!Directory.Exists(beaconDir))
+                {
+                    _logger.LogError("Beacon directory not found at {Path}", beaconDir);
+                    return false;
+                }
+                
+                // Run dotnet build on the Beacon.Runtime project
+                var processStartInfo = new ProcessStartInfo
+                {
+                    FileName = "dotnet",
+                    Arguments = $"build -c Debug",
+                    WorkingDirectory = beaconDir,
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                    UseShellExecute = false,
+                    CreateNoWindow = true,
+                };
+                
+                var process = new Process
+                {
+                    StartInfo = processStartInfo,
+                    EnableRaisingEvents = true,
+                };
+                
+                var outputBuilder = new StringBuilder();
+                var errorBuilder = new StringBuilder();
+                
+                process.OutputDataReceived += (sender, e) =>
+                {
+                    if (!string.IsNullOrEmpty(e.Data))
+                    {
+                        _logger.LogInformation("[Build] {Output}", e.Data);
+                        outputBuilder.AppendLine(e.Data);
+                    }
+                };
+                
+                process.ErrorDataReceived += (sender, e) =>
+                {
+                    if (!string.IsNullOrEmpty(e.Data))
+                    {
+                        _logger.LogError("[Build] {Error}", e.Data);
+                        errorBuilder.AppendLine(e.Data);
+                    }
+                };
+                
+                process.Start();
+                process.BeginOutputReadLine();
+                process.BeginErrorReadLine();
+                await process.WaitForExitAsync();
+                
+                if (process.ExitCode != 0)
+                {
+                    _logger.LogError("Failed to build Beacon project: {Error}", errorBuilder.ToString());
+                    return false;
+                }
+                
                 _logger.LogInformation("Successfully built Beacon project with AOT compatibility");
                 return true;
             }
@@ -232,10 +291,30 @@ namespace Pulsar.Tests.RuntimeValidation
                 // Start a process to monitor memory usage
                 _ = MonitorMemoryUsage(TimeSpan.FromMinutes(5), 10);
                 // Execute the rules
+                // Try to find the compiled DLL
+                var dllPath = FindCompiledAssembly();
+                
+                if (string.IsNullOrEmpty(dllPath) || !File.Exists(dllPath))
+                {
+                    _logger.LogError("Compiled assembly not found");
+                    return (false, null);
+                }
+                
+                _logger.LogInformation("Found compiled assembly at {Path}", dllPath);
+                
+                // Create inputs file for the test if provided
+                if (inputs != null && inputs.Count > 0)
+                {
+                    var inputsJson = System.Text.Json.JsonSerializer.Serialize(inputs);
+                    var inputsPath = Path.Combine(_testOutputPath, "test-inputs.json");
+                    await File.WriteAllTextAsync(inputsPath, inputsJson);
+                    _logger.LogInformation("Created inputs file at {Path} with {Count} inputs", inputsPath, inputs.Count);
+                }
+                
                 var processStartInfo = new ProcessStartInfo
                 {
                     FileName = "dotnet",
-                    Arguments = $"{Path.Combine(_testOutputPath, "Beacon.Runtime.Test.dll")}",
+                    Arguments = $"{dllPath}",
                     RedirectStandardOutput = true,
                     RedirectStandardError = true,
                     UseShellExecute = false,
@@ -246,11 +325,19 @@ namespace Pulsar.Tests.RuntimeValidation
                     StartInfo = processStartInfo,
                     EnableRaisingEvents = true,
                 };
+                var jsonOutputs = new List<string>();
+                
                 process.OutputDataReceived += (sender, e) =>
                 {
                     if (!string.IsNullOrEmpty(e.Data))
                     {
                         _logger.LogInformation("[Beacon] {Output}", e.Data);
+                        
+                        // Check if the output is a JSON object (outputs from the rules)
+                        if (e.Data.TrimStart().StartsWith("{") && e.Data.TrimEnd().EndsWith("}"))
+                        {
+                            jsonOutputs.Add(e.Data);
+                        }
                     }
                 };
                 process.ErrorDataReceived += (sender, e) =>
@@ -265,8 +352,28 @@ namespace Pulsar.Tests.RuntimeValidation
                 process.BeginErrorReadLine();
                 // Wait for the process to exit
                 await process.WaitForExitAsync();
+                
+                // Parse outputs if available
+                Dictionary<string, object>? outputDict = null;
+                if (jsonOutputs.Count > 0)
+                {
+                    _logger.LogInformation("Found {Count} JSON outputs from rule execution", jsonOutputs.Count);
+                    
+                    try
+                    {
+                        // Use the last JSON output (should contain the final state)
+                        var lastOutput = jsonOutputs.Last();
+                        outputDict = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, object>>(lastOutput);
+                        _logger.LogInformation("Parsed outputs: {Keys}", outputDict != null ? string.Join(", ", outputDict.Keys) : "none");
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Failed to parse rule outputs");
+                    }
+                }
+                
                 // Memory monitoring will stop automatically after the specified duration
-                return (process.ExitCode == 0, null);
+                return (process.ExitCode == 0, outputDict);
             }
             catch (Exception ex)
             {
@@ -471,6 +578,70 @@ bufferCapacity: 100";
             }
 
             return TestUtilities.RedisUtilities.CreateRedisConfig(_redisContainer);
+        }
+        
+        /// <summary>
+        /// Searches for the compiled assembly in the output directory
+        /// </summary>
+        /// <returns>Path to the compiled assembly or null if not found</returns>
+        private string? FindCompiledAssembly()
+        {
+            _logger.LogInformation("Searching for compiled assembly...");
+            
+            // Common paths to check
+            var possiblePaths = new List<string>
+            {
+                // Standard path for a project compiled with dotnet build
+                Path.Combine(_testOutputPath, "Beacon", "bin", "Debug", "net9.0", "Beacon.Runtime.Test.dll"),
+                
+                // Search in the root of the output directory
+                Path.Combine(_testOutputPath, "Beacon.Runtime.Test.dll"),
+                
+                // Check in runtime subdirectory
+                Path.Combine(_testOutputPath, "Beacon", "Beacon.Runtime", "bin", "Debug", "net9.0", "Beacon.Runtime.Test.dll"),
+                
+                // Check in the direct output directory structure
+                Path.Combine(_testOutputPath, "Beacon.Runtime.Test", "bin", "Debug", "net9.0", "Beacon.Runtime.Test.dll")
+            };
+            
+            // Check each path
+            foreach (var path in possiblePaths)
+            {
+                _logger.LogDebug("Checking for assembly at {Path}", path);
+                if (File.Exists(path))
+                {
+                    _logger.LogInformation("Found compiled assembly at {Path}", path);
+                    return path;
+                }
+            }
+            
+            // If none of the specific paths worked, search recursively
+            _logger.LogInformation("Searching recursively for the DLL...");
+            var foundFiles = Directory.GetFiles(_testOutputPath, "Beacon.Runtime.Test.dll", SearchOption.AllDirectories);
+            
+            if (foundFiles.Length > 0)
+            {
+                _logger.LogInformation("Found {Count} possible assemblies", foundFiles.Length);
+                foreach (var file in foundFiles)
+                {
+                    _logger.LogDebug("Found: {Path}", file);
+                }
+                
+                // Return the first match that has 'bin' in the path (most likely the actual build output)
+                var binPath = foundFiles.FirstOrDefault(p => p.Contains("bin"));
+                if (!string.IsNullOrEmpty(binPath))
+                {
+                    _logger.LogInformation("Selected assembly in bin directory: {Path}", binPath);
+                    return binPath;
+                }
+                
+                // Otherwise just return the first one
+                _logger.LogInformation("Selected first found assembly: {Path}", foundFiles[0]);
+                return foundFiles[0];
+            }
+            
+            _logger.LogError("No compiled assembly found");
+            return null;
         }
     }
 }

@@ -1,0 +1,14 @@
+rules:
+  - name: SimpleRule
+    description: A simple test rule
+    conditions:
+      all:
+        - condition:
+            type: comparison
+            sensor: input:a
+            operator: '>'
+            value: 0
+    actions:
+      - set_value:
+          key: output:sum
+          value_expression: 'input:a + input:b'

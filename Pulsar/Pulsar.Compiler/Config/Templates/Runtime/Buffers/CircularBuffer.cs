@@ -252,8 +252,9 @@ namespace Beacon.Runtime.Buffers
             bool extendLastKnown = false
         )
         {
-            // For extended mode, pass includeOlder=true to obtain fallback data.
-            var values = GetValues(duration, includeOlder: extendLastKnown)
+            // In strict mode (extendLastKnown == false), we need a guard value to properly evaluate the threshold
+            // Always include the older value as a guard regardless of extendLastKnown mode, for consistency with IsAboveThresholdForDuration
+            var values = GetValues(duration, includeOlder: true)
                 .OrderBy(v => v.Timestamp)
                 .ToList();
 
