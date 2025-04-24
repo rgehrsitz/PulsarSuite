@@ -89,7 +89,7 @@ dotnet test output/dist/ThresholdOverTimeExample/Beacon/Beacon.Tests/Beacon.Test
 # IMPORTANT: You must start the Beacon runtime before running BeaconTester scenarios. Leave this process running in a separate terminal.
 # NOTE: The published runtime is located at:
 # output/dist/ThresholdOverTimeExample/Beacon/Beacon.Runtime/bin/Release/net9.0/linux-x64/publish/Beacon.Runtime
-./output/dist/ThresholdOverTimeExample/Beacon/Beacon.Runtime/bin/Release/net9.0/linux-x64/publish/Beacon.Runtime
+./output/dist/ThresholdOverTimeExample/Beacon/Beacon.Runtime/bin/Debug/net9.0/linux-x64/Beacon.Runtime
 
 # 7. Generate & Run BeaconTester Scenarios
 dotnet run --project BeaconTester/BeaconTester.Runner/BeaconTester.Runner.csproj generate --rules=src/Rules/ThresholdOverTimeExample/rules/threshold_over_time_rules.yaml --output=output/dist/ThresholdOverTimeExample/test_scenarios.json
