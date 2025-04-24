@@ -581,6 +581,10 @@ namespace Pulsar.Compiler.Config
                 "Runtime/Services/MetricsService.cs",
                 Path.Combine(servicesDir, "MetricsService.cs")
             );
+            CopyTemplateFile(
+                "Runtime/Services/LoggingService.cs",
+                Path.Combine(servicesDir, "LoggingService.cs")
+            );
 
             // Fix service file references to use Models namespace
             UpdateServiceFiles(servicesDir);
