@@ -15,7 +15,7 @@ namespace BeaconTester.Core.Redis
         private readonly ConnectionMultiplexer _redis;
         private readonly IDatabase _db;
         private readonly TimeSpan _errorThrottleWindow = TimeSpan.FromSeconds(60);
-        private readonly Dictionary<string, DateTime> _lastErrorTime = new();
+        private readonly Dictionary<string, DateTime> _lastErrorTime = [];
         private readonly JsonSerializerOptions _jsonOptions =
             new() { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
         private bool _disposed;
@@ -93,7 +93,7 @@ namespace BeaconTester.Core.Redis
                     {
                         case RedisDataFormat.String:
                             // Special handling for boolean values to ensure consistent representation
-                            string value = input.Value is bool boolValue
+                            string? value = input.Value is bool boolValue
                                 ? boolValue.ToString() // "True" or "False" with capital first letter
                                 : input.Value.ToString();
                                 

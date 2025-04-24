@@ -469,10 +469,14 @@ namespace BeaconTester.RuleAnalyzer.Generation
         /// Finds all temporal conditions in a rule
         /// </summary>
         public List<ThresholdOverTimeCondition> FindTemporalConditions(
-            ConditionDefinition condition
+            ConditionDefinition? condition
         )
         {
             var temporalConditions = new List<ThresholdOverTimeCondition>();
+            if (condition == null)
+            {
+                return temporalConditions;
+            }
 
             if (condition is ThresholdOverTimeCondition temporal)
             {

@@ -7,56 +7,32 @@ using Serilog.Formatting.Compact;
 
 namespace Beacon.Runtime.Services
 {
+    /// <summary>
+    /// Redis-specific logging configuration
+    /// </summary>
     public static class RedisLoggingConfiguration
     {
         private const string DefaultLogPath = "logs/redis/redis-{Date}.log";
 
+        /// <summary>
+        /// Configures a Serilog logger specifically for Redis operations
+        /// </summary>
+        /// <param name="config">Redis configuration</param>
+        /// <param name="logPath">Optional custom log path</param>
+        /// <returns>Configured Serilog ILogger</returns>
         public static ILogger ConfigureRedisLogger(
             RedisConfiguration config,
             string? logPath = null
         )
         {
-            var loggerConfig = new LoggerConfiguration()
-                .MinimumLevel.Debug()
-                .MinimumLevel.Override("Microsoft", LogEventLevel.Warning)
-                .MinimumLevel.Override("System", LogEventLevel.Warning)
-                .Enrich.FromLogContext()
-                .Enrich.WithThreadId()
-                .WriteTo.Console(
-                    restrictedToMinimumLevel: LogEventLevel.Information,
-                    outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] [{ThreadId}] Redis: {Message:lj}{NewLine}{Exception}"
-                );
-
-            // Configure file logging
-            var path = logPath ?? DefaultLogPath;
-            loggerConfig.WriteTo.File(
-                new CompactJsonFormatter(),
-                path,
-                rollingInterval: RollingInterval.Day,
-                retainedFileCountLimit: 7,
-                restrictedToMinimumLevel: LogEventLevel.Debug
-            );
-
-            // Add structured event logging for metrics
-            loggerConfig.WriteTo.File(
-                new CompactJsonFormatter(),
-                "logs/redis/metrics/metrics-{Date}.json",
-                restrictedToMinimumLevel: LogEventLevel.Information
-            );
-
-            // Add separate error log
-            loggerConfig.WriteTo.Logger(lc =>
-                lc.Filter.ByIncludingOnly(e => e.Level >= LogEventLevel.Error)
-                    .WriteTo.File(
-                        "logs/redis/errors/error-{Date}.log",
-                        rollingInterval: RollingInterval.Day,
-                        retainedFileCountLimit: 30
-                    )
-            );
-
-            return loggerConfig.CreateLogger();
+            // Simply use the centralized logging service
+            return LoggingService.GetRedisLogger();
         }
 
+        /// <summary>
+        /// Ensures Redis log directories exist - kept for backwards compatibility,
+        /// but LoggingService now handles directory creation
+        /// </summary>
         public static void EnsureLogDirectories()
         {
             var directories = new[] { "logs/redis", "logs/redis/metrics", "logs/redis/errors" };

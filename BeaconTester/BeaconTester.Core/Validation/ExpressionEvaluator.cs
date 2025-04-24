@@ -8,7 +8,7 @@ namespace BeaconTester.Core.Validation
     /// <summary>
     /// Evaluates C# expressions for rule testing, using the same patterns as Beacon runtime
     /// </summary>
-    public class ExpressionEvaluator
+    public partial class ExpressionEvaluator
     {
         private readonly ILogger _logger;
         private readonly Dictionary<string, ScriptRunner<object>> _scriptCache = new();
@@ -108,18 +108,13 @@ namespace BeaconTester.Core.Validation
                 return "true";
             if (expression.Trim().Equals("false", StringComparison.OrdinalIgnoreCase))
                 return "false";
-
-            // Handle string template expressions (expressions with double quotes)
-            // These are typically string concatenation templates
-            bool isStringTemplate = false;
             if (expression.Contains("\""))
             {
-                isStringTemplate = true;
                 _logger.Debug("Detected string template: {Expression}", expression);
             }
 
             // Replace input references with dictionary lookups
-            var translatedExpression = Regex.Replace(expression, @"(input:[a-zA-Z0-9_]+)", match =>
+            var translatedExpression = MyRegex().Replace(expression, match =>
             {
                 string key = match.Groups[1].Value;
                 if (inputs.ContainsKey(key))
@@ -146,7 +141,7 @@ namespace BeaconTester.Core.Validation
             });
 
             // Replace state references
-            translatedExpression = Regex.Replace(translatedExpression, @"(state:[a-zA-Z0-9_]+)", match =>
+            translatedExpression = MyRegex1().Replace(translatedExpression, match =>
             {
                 string key = match.Groups[1].Value;
                 if (inputs.ContainsKey(key))
@@ -173,7 +168,7 @@ namespace BeaconTester.Core.Validation
             });
 
             // Replace output references
-            translatedExpression = Regex.Replace(translatedExpression, @"(output:[a-zA-Z0-9_]+)", match =>
+            translatedExpression = MyRegex2().Replace(translatedExpression, match =>
             {
                 string key = match.Groups[1].Value;
                 if (inputs.ContainsKey(key))
@@ -297,6 +292,13 @@ namespace BeaconTester.Core.Validation
                 return runner;
             }
         }
+
+        [GeneratedRegex(@"(input:[a-zA-Z0-9_]+)")]
+        private static partial Regex MyRegex();
+        [GeneratedRegex(@"(state:[a-zA-Z0-9_]+)")]
+        private static partial Regex MyRegex1();
+        [GeneratedRegex(@"(output:[a-zA-Z0-9_]+)")]
+        private static partial Regex MyRegex2();
     }
 
     /// <summary>

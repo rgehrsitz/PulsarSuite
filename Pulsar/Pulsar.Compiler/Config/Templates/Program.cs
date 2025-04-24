@@ -14,7 +14,7 @@ using Beacon.Runtime.Services;
 using Beacon.Runtime.Generated;
 using Generated;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Logging.Abstractions;
+using Serilog.Events;
 
 namespace Beacon.Runtime
 {
@@ -30,17 +30,29 @@ namespace Beacon.Runtime
         [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(RuleCoordinator))]
         public static async Task Main(string[] args)
         {
-            // Create a logger factory
-            var loggerFactory = LoggerFactory.Create(builder =>
-            {
-                builder.AddConsole();
-            });
-
-            // Get a logger for the Program class
-            var logger = loggerFactory.CreateLogger<Program>();
-            logger.LogInformation("Starting Beacon Runtime Engine");
+            // Parse command line arguments to determine log level
+            LogEventLevel logLevel = LogEventLevel.Information;
+            bool structuredLogging = false;
             
-            // Parse command line arguments for test mode
+            // Check for verbose logging
+            if (args.Contains("--verbose") || args.Contains("-v"))
+            {
+                logLevel = LogEventLevel.Debug;
+            }
+            
+            // Check for debug logging
+            if (args.Contains("--debug") || args.Contains("-d"))
+            {
+                logLevel = LogEventLevel.Verbose;
+            }
+            
+            // Check for structured logging
+            if (args.Contains("--structured-logs") || args.Contains("-s"))
+            {
+                structuredLogging = true;
+            }
+            
+            // Parse for test mode
             bool testMode = args.Contains("--testmode") || args.Contains("-t");
             int testCycleTimeMs = 0;
             
@@ -53,6 +65,17 @@ namespace Beacon.Runtime
                     break;
                 }
             }
+            
+            // Initialize logging system
+            var loggerFactory = LoggingService.Initialize(
+                applicationName: "BeaconRuntime", 
+                logLevel: logLevel,
+                structuredLogging: structuredLogging
+            );
+            
+            // Get a logger for the Program class
+            var logger = loggerFactory.CreateLogger<Program>();
+            logger.LogInformation("Starting Beacon Runtime Engine");
             
             // Output test mode settings if enabled
             if (testMode)
@@ -94,7 +117,7 @@ namespace Beacon.Runtime
                 logger.LogInformation("Prometheus metrics available at http://localhost:9090/metrics");
                 
                 // Initialize runtime orchestrator
-                using var redisService = new RedisService(redisConfig, loggerFactory, metricsService);
+                using var redisService = new RedisService(redisConfig, LoggingService.GetRedisLogger(), metricsService);
                 var orchestratorLogger = loggerFactory.CreateLogger<RuntimeOrchestrator>();
                 var ruleCoordinatorLogger = loggerFactory.CreateLogger<RuleCoordinator>();
                 var orchestrator = new RuntimeOrchestrator(
@@ -137,9 +160,8 @@ namespace Beacon.Runtime
             finally
             {
                 logger.LogInformation("Beacon Runtime Engine stopped");
+                LoggingService.CloseAndFlush();
             }
         }
-        
-
     }
 }
