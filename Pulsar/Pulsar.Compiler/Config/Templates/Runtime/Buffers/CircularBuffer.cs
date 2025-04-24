@@ -137,9 +137,9 @@ namespace Beacon.Runtime.Buffers
             bool extendLastKnown = false
         )
         {
-            // In strict mode (extendLastKnown == false), we now pass includeOlder: true so that we capture
-            // a reading immediately preceding the window as a guard value.
-            var values = GetValues(duration, includeOlder: extendLastKnown ? true : true)
+            // In strict mode (extendLastKnown == false), we need a guard value to properly evaluate the threshold
+            // Always include the older value as a guard regardless of extendLastKnown mode
+            var values = GetValues(duration, includeOlder: true)
                 .OrderBy(v => v.Timestamp)
                 .ToList();
 

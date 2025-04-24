@@ -1,5 +1,5 @@
 // File: Pulsar.Compiler/Config/Templates/Runtime/Models/RedisConfiguration.cs
-// Version: 1.0.0
+// Version: 2.0.0
 
 using System;
 using System.Collections.Generic;
@@ -9,22 +9,25 @@ using YamlDotNet.Serialization;
 
 namespace Beacon.Runtime.Models
 {
+    /// <summary>
+    /// Comprehensive unified Redis configuration for all Pulsar components
+    /// </summary>
     public class RedisConfiguration
     {
         [JsonPropertyName("endpoints")]
         [YamlMember(Alias = "endpoints")]
         [JsonInclude]
-        public List<string> Endpoints { get; set; } = new();
+        public List<string> Endpoints { get; set; } = new List<string> { "localhost:6379" };
 
         [JsonInclude]
         [JsonPropertyName("password")]
         [YamlMember(Alias = "password")]
-        public string Password { get; set; } = string.Empty;
+        public string? Password { get; set; }
 
         [JsonInclude]
         [JsonPropertyName("poolSize")]
         [YamlMember(Alias = "poolSize")]
-        public int PoolSize { get; set; } = 8;
+        public int PoolSize { get; set; } = Environment.ProcessorCount * 2;
 
         [JsonInclude]
         [JsonPropertyName("connectTimeout")]
@@ -61,6 +64,14 @@ namespace Beacon.Runtime.Models
         [YamlMember(Alias = "allowAdmin")]
         public bool AllowAdmin { get; set; } = false;
 
+        [JsonPropertyName("healthCheck")]
+        [YamlMember(Alias = "healthCheck")]
+        public RedisHealthCheckConfig HealthCheck { get; set; } = new RedisHealthCheckConfig();
+
+        [JsonPropertyName("metrics")]
+        [YamlMember(Alias = "metrics")]
+        public RedisMetricsConfig Metrics { get; set; } = new RedisMetricsConfig();
+
         /// <summary>
         /// Converts the configuration to Redis connection options
         /// </summary>
@@ -76,14 +87,68 @@ namespace Beacon.Runtime.Models
                 AbortOnConnectFail = false,
                 AllowAdmin = AllowAdmin,
                 Ssl = Ssl,
+                ReconnectRetryPolicy = new ExponentialRetry(RetryBaseDelayMs),
             };
 
             foreach (var endpoint in Endpoints)
             {
-                options.EndPoints.Add(endpoint);
+                var parts = endpoint.Split(':');
+                if (parts.Length == 2 && int.TryParse(parts[1], out int port))
+                {
+                    options.EndPoints.Add(parts[0], port);
+                }
+                else
+                {
+                    options.EndPoints.Add(endpoint);
+                }
+            }
+
+            if (Endpoints.Count > 1)
+            {
+                options.ServiceName = "PulsarRedisCluster";
             }
 
             return options;
         }
+    }
+
+    /// <summary>
+    /// Configuration for Redis health checks
+    /// </summary>
+    public class RedisHealthCheckConfig
+    {
+        [JsonPropertyName("enabled")]
+        [YamlMember(Alias = "enabled")]
+        public bool Enabled { get; set; } = true;
+
+        [JsonPropertyName("intervalSeconds")]
+        [YamlMember(Alias = "intervalSeconds")]
+        public int HealthCheckIntervalSeconds { get; set; } = 30;
+
+        [JsonPropertyName("failureThreshold")]
+        [YamlMember(Alias = "failureThreshold")]
+        public int FailureThreshold { get; set; } = 5;
+
+        [JsonPropertyName("timeoutMs")]
+        [YamlMember(Alias = "timeoutMs")]
+        public int TimeoutMs { get; set; } = 2000;
+    }
+
+    /// <summary>
+    /// Configuration for Redis metrics collection
+    /// </summary>
+    public class RedisMetricsConfig
+    {
+        [JsonPropertyName("enabled")]
+        [YamlMember(Alias = "enabled")]
+        public bool Enabled { get; set; } = true;
+
+        [JsonPropertyName("instanceName")]
+        [YamlMember(Alias = "instanceName")]
+        public string InstanceName { get; set; } = "default";
+
+        [JsonPropertyName("samplingIntervalSeconds")]
+        [YamlMember(Alias = "samplingIntervalSeconds")]
+        public int SamplingIntervalSeconds { get; set; } = 60;
     }
 }

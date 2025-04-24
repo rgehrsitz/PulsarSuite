@@ -470,7 +470,7 @@ bufferCapacity: 100";
                 throw new InvalidOperationException("Redis container is not initialized");
             }
 
-            return RedisConfigHelper.CreateRedisConfig(_redisContainer);
+            return TestUtilities.RedisUtilities.CreateRedisConfig(_redisContainer);
         }
     }
 }
