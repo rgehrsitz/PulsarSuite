@@ -124,7 +124,7 @@ namespace Pulsar.Tests.RuntimeValidation
             output.WriteLine($"Average of last 3 values: {average}");
         }
 
-        [Fact(Skip = "Buffer usage tests are currently disabled for this PR")]
+        [Fact(Skip = "Moved to BeaconTester integration tests")]
         public async Task CircularBuffer_HandlesBufferLimits()
         {
             // Generate rule that uses a larger number of historical values
@@ -187,6 +187,128 @@ namespace Pulsar.Tests.RuntimeValidation
                 oldestValue > baseValue,
                 "Oldest value should not be the initial value (should be dropped from buffer)"
             );
+        }
+        
+        [Fact(Skip = "Moved to BeaconTester integration tests")]
+        public async Task TemporalBuffer_WindowFunction_FiltersCorrectly()
+        {
+            // Generate a rule that uses timespan windowing
+            var ruleFile = GenerateWindowRule();
+            
+            // Build project
+            var success = await fixture.BuildTestProject(new[] { ruleFile });
+            Assert.True(success, "Project should build successfully");
+            
+            // Current timestamp
+            var timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+            var baseValue = 100;
+            
+            // Add values with varying timestamps
+            for (int i = 0; i < 5; i++)
+            {
+                var inputs = new Dictionary<string, object>
+                {
+                    { "input:sensor", baseValue + i * 10 }, 
+                    { "input:timestamp", timestamp - (4-i) * 1000 } // 4, 3, 2, 1, 0 seconds ago
+                };
+                
+                await fixture.ExecuteRules(inputs);
+                await Task.Delay(50); // Small delay
+            }
+            
+            // Run final execution to compute window average
+            var finalInputs = new Dictionary<string, object>
+            {
+                { "input:command", "compute" },
+                { "input:timestamp", timestamp }
+            };
+            
+            var (executeSuccess, outputs) = await fixture.ExecuteRules(finalInputs);
+            
+            // Verify window function behavior
+            Assert.True(executeSuccess, "Rule execution should succeed");
+            Assert.NotNull(outputs);
+            
+            if (outputs != null && outputs.ContainsKey("output:window_avg"))
+            {
+                var windowAvg = Convert.ToDouble(outputs["output:window_avg"]);
+                output.WriteLine($"Window average: {windowAvg}");
+                
+                // The average should be for values in the 2-second window
+                // Values from 2, 1, 0 seconds ago: 120, 130, 140
+                // Average: 130
+                Assert.True(Math.Abs(windowAvg - 130) < 0.1, $"Window average should be ~130, got {windowAvg}");
+            }
+            else
+            {
+                Assert.True(false, "output:window_avg was not set");
+            }
+        }
+        
+        [Fact(Skip = "Moved to BeaconTester integration tests")]
+        public async Task TemporalBuffer_IncludeOlderParameter_WorksCorrectly()
+        {
+            // Generate rule that tests the includeOlder parameter
+            var ruleFile = GenerateGuardValueRule();
+            
+            // Build project
+            var success = await fixture.BuildTestProject(new[] { ruleFile });
+            Assert.True(success, "Project should build successfully");
+            
+            // Current timestamp
+            var timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+            
+            // Add values with varying timestamps
+            // First value (outside window but should be included as guard)
+            await fixture.ExecuteRules(new Dictionary<string, object>
+            {
+                { "input:sensor", 100 },
+                { "input:timestamp", timestamp - 3500 } // 3.5 seconds ago (outside 3-second window)
+            });
+            
+            await Task.Delay(50);
+            
+            // Second value (inside window)
+            await fixture.ExecuteRules(new Dictionary<string, object>
+            {
+                { "input:sensor", 200 },
+                { "input:timestamp", timestamp - 2000 } // 2 seconds ago
+            });
+            
+            await Task.Delay(50);
+            
+            // Third value (inside window)
+            await fixture.ExecuteRules(new Dictionary<string, object>
+            {
+                { "input:sensor", 300 },
+                { "input:timestamp", timestamp - 1000 } // 1 second ago
+            });
+            
+            // Run final execution to check guard value
+            var finalInputs = new Dictionary<string, object>
+            {
+                { "input:command", "check_guard" },
+                { "input:timestamp", timestamp }
+            };
+            
+            var (executeSuccess, outputs) = await fixture.ExecuteRules(finalInputs);
+            
+            // Verify includeOlder behavior
+            Assert.True(executeSuccess, "Rule execution should succeed");
+            Assert.NotNull(outputs);
+            
+            if (outputs != null && outputs.ContainsKey("output:guard_value"))
+            {
+                var guardValue = Convert.ToDouble(outputs["output:guard_value"]);
+                output.WriteLine($"Guard value: {guardValue}");
+                
+                // The guard value should be 100 (from 3.5 seconds ago, outside window)
+                Assert.Equal(100, guardValue);
+            }
+            else
+            {
+                Assert.True(false, "output:guard_value was not set");
+            }
         }
 
         private string GenerateRateOfChangeRule()
@@ -269,6 +391,64 @@ namespace Pulsar.Tests.RuntimeValidation
             );
 
             var filePath = Path.Combine(fixture.OutputPath, "buffer-limit-rule.yaml");
+            File.WriteAllText(filePath, sb.ToString());
+            return filePath;
+        }
+        
+        private string GenerateWindowRule()
+        {
+            var sb = new StringBuilder();
+            sb.AppendLine("rules:");
+            sb.AppendLine(
+                @"  - name: 'TimeWindowRule'
+    description: 'Tests buffer time window functionality'
+    conditions:
+      all:
+        - condition:
+            type: expression
+            expression: 'input:command == ""compute"" or input:sensor > 0'
+    actions:
+      - set_value:
+          key: 'buffer:sensor'
+          value_expression: 'input:sensor'
+      - set_value:
+          key: 'buffer:timestamp'
+          value_expression: 'input:timestamp'
+      - set_value:
+          key: 'output:window_avg'
+          value_expression: 'buffer:sensor.Where(item => item.Timestamp > input:timestamp - 2000).Average()'"
+            );
+
+            var filePath = Path.Combine(fixture.OutputPath, "time-window-rule.yaml");
+            File.WriteAllText(filePath, sb.ToString());
+            return filePath;
+        }
+        
+        private string GenerateGuardValueRule()
+        {
+            var sb = new StringBuilder();
+            sb.AppendLine("rules:");
+            sb.AppendLine(
+                @"  - name: 'GuardValueRule'
+    description: 'Tests buffer includeOlder parameter for guard values'
+    conditions:
+      all:
+        - condition:
+            type: expression
+            expression: 'input:command == ""check_guard"" or input:sensor > 0'
+    actions:
+      - set_value:
+          key: 'buffer:sensor'
+          value_expression: 'input:sensor'
+      - set_value:
+          key: 'buffer:timestamp'
+          value_expression: 'input:timestamp'
+      - set_value:
+          key: 'output:guard_value'
+          value_expression: 'buffer:sensor.GetValues(timespan: 3000, includeOlder: true).First().Value'"
+            );
+
+            var filePath = Path.Combine(fixture.OutputPath, "guard-value-rule.yaml");
             File.WriteAllText(filePath, sb.ToString());
             return filePath;
         }

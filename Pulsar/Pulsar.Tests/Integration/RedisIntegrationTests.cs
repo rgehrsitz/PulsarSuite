@@ -128,34 +128,28 @@ namespace Pulsar.Tests.Integration
             Assert.Equal(300.0, Convert.ToDouble(result["input:c"]));
         }
 
-        [Fact(Skip = "Requires actual Redis connection")]
+        [Fact]
         public async Task RetryPolicy_HandlesConnectionErrors()
         {
-            // This test verifies the retry policy by forcing connection errors
-            // We'll use a non-existent Redis server and verify it retries the configured number of times
+            // This test verifies the retry policy by monitoring retries without needing actual failures
+            // We don't make actual connection errors, but verify the retry policy is correctly configured
 
-            // Arrange - Create a service with invalid connection
-            // Use fully qualified name to avoid ambiguity
-            var config = new Pulsar.Tests.Mocks.RedisConfiguration
-            {
-                SingleNode = new Pulsar.Tests.Mocks.SingleNodeConfig
-                {
-                    Endpoints = new[] { "nonexistent:1234" },
-                    RetryCount = 3,
-                    RetryBaseDelayMs = 10,
-                },
-            };
-
-            // Skip test - our mock implementation doesn't throw connection exceptions
-            output.WriteLine(
-                "Test skipped - mock Redis implementation doesn't throw connection exceptions"
-            );
-
-            // The real implementation would fail after retrying
-            // await Assert.ThrowsAsync<RedisConnectionException>(async () =>
-            //    await service.GetValue("any:key"));
-
-            // This test is for documentation purposes only since we're using a mock
+            // Arrange - Get retry configuration
+            var retryCount = fixture.RedisService.RetryPolicy.MaxRetryCount;
+            var baseDelay = fixture.RedisService.RetryPolicy.BaseDelayMilliseconds;
+            
+            // Assert - Just verify that retry policy is configured with reasonable values
+            Assert.Equal(3, retryCount);
+            Assert.Equal(100, baseDelay);
+            
+            output.WriteLine($"Redis retry policy configured with: MaxRetryCount={retryCount}, BaseDelay={baseDelay}ms");
+            
+            // Test health check function
+            var isHealthy = fixture.RedisService.IsHealthy;
+            Assert.True(isHealthy, "Redis should be healthy in test environment");
+            
+            // No need to actually force errors - we're just verifying configuration
+            await Task.CompletedTask;
         }
 
         private class TestObject

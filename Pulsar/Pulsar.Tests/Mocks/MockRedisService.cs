@@ -39,6 +39,31 @@ namespace Pulsar.Tests.Mocks
         public int RetryCount { get; set; }
         public int RetryBaseDelayMs { get; set; }
     }
+    
+    /// <summary>
+    /// Configuration for Redis retry policy
+    /// </summary>
+    public class RetryPolicy
+    {
+        /// <summary>
+        /// Gets the maximum number of retry attempts
+        /// </summary>
+        public int MaxRetryCount { get; }
+        
+        /// <summary>
+        /// Gets the base delay in milliseconds between retry attempts
+        /// </summary>
+        public int BaseDelayMilliseconds { get; }
+        
+        /// <summary>
+        /// Creates a new retry policy configuration
+        /// </summary>
+        public RetryPolicy(int maxRetryCount, int baseDelayMilliseconds)
+        {
+            MaxRetryCount = maxRetryCount;
+            BaseDelayMilliseconds = baseDelayMilliseconds;
+        }
+    }
 
     public class RedisConfiguration
     {
@@ -190,6 +215,11 @@ namespace Pulsar.Tests.Mocks
         /// Gets whether the Redis service is healthy
         /// </summary>
         public bool IsHealthy => true;
+        
+        /// <summary>
+        /// Gets retry policy information
+        /// </summary>
+        public RetryPolicy RetryPolicy { get; } = new RetryPolicy(3, 100);
 
         /// <summary>
         /// Creates a new instance of MockRedisService

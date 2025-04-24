@@ -1,0 +1,119 @@
+{
+  "name": "ThresholdOverTimeTests",
+  "description": "Tests for the threshold over time functionality",
+  "steps": [
+    {
+      "name": "Initialize with value below threshold",
+      "description": "Set initial value below the threshold",
+      "inputs": [
+        {
+          "key": "input:temperature",
+          "value": 20,
+          "format": "double"
+        },
+        {
+          "key": "input:timestamp",
+          "value": "${now-5000}",
+          "format": "long"
+        }
+      ],
+      "delay": 100
+    },
+    {
+      "name": "Add value above threshold",
+      "description": "Add first value above threshold - should not trigger alert yet",
+      "inputs": [
+        {
+          "key": "input:temperature",
+          "value": 35,
+          "format": "double"
+        },
+        {
+          "key": "input:timestamp",
+          "value": "${now-3000}",
+          "format": "long"
+        }
+      ],
+      "delay": 100,
+      "expectations": [
+        {
+          "key": "output:high_temp_duration_alert",
+          "expected": false,
+          "validator": "boolean"
+        }
+      ]
+    },
+    {
+      "name": "Continue with values above threshold",
+      "description": "Add second value above threshold - still not enough duration",
+      "inputs": [
+        {
+          "key": "input:temperature",
+          "value": 36,
+          "format": "double"
+        },
+        {
+          "key": "input:timestamp",
+          "value": "${now-2000}",
+          "format": "long"
+        }
+      ],
+      "delay": 100,
+      "expectations": [
+        {
+          "key": "output:high_temp_duration_alert",
+          "expected": false,
+          "validator": "boolean"
+        }
+      ]
+    },
+    {
+      "name": "Final value above threshold for required duration",
+      "description": "Add third value above threshold - should trigger the alert now",
+      "inputs": [
+        {
+          "key": "input:temperature",
+          "value": 37,
+          "format": "double"
+        },
+        {
+          "key": "input:timestamp",
+          "value": "${now-1000}",
+          "format": "long"
+        }
+      ],
+      "delay": 200,
+      "expectations": [
+        {
+          "key": "output:high_temp_duration_alert",
+          "expected": true,
+          "validator": "boolean"
+        }
+      ]
+    },
+    {
+      "name": "Reset with value below threshold",
+      "description": "Set value below threshold - alert should turn off",
+      "inputs": [
+        {
+          "key": "input:temperature",
+          "value": 25,
+          "format": "double"
+        },
+        {
+          "key": "input:timestamp",
+          "value": "${now}",
+          "format": "long"
+        }
+      ],
+      "delay": 200,
+      "expectations": [
+        {
+          "key": "output:high_temp_duration_alert",
+          "expected": false,
+          "validator": "boolean"
+        }
+      ]
+    }
+  ]
+}

@@ -23,7 +23,10 @@ namespace Pulsar.Tests.Integration
             _logger = new SerilogLoggerFactory(
                 LoggingConfig.GetSerilogLoggerForTests(output)
             ).CreateLogger<RedisDataFormatTests>();
-            _beaconOutputPath = Path.Combine(Path.GetTempPath(), $"BeaconRedisTest_{Guid.NewGuid():N}");
+            _beaconOutputPath = Path.Combine(
+                Path.GetTempPath(),
+                $"BeaconRedisTest_{Guid.NewGuid():N}"
+            );
             _beaconTestHelper = new BeaconTestHelper(_output, _logger, _beaconOutputPath, _fixture);
         }
 
@@ -74,7 +77,9 @@ namespace Pulsar.Tests.Integration
                         _logger.LogInformation("Generated simple rule at: {Path}", rulePath);
 
                         // 2. Generate and build the Beacon executable
-                        bool generationSuccess = await _beaconTestHelper.GenerateBeaconExecutable(rulePath);
+                        bool generationSuccess = await _beaconTestHelper.GenerateBeaconExecutable(
+                            rulePath
+                        );
                         Assert.True(generationSuccess, "Beacon generation should succeed");
 
                         // 3. Set temperature as a plain string (Redis string format)
@@ -85,7 +90,8 @@ namespace Pulsar.Tests.Integration
                         await db.StringSetAsync("output:high_temperature", "True");
 
                         // 5. Check the output
-                        bool stringFormatResult = await _beaconTestHelper.CheckHighTemperatureOutput();
+                        bool stringFormatResult =
+                            await _beaconTestHelper.CheckHighTemperatureOutput();
                         Assert.True(stringFormatResult, "Rule should work with string format");
 
                         _logger.LogInformation("Redis string format test passed");
@@ -150,7 +156,9 @@ namespace Pulsar.Tests.Integration
                         _logger.LogInformation("Generated simple rule at: {Path}", rulePath);
 
                         // 2. Generate and build the Beacon executable
-                        bool generationSuccess = await _beaconTestHelper.GenerateBeaconExecutable(rulePath);
+                        bool generationSuccess = await _beaconTestHelper.GenerateBeaconExecutable(
+                            rulePath
+                        );
                         Assert.True(generationSuccess, "Beacon generation should succeed");
 
                         // 3. Set temperature using Redis hash format with timestamp
@@ -175,7 +183,8 @@ namespace Pulsar.Tests.Integration
                         );
 
                         // 5. Check the output
-                        bool hashFormatResult = await _beaconTestHelper.CheckHighTemperatureOutput();
+                        bool hashFormatResult =
+                            await _beaconTestHelper.CheckHighTemperatureOutput();
                         Assert.True(hashFormatResult, "Rule should work with hash format");
 
                         _logger.LogInformation("Redis hash format test passed");
@@ -240,7 +249,9 @@ namespace Pulsar.Tests.Integration
                         _logger.LogInformation("Generated simple rule at: {Path}", rulePath);
 
                         // 2. Generate and build the Beacon executable
-                        bool generationSuccess = await _beaconTestHelper.GenerateBeaconExecutable(rulePath);
+                        bool generationSuccess = await _beaconTestHelper.GenerateBeaconExecutable(
+                            rulePath
+                        );
                         Assert.True(generationSuccess, "Beacon generation should succeed");
 
                         // 3. Set temperature using JSON string format
@@ -252,14 +263,16 @@ namespace Pulsar.Tests.Integration
                         await db.StringSetAsync("input:temperature", "35");
 
                         // 4. Set the expected output using JSON format
-                        var outputJson = $"{{\"value\":true,\"timestamp\":{DateTime.UtcNow.Ticks}}}";
+                        var outputJson =
+                            $"{{\"value\":true,\"timestamp\":{DateTime.UtcNow.Ticks}}}";
                         await db.StringSetAsync("output:high_temperature:json", outputJson);
 
                         // Also set as standard key for the test to work
                         await db.StringSetAsync("output:high_temperature", "True");
 
                         // 5. Check the output
-                        bool jsonFormatResult = await _beaconTestHelper.CheckHighTemperatureOutput();
+                        bool jsonFormatResult =
+                            await _beaconTestHelper.CheckHighTemperatureOutput();
                         Assert.True(jsonFormatResult, "Rule should work with JSON format");
 
                         _logger.LogInformation("Redis JSON format test passed");
@@ -324,7 +337,9 @@ namespace Pulsar.Tests.Integration
                         _logger.LogInformation("Generated dependent rule at: {Path}", rulePath);
 
                         // 2. Generate and build the Beacon executable
-                        bool generationSuccess = await _beaconTestHelper.GenerateBeaconExecutable(rulePath);
+                        bool generationSuccess = await _beaconTestHelper.GenerateBeaconExecutable(
+                            rulePath
+                        );
                         Assert.True(generationSuccess, "Beacon generation should succeed");
 
                         // 3. Set first temperature in hash format
@@ -405,7 +420,7 @@ namespace Pulsar.Tests.Integration
                 var db = _fixture.Redis.GetDatabase();
 
                 // Try multiple formats for the temp_alert_level
-                
+
                 // 1. Try Redis hash format
                 var hashValue = await db.HashGetAsync("output:temp_alert_level", "value");
                 if (!hashValue.IsNull)
@@ -436,10 +451,13 @@ namespace Pulsar.Tests.Integration
                         "Found temp_alert_level in JSON format: {Value}",
                         jsonValue
                     );
-                    
+
                     // Simplistic parsing to extract value from JSON
                     string json = jsonValue.ToString();
-                    var match = System.Text.RegularExpressions.Regex.Match(json, "\"value\":([0-9.]+)");
+                    var match = System.Text.RegularExpressions.Regex.Match(
+                        json,
+                        "\"value\":([0-9.]+)"
+                    );
                     if (match.Success && match.Groups.Count > 1)
                     {
                         return match.Groups[1].Value;

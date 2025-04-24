@@ -11,7 +11,7 @@ namespace Pulsar.Tests.RuntimeValidation
         ITestOutputHelper output
     ) : IClassFixture<RuntimeValidationFixture>
     {
-        [Fact(Skip = "Performance tests are currently disabled for this PR")]
+        [Fact(Skip = "Moved to BeaconTester integration tests")]
         public async Task Benchmark_IncreasingRuleCount_MeasuresScalability()
         {
             // Create rule sets with different numbers of rules
@@ -58,7 +58,7 @@ namespace Pulsar.Tests.RuntimeValidation
             }
         }
 
-        [Fact(Skip = "Performance tests are currently disabled for this PR")]
+        [Fact(Skip = "Moved to BeaconTester integration tests")]
         public async Task Benchmark_IncreasingRuleComplexity_MeasuresPerformanceImpact()
         {
             // Create rules with different complexity levels
@@ -93,7 +93,7 @@ namespace Pulsar.Tests.RuntimeValidation
             }
         }
 
-        [Fact(Skip = "Performance tests are currently disabled for this PR")]
+        [Fact(Skip = "Moved to BeaconTester integration tests")]
         public async Task Benchmark_ConcurrentRuleExecution_MeasuresThroughput()
         {
             // Generate a moderate set of rules

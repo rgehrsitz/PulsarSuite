@@ -1,0 +1,106 @@
+{
+  "name": "CircularBufferTests",
+  "description": "Comprehensive tests for temporal buffer functionality",
+  "steps": [
+    {
+      "name": "Initialize buffer with values",
+      "description": "Set initial values for buffer testing",
+      "inputs": [
+        {
+          "key": "input:sensor",
+          "value": 100,
+          "format": "double"
+        },
+        {
+          "key": "input:timestamp",
+          "value": "${now-3500}",
+          "format": "long"
+        }
+      ],
+      "delay": 100
+    },
+    {
+      "name": "Add second value in window",
+      "description": "Add value within the time window",
+      "inputs": [
+        {
+          "key": "input:sensor",
+          "value": 200,
+          "format": "double"
+        },
+        {
+          "key": "input:timestamp",
+          "value": "${now-2000}",
+          "format": "long"
+        }
+      ],
+      "delay": 100
+    },
+    {
+      "name": "Add third value in window",
+      "description": "Add another value within the time window",
+      "inputs": [
+        {
+          "key": "input:sensor",
+          "value": 300,
+          "format": "double"
+        },
+        {
+          "key": "input:timestamp",
+          "value": "${now-1000}",
+          "format": "long"
+        }
+      ],
+      "delay": 100
+    },
+    {
+      "name": "Compute window average",
+      "description": "Compute average of values in the time window",
+      "inputs": [
+        {
+          "key": "input:command",
+          "value": "compute",
+          "format": "string"
+        },
+        {
+          "key": "input:timestamp",
+          "value": "${now}",
+          "format": "long"
+        }
+      ],
+      "delay": 300,
+      "expectations": [
+        {
+          "key": "output:window_avg",
+          "expected": 200,
+          "validator": "numeric",
+          "tolerance": 0.1
+        }
+      ]
+    },
+    {
+      "name": "Check guard value",
+      "description": "Verify the guard value (oldest value outside window) is available with includeOlder",
+      "inputs": [
+        {
+          "key": "input:command",
+          "value": "check_guard",
+          "format": "string"
+        },
+        {
+          "key": "input:timestamp",
+          "value": "${now}",
+          "format": "long"
+        }
+      ],
+      "delay": 300,
+      "expectations": [
+        {
+          "key": "output:guard_value",
+          "expected": 100,
+          "validator": "numeric"
+        }
+      ]
+    }
+  ]
+}
