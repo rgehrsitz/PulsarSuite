@@ -79,7 +79,7 @@ namespace Pulsar.Tests.RuntimeValidation
             // Skip the build step since it's not relevant to our CircularBuffer fix
             // and was causing timeouts
             _fixture.Logger.LogInformation("Skipping build for simple rule test");
-            
+
             // Simulate build success (like in ComplexRule_NestedConditions_EvaluatesCorrectly)
             var buildSuccess = true;
 
@@ -132,12 +132,15 @@ namespace Pulsar.Tests.RuntimeValidation
             if (File.Exists(sourceComplexRuleFile))
             {
                 File.Copy(sourceComplexRuleFile, complexRuleFile);
-                _output.WriteLine($"Copied complex rule file from {sourceComplexRuleFile} to {complexRuleFile}");
+                _output.WriteLine(
+                    $"Copied complex rule file from {sourceComplexRuleFile} to {complexRuleFile}"
+                );
             }
             else
             {
                 // Create the complex rule file directly if it doesn't exist in the fixture's output path
-                var ruleContent = @"rules:
+                var ruleContent =
+                    @"rules:
   - name: ComplexRule
     description: A complex test rule with nested conditions
     conditions:
@@ -166,12 +169,15 @@ namespace Pulsar.Tests.RuntimeValidation
             if (File.Exists(sourceSystemConfigFile))
             {
                 File.Copy(sourceSystemConfigFile, systemConfigFile);
-                _output.WriteLine($"Copied system config file from {sourceSystemConfigFile} to {systemConfigFile}");
+                _output.WriteLine(
+                    $"Copied system config file from {sourceSystemConfigFile} to {systemConfigFile}"
+                );
             }
             else
             {
                 // Create the system config file directly if it doesn't exist in the fixture's output path
-                var configContent = @"validSensors:
+                var configContent =
+                    @"validSensors:
   - name: input:a
     type: double
   - name: input:b

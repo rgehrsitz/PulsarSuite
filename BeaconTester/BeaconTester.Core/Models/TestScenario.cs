@@ -23,7 +23,7 @@ namespace BeaconTester.Core.Models
         /// </summary>
         [JsonPropertyName("preSetOutputs")]
         public Dictionary<string, object>? PreSetOutputs { get; set; }
-        
+
         /// <summary>
         /// Whether to clear existing output values before running the test
         /// Default is true for backwards compatibility
@@ -57,7 +57,7 @@ namespace BeaconTester.Core.Models
         /// Optional tolerance for numeric comparisons
         /// </summary>
         public double? Tolerance { get; set; }
-        
+
         /// <summary>
         /// Global timeout multiplier for all expectations in this scenario
         /// Useful for running tests on slower systems

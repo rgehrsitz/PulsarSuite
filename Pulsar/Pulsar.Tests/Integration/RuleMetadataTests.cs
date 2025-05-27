@@ -1,8 +1,8 @@
+using System.Text.RegularExpressions;
 using Microsoft.Extensions.Logging;
 using Pulsar.Tests.Integration.Helpers;
 using Pulsar.Tests.TestUtilities;
 using Serilog.Extensions.Logging;
-using System.Text.RegularExpressions;
 using Xunit.Abstractions;
 
 namespace Pulsar.Tests.Integration
@@ -23,7 +23,10 @@ namespace Pulsar.Tests.Integration
             _logger = new SerilogLoggerFactory(
                 LoggingConfig.GetSerilogLoggerForTests(output)
             ).CreateLogger<RuleMetadataTests>();
-            _beaconOutputPath = Path.Combine(Path.GetTempPath(), $"BeaconMetadataTest_{Guid.NewGuid():N}");
+            _beaconOutputPath = Path.Combine(
+                Path.GetTempPath(),
+                $"BeaconMetadataTest_{Guid.NewGuid():N}"
+            );
             _beaconTestHelper = new BeaconTestHelper(_output, _logger, _beaconOutputPath, _fixture);
         }
 
@@ -70,7 +73,9 @@ namespace Pulsar.Tests.Integration
                     _logger.LogInformation("Generated complex rule at: {Path}", rulePath);
 
                     // 2. Generate and build the Beacon executable
-                    bool generationSuccess = await _beaconTestHelper.GenerateBeaconExecutable(rulePath);
+                    bool generationSuccess = await _beaconTestHelper.GenerateBeaconExecutable(
+                        rulePath
+                    );
                     Assert.True(generationSuccess, "Beacon generation should succeed");
 
                     // 3. Locate and read the RuleMetadata.cs file
@@ -85,17 +90,29 @@ namespace Pulsar.Tests.Integration
                     bool containsRuleName = metadataContent.Contains("ComplexConditionRule");
                     Assert.True(containsRuleName, "Metadata should contain the rule name");
 
-                    bool containsDescription = metadataContent.Contains("Demonstrates a rule with multiple conditions");
-                    Assert.True(containsDescription, "Metadata should contain the rule description");
+                    bool containsDescription = metadataContent.Contains(
+                        "Demonstrates a rule with multiple conditions"
+                    );
+                    Assert.True(
+                        containsDescription,
+                        "Metadata should contain the rule description"
+                    );
 
-                    bool containsInputSensors = metadataContent.Contains("input:temperature") && metadataContent.Contains("input:humidity");
+                    bool containsInputSensors =
+                        metadataContent.Contains("input:temperature")
+                        && metadataContent.Contains("input:humidity");
                     Assert.True(containsInputSensors, "Metadata should contain input sensors");
 
-                    bool containsOutputSensors = metadataContent.Contains("output:high_temp_and_humidity");
+                    bool containsOutputSensors = metadataContent.Contains(
+                        "output:high_temp_and_humidity"
+                    );
                     Assert.True(containsOutputSensors, "Metadata should contain output sensors");
 
                     // 5. Check for properly formatted array declarations (even for empty arrays)
-                    bool hasCorrectArrayFormat = Regex.IsMatch(metadataContent, @"(new\s+string\[\]\s*\{.*?\})|(\{\s*"".*?""\s*\})");
+                    bool hasCorrectArrayFormat = Regex.IsMatch(
+                        metadataContent,
+                        @"(new\s+string\[\]\s*\{.*?\})|(\{\s*"".*?""\s*\})"
+                    );
                     Assert.True(hasCorrectArrayFormat, "Metadata should have correct array format");
 
                     _logger.LogInformation("Rule metadata test completed successfully");
@@ -103,12 +120,14 @@ namespace Pulsar.Tests.Integration
                 catch (Exception ex)
                 {
                     _logger.LogError(ex, "Error in rule metadata test");
-                    
+
                     // Dump directory contents to help debug
                     TestDebugHelper.DumpDirectoryContents(_beaconOutputPath, _logger, maxDepth: 3);
 
                     // We're not going to make the test fail to ensure CI passes
-                    _logger.LogWarning("Test is being marked as passed despite errors to support CI");
+                    _logger.LogWarning(
+                        "Test is being marked as passed despite errors to support CI"
+                    );
                     Assert.True(true, "Test passes in CI-compatible mode");
                 }
             }
@@ -136,7 +155,8 @@ namespace Pulsar.Tests.Integration
                 DirectorySetup.EnsureTestDirectories(_beaconOutputPath, _logger);
 
                 // Create a rule with a minimal set of properties (to test empty arrays)
-                string minimalRuleYaml = @"rules:
+                string minimalRuleYaml =
+                    @"rules:
   - name: MinimalRule
     description: A minimal rule with few properties
     conditions:
@@ -159,7 +179,9 @@ namespace Pulsar.Tests.Integration
                     _logger.LogInformation("Generated minimal rule at: {Path}", rulePath);
 
                     // 2. Generate and build the Beacon executable
-                    bool generationSuccess = await _beaconTestHelper.GenerateBeaconExecutable(rulePath);
+                    bool generationSuccess = await _beaconTestHelper.GenerateBeaconExecutable(
+                        rulePath
+                    );
                     Assert.True(generationSuccess, "Beacon generation should succeed");
 
                     // 3. Locate and read the RuleMetadata.cs file
@@ -171,23 +193,37 @@ namespace Pulsar.Tests.Integration
                     _logger.LogInformation("Found RuleMetadata.cs at: {Path}", metadataPath);
 
                     // 4. Validate that empty arrays are properly initialized
-                    bool hasProperEmptyInputSensorsArray = metadataContent.Contains("InputSensors = new string[] { }");
-                    Assert.True(hasProperEmptyInputSensorsArray, "Empty input sensors array should be correctly initialized");
+                    bool hasProperEmptyInputSensorsArray = metadataContent.Contains(
+                        "InputSensors = new string[] { }"
+                    );
+                    Assert.True(
+                        hasProperEmptyInputSensorsArray,
+                        "Empty input sensors array should be correctly initialized"
+                    );
 
-                    bool hasProperEmptyDependenciesArray = metadataContent.Contains("Dependencies = new string[] { }");
-                    Assert.True(hasProperEmptyDependenciesArray, "Empty dependencies array should be correctly initialized");
+                    bool hasProperEmptyDependenciesArray = metadataContent.Contains(
+                        "Dependencies = new string[] { }"
+                    );
+                    Assert.True(
+                        hasProperEmptyDependenciesArray,
+                        "Empty dependencies array should be correctly initialized"
+                    );
 
-                    _logger.LogInformation("Rule metadata empty arrays test completed successfully");
+                    _logger.LogInformation(
+                        "Rule metadata empty arrays test completed successfully"
+                    );
                 }
                 catch (Exception ex)
                 {
                     _logger.LogError(ex, "Error in rule metadata empty arrays test");
-                    
+
                     // Dump directory contents to help debug
                     TestDebugHelper.DumpDirectoryContents(_beaconOutputPath, _logger, maxDepth: 3);
 
                     // We're not going to make the test fail to ensure CI passes
-                    _logger.LogWarning("Test is being marked as passed despite errors to support CI");
+                    _logger.LogWarning(
+                        "Test is being marked as passed despite errors to support CI"
+                    );
                     Assert.True(true, "Test passes in CI-compatible mode");
                 }
             }
@@ -203,7 +239,7 @@ namespace Pulsar.Tests.Integration
                 Assert.True(true, "Test passes in CI-compatible mode");
             }
         }
-        
+
         /// <summary>
         /// Locates the RuleMetadata.cs file in the generated Beacon output directory
         /// </summary>
@@ -219,7 +255,11 @@ namespace Pulsar.Tests.Integration
                 }
 
                 // Search for RuleMetadata.cs file
-                var files = Directory.GetFiles(beaconDir, "RuleMetadata.cs", SearchOption.AllDirectories);
+                var files = Directory.GetFiles(
+                    beaconDir,
+                    "RuleMetadata.cs",
+                    SearchOption.AllDirectories
+                );
                 if (files.Length > 0)
                 {
                     return files[0];
@@ -229,7 +269,9 @@ namespace Pulsar.Tests.Integration
 
                 // Dump directory structure to help troubleshoot
                 _logger.LogInformation("Beacon directory contents:");
-                await Task.Run(() => TestDebugHelper.DumpDirectoryContents(beaconDir, _logger, maxDepth: 3));
+                await Task.Run(
+                    () => TestDebugHelper.DumpDirectoryContents(beaconDir, _logger, maxDepth: 3)
+                );
 
                 return null;
             }

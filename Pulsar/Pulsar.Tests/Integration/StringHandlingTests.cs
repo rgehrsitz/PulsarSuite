@@ -24,7 +24,10 @@ namespace Pulsar.Tests.Integration
             _logger = new SerilogLoggerFactory(
                 LoggingConfig.GetSerilogLoggerForTests(output)
             ).CreateLogger<StringHandlingTests>();
-            _beaconOutputPath = Path.Combine(Path.GetTempPath(), $"BeaconStrTest_{Guid.NewGuid():N}");
+            _beaconOutputPath = Path.Combine(
+                Path.GetTempPath(),
+                $"BeaconStrTest_{Guid.NewGuid():N}"
+            );
             _beaconTestHelper = new BeaconTestHelper(_output, _logger, _beaconOutputPath, _fixture);
         }
 
@@ -86,10 +89,15 @@ namespace Pulsar.Tests.Integration
                             "string-comparison-rule.yaml",
                             BeaconRuleTemplates.StringComparisonRuleYaml()
                         );
-                        _logger.LogInformation("Generated string comparison rule at: {Path}", rulePath);
+                        _logger.LogInformation(
+                            "Generated string comparison rule at: {Path}",
+                            rulePath
+                        );
 
                         // 2. Generate and build the Beacon executable
-                        bool generationSuccess = await _beaconTestHelper.GenerateBeaconExecutable(rulePath);
+                        bool generationSuccess = await _beaconTestHelper.GenerateBeaconExecutable(
+                            rulePath
+                        );
                         Assert.True(generationSuccess, "Beacon generation should succeed");
 
                         // 3. Set input status to "inactive" first
@@ -123,7 +131,10 @@ namespace Pulsar.Tests.Integration
 
                         // 5. Check if output is initially false
                         var initialResult = await CheckStatusActiveOutput();
-                        _logger.LogInformation("Initial status_active value: {Value}", initialResult);
+                        _logger.LogInformation(
+                            "Initial status_active value: {Value}",
+                            initialResult
+                        );
                         Assert.False(initialResult, "Status active flag should be false initially");
 
                         // 6. Now set the status to "active"
@@ -157,7 +168,10 @@ namespace Pulsar.Tests.Integration
 
                         // 8. Check if output flag is now true
                         var afterResult = await CheckStatusActiveOutput();
-                        _logger.LogInformation("After setting status to 'active', status_active value: {Value}", afterResult);
+                        _logger.LogInformation(
+                            "After setting status to 'active', status_active value: {Value}",
+                            afterResult
+                        );
                         Assert.True(
                             afterResult,
                             "Status active flag should be true when status is 'active'"
@@ -222,10 +236,15 @@ namespace Pulsar.Tests.Integration
                             "logical-operators-rule.yaml",
                             BeaconRuleTemplates.LogicalOperatorsRuleYaml()
                         );
-                        _logger.LogInformation("Generated logical operators rule at: {Path}", rulePath);
+                        _logger.LogInformation(
+                            "Generated logical operators rule at: {Path}",
+                            rulePath
+                        );
 
                         // 2. Generate and build the Beacon executable
-                        bool generationSuccess = await _beaconTestHelper.GenerateBeaconExecutable(rulePath);
+                        bool generationSuccess = await _beaconTestHelper.GenerateBeaconExecutable(
+                            rulePath
+                        );
                         Assert.True(generationSuccess, "Beacon generation should succeed");
 
                         // 3. Set input values that should NOT trigger the alert
@@ -285,7 +304,10 @@ namespace Pulsar.Tests.Integration
 
                         // 5. Check if output is initially false
                         var initialResult = await CheckAlertConditionOutput();
-                        _logger.LogInformation("Initial alert_condition value: {Value}", initialResult);
+                        _logger.LogInformation(
+                            "Initial alert_condition value: {Value}",
+                            initialResult
+                        );
                         Assert.False(initialResult, "Alert condition should be false initially");
 
                         // 6. Now set values that SHOULD trigger the alert (via status == "critical")
@@ -319,7 +341,10 @@ namespace Pulsar.Tests.Integration
 
                         // 8. Check if output flag is now true
                         var statusCriticalResult = await CheckAlertConditionOutput();
-                        _logger.LogInformation("After setting status to 'critical', alert_condition value: {Value}", statusCriticalResult);
+                        _logger.LogInformation(
+                            "After setting status to 'critical', alert_condition value: {Value}",
+                            statusCriticalResult
+                        );
                         Assert.True(
                             statusCriticalResult,
                             "Alert condition should be true when status is 'critical'"
@@ -368,7 +393,10 @@ namespace Pulsar.Tests.Integration
 
                         // 10. Check if output flag is still true due to temperature and humidity
                         var tempHumidityResult = await CheckAlertConditionOutput();
-                        _logger.LogInformation("With high temp and humidity, alert_condition value: {Value}", tempHumidityResult);
+                        _logger.LogInformation(
+                            "With high temp and humidity, alert_condition value: {Value}",
+                            tempHumidityResult
+                        );
                         Assert.True(
                             tempHumidityResult,
                             "Alert condition should be true with high temperature and humidity"
@@ -433,10 +461,15 @@ namespace Pulsar.Tests.Integration
                             "string-operations-rule.yaml",
                             BeaconRuleTemplates.StringOperationsRuleYaml()
                         );
-                        _logger.LogInformation("Generated string operations rule at: {Path}", rulePath);
+                        _logger.LogInformation(
+                            "Generated string operations rule at: {Path}",
+                            rulePath
+                        );
 
                         // 2. Generate and build the Beacon executable
-                        bool generationSuccess = await _beaconTestHelper.GenerateBeaconExecutable(rulePath);
+                        bool generationSuccess = await _beaconTestHelper.GenerateBeaconExecutable(
+                            rulePath
+                        );
                         Assert.True(generationSuccess, "Beacon generation should succeed");
 
                         // 3. Set temperature to trigger the rule
@@ -460,14 +493,20 @@ namespace Pulsar.Tests.Integration
                             "output:status_message",
                             new StackExchange.Redis.HashEntry[]
                             {
-                                new StackExchange.Redis.HashEntry("value", "Temperature exceeded threshold: 30°C"),
+                                new StackExchange.Redis.HashEntry(
+                                    "value",
+                                    "Temperature exceeded threshold: 30°C"
+                                ),
                                 new StackExchange.Redis.HashEntry(
                                     "timestamp",
                                     DateTime.UtcNow.Ticks
                                 ),
                             }
                         );
-                        await db.StringSetAsync("output:status_message", "Temperature exceeded threshold: 30°C");
+                        await db.StringSetAsync(
+                            "output:status_message",
+                            "Temperature exceeded threshold: 30°C"
+                        );
 
                         // 5. Check if the status message is correctly set
                         var statusMessage = await CheckStatusMessageOutput();
@@ -523,7 +562,7 @@ namespace Pulsar.Tests.Integration
                 var db = _fixture.Redis.GetDatabase();
 
                 // Try multiple formats for the status_active flag
-                
+
                 // 1. Try Redis hash format
                 var hashValue = await db.HashGetAsync("output:status_active", "value");
                 if (!hashValue.IsNull)
@@ -612,7 +651,7 @@ namespace Pulsar.Tests.Integration
                 var db = _fixture.Redis.GetDatabase();
 
                 // Try multiple formats for the alert_condition flag
-                
+
                 // 1. Try Redis hash format
                 var hashValue = await db.HashGetAsync("output:alert_condition", "value");
                 if (!hashValue.IsNull)
@@ -701,7 +740,7 @@ namespace Pulsar.Tests.Integration
                 var db = _fixture.Redis.GetDatabase();
 
                 // Try multiple formats for the status_message
-                
+
                 // 1. Try Redis hash format
                 var hashValue = await db.HashGetAsync("output:status_message", "value");
                 if (!hashValue.IsNull)

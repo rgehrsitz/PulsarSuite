@@ -9,7 +9,8 @@ namespace Pulsar.Tests.RuleValidation
 {
     public class DependencyAnalysisTests
     {
-        private readonly ILogger<DependencyAnalyzer> _logger = NullLogger<DependencyAnalyzer>.Instance;
+        private readonly ILogger<DependencyAnalyzer> _logger =
+            NullLogger<DependencyAnalyzer>.Instance;
 
         [Fact]
         public void DetectCircularDependency_DirectCycle_ReturnsError()

@@ -191,7 +191,7 @@ namespace BeaconTester.RuleAnalyzer.Analysis
                     return (0, 100); // Default range
             }
         }
-        
+
         /// <summary>
         /// Normalizes a value to its proper type, especially handling string representations of boolean values
         /// </summary>
@@ -199,7 +199,7 @@ namespace BeaconTester.RuleAnalyzer.Analysis
         {
             if (value == null)
                 return false;
-                
+
             // Handle string booleans
             if (value is string strValue)
             {
@@ -209,21 +209,23 @@ namespace BeaconTester.RuleAnalyzer.Analysis
                     return false;
                 if (double.TryParse(strValue, out double numVal))
                     return numVal;
-                    
+
                 // Return the string if it's not a boolean or number
                 return strValue;
             }
-            
+
             return value;
         }
-        
+
         /// <summary>
         /// Analyzes a condition to determine what value a sensor should have to satisfy it
         /// </summary>
-        public Dictionary<string, object> AnalyzeConditionRequirements(ConditionDefinition condition)
+        public Dictionary<string, object> AnalyzeConditionRequirements(
+            ConditionDefinition condition
+        )
         {
             var requirements = new Dictionary<string, object>();
-            
+
             if (condition is ConditionGroup group)
             {
                 // For 'all' conditions (AND), we need to satisfy all
@@ -238,7 +240,7 @@ namespace BeaconTester.RuleAnalyzer.Analysis
                         }
                     }
                 }
-                
+
                 // For 'any' conditions (OR), satisfying one is enough, but to simplify
                 // we'll try to satisfy all of them too
                 foreach (var wrapper in group.Any)
@@ -259,83 +261,114 @@ namespace BeaconTester.RuleAnalyzer.Analysis
                 var sensor = comparison.Sensor;
                 var op = comparison.Operator?.ToLowerInvariant() ?? "equal_to";
                 var value = comparison.Value;
-                
+
                 // Normalize the operator
                 string normalizedOp = NormalizeOperator(op);
-                
+
                 // Determine what value this sensor needs to have
                 switch (normalizedOp)
                 {
                     case ">":
                         // For greater than, need a value higher than the comparison
-                        if (value is double d1) requirements[sensor] = d1 + 10;
-                        else if (value is int i1) requirements[sensor] = i1 + 10;
-                        else if (value is bool b1) requirements[sensor] = true;
-                        else if (value is string s1 && bool.TryParse(s1, out bool bv1)) requirements[sensor] = true;
-                        else requirements[sensor] = value != null ? value : true;
+                        if (value is double d1)
+                            requirements[sensor] = d1 + 10;
+                        else if (value is int i1)
+                            requirements[sensor] = i1 + 10;
+                        else if (value is bool b1)
+                            requirements[sensor] = true;
+                        else if (value is string s1 && bool.TryParse(s1, out bool bv1))
+                            requirements[sensor] = true;
+                        else
+                            requirements[sensor] = value != null ? value : true;
                         break;
-                        
+
                     case ">=":
                         // For greater than or equal, can use exact value
-                        if (value is double d2) requirements[sensor] = d2;
-                        else if (value is int i2) requirements[sensor] = i2;
-                        else if (value is bool b2) requirements[sensor] = true;
-                        else if (value is string s2 && bool.TryParse(s2, out bool bv2)) requirements[sensor] = true;
-                        else requirements[sensor] = value != null ? value : true;
+                        if (value is double d2)
+                            requirements[sensor] = d2;
+                        else if (value is int i2)
+                            requirements[sensor] = i2;
+                        else if (value is bool b2)
+                            requirements[sensor] = true;
+                        else if (value is string s2 && bool.TryParse(s2, out bool bv2))
+                            requirements[sensor] = true;
+                        else
+                            requirements[sensor] = value != null ? value : true;
                         break;
-                        
+
                     case "<":
                         // For less than, need a value lower than the comparison
-                        if (value is double d3) requirements[sensor] = d3 - 10;
-                        else if (value is int i3) requirements[sensor] = i3 - 10;
-                        else if (value is bool b3) requirements[sensor] = false;
-                        else if (value is string s3 && bool.TryParse(s3, out bool bv3)) requirements[sensor] = false;
-                        else requirements[sensor] = value != null ? value : false;
+                        if (value is double d3)
+                            requirements[sensor] = d3 - 10;
+                        else if (value is int i3)
+                            requirements[sensor] = i3 - 10;
+                        else if (value is bool b3)
+                            requirements[sensor] = false;
+                        else if (value is string s3 && bool.TryParse(s3, out bool bv3))
+                            requirements[sensor] = false;
+                        else
+                            requirements[sensor] = value != null ? value : false;
                         break;
-                        
+
                     case "<=":
                         // For less than or equal, can use exact value
-                        if (value is double d4) requirements[sensor] = d4;
-                        else if (value is int i4) requirements[sensor] = i4;
-                        else if (value is bool b4) requirements[sensor] = false;
-                        else if (value is string s4 && bool.TryParse(s4, out bool bv4)) requirements[sensor] = false;
-                        else requirements[sensor] = value != null ? value : false;
+                        if (value is double d4)
+                            requirements[sensor] = d4;
+                        else if (value is int i4)
+                            requirements[sensor] = i4;
+                        else if (value is bool b4)
+                            requirements[sensor] = false;
+                        else if (value is string s4 && bool.TryParse(s4, out bool bv4))
+                            requirements[sensor] = false;
+                        else
+                            requirements[sensor] = value != null ? value : false;
                         break;
-                        
+
                     case "==":
                         // For equal, use exact value
                         requirements[sensor] = value ?? true;
                         break;
-                        
+
                     case "!=":
                         // For not equal, use opposite value
-                        if (value is bool b) requirements[sensor] = !b;
-                        else if (value is string s && bool.TryParse(s, out bool bv)) requirements[sensor] = !bv;
-                        else if (value is double d5) requirements[sensor] = d5 + 10;
-                        else if (value is int i5) requirements[sensor] = i5 + 10;
-                        else requirements[sensor] = value != null ? !Equals(value, true) : false;
+                        if (value is bool b)
+                            requirements[sensor] = !b;
+                        else if (value is string s && bool.TryParse(s, out bool bv))
+                            requirements[sensor] = !bv;
+                        else if (value is double d5)
+                            requirements[sensor] = d5 + 10;
+                        else if (value is int i5)
+                            requirements[sensor] = i5 + 10;
+                        else
+                            requirements[sensor] = value != null ? !Equals(value, true) : false;
                         break;
-                        
+
                     default:
                         // Default to using the value as-is
                         requirements[sensor] = value ?? true;
                         break;
                 }
-                
-                _logger.Debug("Condition {Condition} requires {Sensor}={Value}", 
-                    $"{sensor} {normalizedOp} {value}", sensor, requirements[sensor]);
+
+                _logger.Debug(
+                    "Condition {Condition} requires {Sensor}={Value}",
+                    $"{sensor} {normalizedOp} {value}",
+                    sensor,
+                    requirements[sensor]
+                );
             }
             else if (condition is ThresholdOverTimeCondition temporal)
             {
                 // For temporal conditions, basic test is not appropriate
                 // We'll just log this but not add specific requirements
-                _logger.Debug("Temporal condition for {Sensor} will not be satisfied in basic test", 
-                    temporal.Sensor);
+                _logger.Debug(
+                    "Temporal condition for {Sensor} will not be satisfied in basic test",
+                    temporal.Sensor
+                );
             }
-            
+
             return requirements;
         }
-        
+
         /// <summary>
         /// Normalizes various operator representations to standard form
         /// </summary>
@@ -357,7 +390,7 @@ namespace BeaconTester.RuleAnalyzer.Analysis
                 "not_equal_to" => "!=",
                 "ne" => "!=",
                 "neq" => "!=",
-                _ => op
+                _ => op,
             };
         }
     }

@@ -16,8 +16,10 @@ namespace BeaconTester.Core.Redis
         private readonly IDatabase _db;
         private readonly TimeSpan _errorThrottleWindow = TimeSpan.FromSeconds(60);
         private readonly Dictionary<string, DateTime> _lastErrorTime = [];
-        private readonly JsonSerializerOptions _jsonOptions =
-            new() { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
+        private readonly JsonSerializerOptions _jsonOptions = new()
+        {
+            PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+        };
         private bool _disposed;
 
         // Redis key prefixes - using consistent domain prefixes across the system
@@ -96,7 +98,7 @@ namespace BeaconTester.Core.Redis
                             string? value = input.Value is bool boolValue
                                 ? boolValue.ToString() // "True" or "False" with capital first letter
                                 : input.Value.ToString();
-                                
+
                             await _db.StringSetAsync(key, value);
                             _logger.Debug("Set string {Key} = {Value}", key, value);
                             break;
@@ -196,9 +198,13 @@ namespace BeaconTester.Core.Redis
                         int currentPollingInterval = basePollingInterval;
                         int maxPollingInterval = Math.Min(expectation.TimeoutMs.Value / 2, 2000); // Max 2 seconds or half timeout
                         int attemptCount = 0;
-                        
-                        _logger.Debug("Starting polling for {Key} with timeout {Timeout}ms and base interval {BaseInterval}ms", 
-                            expectation.Key, expectation.TimeoutMs.Value, basePollingInterval);
+
+                        _logger.Debug(
+                            "Starting polling for {Key} with timeout {Timeout}ms and base interval {BaseInterval}ms",
+                            expectation.Key,
+                            expectation.TimeoutMs.Value,
+                            basePollingInterval
+                        );
 
                         while (DateTime.UtcNow < end)
                         {
@@ -208,41 +214,53 @@ namespace BeaconTester.Core.Redis
                                 key,
                                 field
                             );
-                            
+
                             if (success)
                             {
-                                _logger.Debug("Expectation for {Key} met after {AttemptCount} attempts in {ElapsedTime}ms", 
-                                    expectation.Key, attemptCount, (DateTime.UtcNow - start).TotalMilliseconds);
+                                _logger.Debug(
+                                    "Expectation for {Key} met after {AttemptCount} attempts in {ElapsedTime}ms",
+                                    expectation.Key,
+                                    attemptCount,
+                                    (DateTime.UtcNow - start).TotalMilliseconds
+                                );
                                 break;
                             }
 
                             // Calculate next polling interval with exponential backoff (up to maxPollingInterval)
                             // Start with base interval, then increase by 50% each time
-                            if (attemptCount > 1) 
+                            if (attemptCount > 1)
                             {
                                 currentPollingInterval = Math.Min(
-                                    (int)(currentPollingInterval * 1.5), 
+                                    (int)(currentPollingInterval * 1.5),
                                     maxPollingInterval
                                 );
                             }
-                            
+
                             var remainingTime = (end - DateTime.UtcNow).TotalMilliseconds;
                             if (remainingTime <= 0)
                                 break;
-                                
+
                             // Don't wait longer than remaining time
                             int waitTime = (int)Math.Min(currentPollingInterval, remainingTime);
-                            
-                            _logger.Debug("Attempt {AttemptCount} for {Key} failed, waiting {WaitTime}ms before retry", 
-                                attemptCount, expectation.Key, waitTime);
-                                
+
+                            _logger.Debug(
+                                "Attempt {AttemptCount} for {Key} failed, waiting {WaitTime}ms before retry",
+                                attemptCount,
+                                expectation.Key,
+                                waitTime
+                            );
+
                             await Task.Delay(waitTime);
                         }
-                        
+
                         if (!success)
                         {
-                            _logger.Debug("Expectation for {Key} not met after {AttemptCount} attempts and {Timeout}ms", 
-                                expectation.Key, attemptCount, expectation.TimeoutMs.Value);
+                            _logger.Debug(
+                                "Expectation for {Key} not met after {AttemptCount} attempts and {Timeout}ms",
+                                expectation.Key,
+                                attemptCount,
+                                expectation.TimeoutMs.Value
+                            );
                         }
                     }
                     else
@@ -300,7 +318,12 @@ namespace BeaconTester.Core.Redis
                         {
                             actualValue = stringValue.ToString();
                             // Try to parse as a number if that's what's expected
-                            if (expectation.Expected is double || expectation.Expected is int || expectation.Expected is long || expectation.Expected is float)
+                            if (
+                                expectation.Expected is double
+                                || expectation.Expected is int
+                                || expectation.Expected is long
+                                || expectation.Expected is float
+                            )
                             {
                                 string stringVal = stringValue.ToString() ?? string.Empty;
                                 // Handle both period and comma as decimal separators
@@ -314,20 +337,38 @@ namespace BeaconTester.Core.Redis
                             // This helps handle inconsistencies between test expectations and actual results
                             string stringBoolValue = stringValue.ToString() ?? string.Empty;
                             string normalizedBoolValue = stringBoolValue.Trim().ToLowerInvariant();
-                            
-                            if (normalizedBoolValue == "true" || normalizedBoolValue == "1" || normalizedBoolValue == "yes")
+
+                            if (
+                                normalizedBoolValue == "true"
+                                || normalizedBoolValue == "1"
+                                || normalizedBoolValue == "yes"
+                            )
                             {
-                                _logger.Debug("Converting string '{RawValue}' to boolean: true", stringBoolValue);
+                                _logger.Debug(
+                                    "Converting string '{RawValue}' to boolean: true",
+                                    stringBoolValue
+                                );
                                 actualValue = true;
                             }
-                            else if (normalizedBoolValue == "false" || normalizedBoolValue == "0" || normalizedBoolValue == "no")
+                            else if (
+                                normalizedBoolValue == "false"
+                                || normalizedBoolValue == "0"
+                                || normalizedBoolValue == "no"
+                            )
                             {
-                                _logger.Debug("Converting string '{RawValue}' to boolean: false", stringBoolValue);
+                                _logger.Debug(
+                                    "Converting string '{RawValue}' to boolean: false",
+                                    stringBoolValue
+                                );
                                 actualValue = false;
                             }
                             else if (bool.TryParse(stringBoolValue, out var boolVal))
                             {
-                                _logger.Debug("Parsed '{RawValue}' as boolean: {BoolVal}", stringBoolValue, boolVal);
+                                _logger.Debug(
+                                    "Parsed '{RawValue}' as boolean: {BoolVal}",
+                                    stringBoolValue,
+                                    boolVal
+                                );
                                 actualValue = boolVal;
                             }
                         }
@@ -348,7 +389,12 @@ namespace BeaconTester.Core.Redis
                         {
                             actualValue = hashValue.ToString();
                             // Try to parse as a number if that's what's expected
-                            if (expectation.Expected is double || expectation.Expected is int || expectation.Expected is long || expectation.Expected is float)
+                            if (
+                                expectation.Expected is double
+                                || expectation.Expected is int
+                                || expectation.Expected is long
+                                || expectation.Expected is float
+                            )
                             {
                                 string stringVal = hashValue.ToString() ?? string.Empty;
                                 // Handle both period and comma as decimal separators
@@ -362,12 +408,20 @@ namespace BeaconTester.Core.Redis
                             {
                                 string stringVal = hashValue.ToString() ?? string.Empty;
                                 string normalizedValue = stringVal.Trim().ToLowerInvariant();
-                                
-                                if (normalizedValue == "true" || normalizedValue == "1" || normalizedValue == "yes")
+
+                                if (
+                                    normalizedValue == "true"
+                                    || normalizedValue == "1"
+                                    || normalizedValue == "yes"
+                                )
                                 {
                                     actualValue = true;
                                 }
-                                else if (normalizedValue == "false" || normalizedValue == "0" || normalizedValue == "no")
+                                else if (
+                                    normalizedValue == "false"
+                                    || normalizedValue == "0"
+                                    || normalizedValue == "no"
+                                )
                                 {
                                     actualValue = false;
                                 }
@@ -427,30 +481,32 @@ namespace BeaconTester.Core.Redis
                 }
 
                 // Log detailed type information for debugging
-                _logger.Debug("Comparing value - Key: {Key}, Expected Type: {ExpectedType}, Value: {ExpectedValue}, Actual Type: {ActualType}, Value: {ActualValue}, Validator: {Validator}",
+                _logger.Debug(
+                    "Comparing value - Key: {Key}, Expected Type: {ExpectedType}, Value: {ExpectedValue}, Actual Type: {ActualType}, Value: {ActualValue}, Validator: {Validator}",
                     expectation.Key,
                     expectation.Expected?.GetType().Name ?? "null",
                     expectation.Expected,
                     actualValue?.GetType().Name ?? "null",
                     actualValue,
-                    validatorType);
-                    
-                // Handle expected value as JsonElement 
+                    validatorType
+                );
+
+                // Handle expected value as JsonElement
                 if (expectation.Expected?.GetType().Name == "JsonElement")
                 {
                     var jsonElement = (System.Text.Json.JsonElement)expectation.Expected;
                     object? convertedValue = null;
-                    
+
                     switch (jsonElement.ValueKind)
                     {
                         case System.Text.Json.JsonValueKind.True:
                             convertedValue = true;
                             break;
-                            
+
                         case System.Text.Json.JsonValueKind.False:
                             convertedValue = false;
                             break;
-                            
+
                         case System.Text.Json.JsonValueKind.Number:
                             // Try to maintain the most appropriate numeric type
                             if (jsonElement.TryGetInt32(out int intValue))
@@ -459,7 +515,7 @@ namespace BeaconTester.Core.Redis
                             }
                             else if (jsonElement.TryGetInt64(out long longValue))
                             {
-                                convertedValue = longValue; 
+                                convertedValue = longValue;
                             }
                             else if (jsonElement.TryGetDouble(out double doubleValue))
                             {
@@ -471,10 +527,10 @@ namespace BeaconTester.Core.Redis
                                 convertedValue = jsonElement.ToString();
                             }
                             break;
-                            
+
                         case System.Text.Json.JsonValueKind.String:
                             string strValue = jsonElement.GetString() ?? "";
-                            
+
                             // Apply additional type conversions based on validator type
                             if (validatorType == "boolean")
                             {
@@ -482,13 +538,19 @@ namespace BeaconTester.Core.Redis
                                 {
                                     convertedValue = boolVal;
                                 }
-                                else if (strValue.Trim().ToLowerInvariant() == "true" || 
-                                         strValue == "1" || strValue == "yes")
+                                else if (
+                                    strValue.Trim().ToLowerInvariant() == "true"
+                                    || strValue == "1"
+                                    || strValue == "yes"
+                                )
                                 {
                                     convertedValue = true;
                                 }
-                                else if (strValue.Trim().ToLowerInvariant() == "false" || 
-                                         strValue == "0" || strValue == "no")
+                                else if (
+                                    strValue.Trim().ToLowerInvariant() == "false"
+                                    || strValue == "0"
+                                    || strValue == "no"
+                                )
                                 {
                                     convertedValue = false;
                                 }
@@ -497,7 +559,10 @@ namespace BeaconTester.Core.Redis
                                     convertedValue = strValue;
                                 }
                             }
-                            else if (validatorType == "numeric" && double.TryParse(strValue, out var numVal))
+                            else if (
+                                validatorType == "numeric"
+                                && double.TryParse(strValue, out var numVal)
+                            )
                             {
                                 convertedValue = numVal;
                             }
@@ -506,29 +571,31 @@ namespace BeaconTester.Core.Redis
                                 convertedValue = strValue;
                             }
                             break;
-                            
+
                         case System.Text.Json.JsonValueKind.Object:
                         case System.Text.Json.JsonValueKind.Array:
                             // For complex objects, keep as JsonElement for now
                             // They will be compared as strings via ToString()
                             convertedValue = jsonElement;
                             break;
-                            
+
                         case System.Text.Json.JsonValueKind.Null:
                             convertedValue = null;
                             break;
-                            
+
                         default:
                             convertedValue = jsonElement.ToString();
                             break;
                     }
-                    
+
                     expectation.Expected = convertedValue;
-                    
-                    _logger.Debug("Converted JsonElement ({Kind}) to {Type}: {Value}", 
+
+                    _logger.Debug(
+                        "Converted JsonElement ({Kind}) to {Type}: {Value}",
                         jsonElement.ValueKind,
-                        expectation.Expected?.GetType().Name ?? "null", 
-                        expectation.Expected);
+                        expectation.Expected?.GetType().Name ?? "null",
+                        expectation.Expected
+                    );
                 }
 
                 // Perform comparison based on validator type
@@ -575,13 +642,16 @@ namespace BeaconTester.Core.Redis
 
             // Domain prefixes (input:, output:, state:, buffer:) are now preserved as-is
             // No transformation is done to ensure consistent naming across the system
-            
+
             // Check for hash format with colon separator (if not a domain prefix)
-            if (key.Contains(':') && field == null && 
-                !key.StartsWith(INPUT_PREFIX) && 
-                !key.StartsWith(OUTPUT_PREFIX) && 
-                !key.StartsWith(STATE_PREFIX) && 
-                !key.StartsWith(BUFFER_PREFIX))
+            if (
+                key.Contains(':')
+                && field == null
+                && !key.StartsWith(INPUT_PREFIX)
+                && !key.StartsWith(OUTPUT_PREFIX)
+                && !key.StartsWith(STATE_PREFIX)
+                && !key.StartsWith(BUFFER_PREFIX)
+            )
             {
                 var parts = key.Split(':');
                 if (parts.Length == 2)
@@ -619,7 +689,11 @@ namespace BeaconTester.Core.Redis
                 {
                     expectedBool = true;
                 }
-                else if (normalizedValue == "false" || normalizedValue == "0" || normalizedValue == "no")
+                else if (
+                    normalizedValue == "false"
+                    || normalizedValue == "0"
+                    || normalizedValue == "no"
+                )
                 {
                     expectedBool = false;
                 }
@@ -650,7 +724,11 @@ namespace BeaconTester.Core.Redis
                 {
                     actualBool = true;
                 }
-                else if (normalizedValue == "false" || normalizedValue == "0" || normalizedValue == "no")
+                else if (
+                    normalizedValue == "false"
+                    || normalizedValue == "0"
+                    || normalizedValue == "no"
+                )
                 {
                     actualBool = false;
                 }
@@ -666,7 +744,10 @@ namespace BeaconTester.Core.Redis
             }
             else
             {
-                _logger.Debug("Actual value is not a string or boolean: {Type}", actual?.GetType().Name ?? "null");
+                _logger.Debug(
+                    "Actual value is not a string or boolean: {Type}",
+                    actual?.GetType().Name ?? "null"
+                );
                 return false;
             }
 
@@ -717,7 +798,10 @@ namespace BeaconTester.Core.Redis
             }
             else
             {
-                _logger.Debug("Unexpected type for expected value: {Type}", expected.GetType().Name);
+                _logger.Debug(
+                    "Unexpected type for expected value: {Type}",
+                    expected.GetType().Name
+                );
                 return false;
             }
 
@@ -759,13 +843,17 @@ namespace BeaconTester.Core.Redis
             }
 
             bool isEqual = Math.Abs(expectedNumber - actualNumber) <= tolerance;
-            
+
             if (!isEqual)
             {
-                _logger.Debug("Numeric comparison failed: expected {Expected}, actual {Actual}, tolerance {Tolerance}", 
-                    expectedNumber, actualNumber, tolerance);
+                _logger.Debug(
+                    "Numeric comparison failed: expected {Expected}, actual {Actual}, tolerance {Tolerance}",
+                    expectedNumber,
+                    actualNumber,
+                    tolerance
+                );
             }
-            
+
             return isEqual;
         }
 
@@ -777,11 +865,11 @@ namespace BeaconTester.Core.Redis
             // Special handling for null values
             if (expected == null && actual == null)
                 return true;
-                
+
             // Handle cases where only one is null - treat null as empty string for comparisons
             if (expected == null)
                 expected = string.Empty;
-                
+
             if (actual == null)
                 actual = string.Empty;
 
@@ -791,7 +879,7 @@ namespace BeaconTester.Core.Redis
             // Handle empty strings and whitespace - do this check early
             bool expectedEmpty = string.IsNullOrWhiteSpace(expectedString);
             bool actualEmpty = string.IsNullOrWhiteSpace(actualString);
-            
+
             if (expectedEmpty && actualEmpty)
                 return true;
 
@@ -800,30 +888,38 @@ namespace BeaconTester.Core.Redis
             string trimmedActual = actualString.Trim();
 
             // If the expected value looks like a boolean, try to handle case variations
-            if (trimmedExpected.ToLowerInvariant() == "true" || 
-                trimmedExpected.ToLowerInvariant() == "false" ||
-                trimmedExpected == "1" || trimmedExpected == "0")
+            if (
+                trimmedExpected.ToLowerInvariant() == "true"
+                || trimmedExpected.ToLowerInvariant() == "false"
+                || trimmedExpected == "1"
+                || trimmedExpected == "0"
+            )
             {
                 // Try converting both to booleans and compare
                 return CompareBooleans(expected, actual);
             }
-            
+
             // For numeric strings, try to compare numerically with improved parsing
             string normalizedExpected = trimmedExpected.Replace(",", ".");
             string normalizedActual = trimmedActual.Replace(",", ".");
-            
-            if (double.TryParse(normalizedExpected, out var expectedNum) && 
-                double.TryParse(normalizedActual, out var actualNum))
+
+            if (
+                double.TryParse(normalizedExpected, out var expectedNum)
+                && double.TryParse(normalizedActual, out var actualNum)
+            )
             {
                 // If both are numbers, use a small tolerance
                 const double tolerance = 0.0001;
                 bool isEqual = Math.Abs(expectedNum - actualNum) <= tolerance;
-                
+
                 if (isEqual)
                     return true;
-                    
-                _logger.Debug("Numeric string comparison failed: {Expected} vs {Actual}", 
-                    expectedString, actualString);
+
+                _logger.Debug(
+                    "Numeric string comparison failed: {Expected} vs {Actual}",
+                    expectedString,
+                    actualString
+                );
             }
 
             // Try case-insensitive comparison
@@ -832,13 +928,16 @@ namespace BeaconTester.Core.Redis
 
             // Default to exact string comparison
             bool exactMatch = expectedString == actualString;
-            
+
             if (!exactMatch)
             {
-                _logger.Debug("String comparison failed: expected '{Expected}', actual '{Actual}'", 
-                    expectedString, actualString);
+                _logger.Debug(
+                    "String comparison failed: expected '{Expected}', actual '{Actual}'",
+                    expectedString,
+                    actualString
+                );
             }
-            
+
             return exactMatch;
         }
 
@@ -876,7 +975,7 @@ namespace BeaconTester.Core.Redis
                 foreach (var (key, value) in outputs)
                 {
                     string redisKey = key;
-                    
+
                     // No prefix transformation is done to ensure consistent naming across the system
                     // Domain prefixes (output:, state:, buffer:) are preserved as-is
 
