@@ -61,21 +61,21 @@ Comprehensive build, test, and deployment steps are now consolidated in the [End
 ```sh
 # 1. Validate rules
 dotnet run --project Pulsar/Pulsar.Compiler/Pulsar.Compiler.csproj validate \
-    --rules=src/Rules/ThresholdOverTimeExample/rules/threshold_over_time_rules.yaml \
-    --config=src/Rules/ThresholdOverTimeExample/config/system_config.yaml
+    --rules=examples/Rules/ThresholdOverTimeExample/rules/threshold_over_time_rules.yaml \
+    --config=examples/Rules/ThresholdOverTimeExample/config/system_config.yaml
 
 # 2. Compile rules
 dotnet run --project Pulsar/Pulsar.Compiler/Pulsar.Compiler.csproj compile \
-    --rules=src/Rules/ThresholdOverTimeExample/rules/threshold_over_time_rules.yaml \
-    --config=src/Rules/ThresholdOverTimeExample/config/system_config.yaml \
+    --rules=examples/Rules/ThresholdOverTimeExample/rules/threshold_over_time_rules.yaml \
+    --config=examples/Rules/ThresholdOverTimeExample/config/system_config.yaml \
     --output=output/Bin/ThresholdOverTimeExample
 
 # 3. Generate Beacon solution
 dotnet run --project Pulsar/Pulsar.Compiler/Pulsar.Compiler.csproj beacon \
-    --rules=src/Rules/ThresholdOverTimeExample/rules/threshold_over_time_rules.yaml \
+    --rules=examples/Rules/ThresholdOverTimeExample/rules/threshold_over_time_rules.yaml \
     --compiled-rules-dir=output/Bin/ThresholdOverTimeExample \
     --output=output/dist/ThresholdOverTimeExample \
-    --config=src/Rules/ThresholdOverTimeExample/config/system_config.yaml \
+    --config=examples/Rules/ThresholdOverTimeExample/config/system_config.yaml \
     --target=linux-x64
 
 # 4. Build Beacon runtime
@@ -92,7 +92,7 @@ dotnet test output/dist/ThresholdOverTimeExample/Beacon/Beacon.Tests/Beacon.Test
 ./output/dist/ThresholdOverTimeExample/Beacon/Beacon.Runtime/bin/Debug/net9.0/linux-x64/Beacon.Runtime
 
 # 7. Generate & Run BeaconTester Scenarios
-dotnet run --project BeaconTester/BeaconTester.Runner/BeaconTester.Runner.csproj generate --rules=src/Rules/ThresholdOverTimeExample/rules/threshold_over_time_rules.yaml --output=output/dist/ThresholdOverTimeExample/test_scenarios.json
+dotnet run --project BeaconTester/BeaconTester.Runner/BeaconTester.Runner.csproj generate --rules=examples/Rules/ThresholdOverTimeExample/rules/threshold_over_time_rules.yaml --output=output/dist/ThresholdOverTimeExample/test_scenarios.json
 
 dotnet run --project BeaconTester/BeaconTester.Runner/BeaconTester.Runner.csproj run --scenarios=output/dist/ThresholdOverTimeExample/test_scenarios.json --output=output/dist/ThresholdOverTimeExample/test_results.json
 ```

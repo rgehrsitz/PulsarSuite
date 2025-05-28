@@ -11,8 +11,8 @@
     <TestsDir>$(SrcDir)Tests/</TestsDir>
     <LogsDir>$(OutputDir)logs/</LogsDir>
     <ProjectName Condition="'$(ProjectName)' == ''">DefaultProject</ProjectName>
-    <RulesFile Condition="'$(RulesFile)' == ''">$(SolutionDir)src/Rules/TemperatureExample/rules/temperature_rules.yaml</RulesFile>
-    <ConfigFile Condition="'$(ConfigFile)' == ''">$(SolutionDir)src/Rules/TemperatureExample/config/system_config.yaml</ConfigFile>
+    <RulesFile Condition="'$(RulesFile)' == ''">$(SolutionDir)examples/Rules/TemperatureExample/rules/temperature_rules.yaml</RulesFile>
+    <ConfigFile Condition="'$(ConfigFile)' == ''">$(SolutionDir)examples/Rules/TemperatureExample/config/system_config.yaml</ConfigFile>
     <ValidationDir Condition="'$(ValidationDir)' == ''">$(SolutionDir)Validation/</ValidationDir>
     <BeaconOutputDir Condition="'$(BeaconOutputDir)' == ''">$(ValidationDir)beacon/</BeaconOutputDir>
     <TestDir Condition="'$(TestDir)' == ''">$(ValidationDir)tests/</TestDir>
