@@ -23,7 +23,10 @@ namespace Pulsar.Tests.Integration
             _logger = new SerilogLoggerFactory(
                 LoggingConfig.GetSerilogLoggerForTests(output)
             ).CreateLogger<StringExpressionTests>();
-            _beaconOutputPath = Path.Combine(Path.GetTempPath(), $"BeaconStrExprTest_{Guid.NewGuid():N}");
+            _beaconOutputPath = Path.Combine(
+                Path.GetTempPath(),
+                $"BeaconStrExprTest_{Guid.NewGuid():N}"
+            );
             _beaconTestHelper = new BeaconTestHelper(_output, _logger, _beaconOutputPath, _fixture);
         }
 
@@ -61,7 +64,8 @@ namespace Pulsar.Tests.Integration
                 DirectorySetup.EnsureTestDirectories(_beaconOutputPath, _logger);
 
                 // Create a rule with string equality in the expression
-                string equalityRuleYaml = @"rules:
+                string equalityRuleYaml =
+                    @"rules:
   - name: StringEqualityRule
     description: Tests string equality expressions
     conditions:
@@ -85,10 +89,15 @@ namespace Pulsar.Tests.Integration
                             "string-equality-rule.yaml",
                             equalityRuleYaml
                         );
-                        _logger.LogInformation("Generated string equality rule at: {Path}", rulePath);
+                        _logger.LogInformation(
+                            "Generated string equality rule at: {Path}",
+                            rulePath
+                        );
 
                         // 2. Generate and build the Beacon executable
-                        bool generationSuccess = await _beaconTestHelper.GenerateBeaconExecutable(rulePath);
+                        bool generationSuccess = await _beaconTestHelper.GenerateBeaconExecutable(
+                            rulePath
+                        );
                         Assert.True(generationSuccess, "Beacon generation should succeed");
 
                         // 3. Set input values that don't match the condition
@@ -126,7 +135,10 @@ namespace Pulsar.Tests.Integration
 
                         // 5. Check if output is initially false
                         var initialResult = await CheckSystemReadyOutput();
-                        _logger.LogInformation("Initial system_ready value: {Value}", initialResult);
+                        _logger.LogInformation(
+                            "Initial system_ready value: {Value}",
+                            initialResult
+                        );
                         Assert.False(initialResult, "System ready flag should be false initially");
 
                         // 6. Now set values that match the condition
@@ -164,13 +176,18 @@ namespace Pulsar.Tests.Integration
 
                         // 8. Check if output flag is now true
                         var matchingResult = await CheckSystemReadyOutput();
-                        _logger.LogInformation("After setting matching values, system_ready value: {Value}", matchingResult);
+                        _logger.LogInformation(
+                            "After setting matching values, system_ready value: {Value}",
+                            matchingResult
+                        );
                         Assert.True(
                             matchingResult,
                             "System ready flag should be true when inputs match"
                         );
 
-                        _logger.LogInformation("String equality expression test completed successfully");
+                        _logger.LogInformation(
+                            "String equality expression test completed successfully"
+                        );
                     }
                     else
                     {
@@ -179,7 +196,9 @@ namespace Pulsar.Tests.Integration
                         _logger.LogWarning("Redis is not connected, performing virtual test");
 
                         // Manually assert to make the test pass
-                        _logger.LogInformation("Virtual test: String equality expression test passes");
+                        _logger.LogInformation(
+                            "Virtual test: String equality expression test passes"
+                        );
                         Assert.True(true, "String equality expression test passes in virtual mode");
                     }
                 }
@@ -219,7 +238,8 @@ namespace Pulsar.Tests.Integration
                 DirectorySetup.EnsureTestDirectories(_beaconOutputPath, _logger);
 
                 // Create a rule with logical operators in the expression
-                string logicalOpRuleYaml = @"rules:
+                string logicalOpRuleYaml =
+                    @"rules:
   - name: LogicalOperatorsInStringRule
     description: Tests logical operators with strings
     conditions:
@@ -243,10 +263,15 @@ namespace Pulsar.Tests.Integration
                             "logical-operators-string-rule.yaml",
                             logicalOpRuleYaml
                         );
-                        _logger.LogInformation("Generated logical operators rule at: {Path}", rulePath);
+                        _logger.LogInformation(
+                            "Generated logical operators rule at: {Path}",
+                            rulePath
+                        );
 
                         // 2. Generate and build the Beacon executable
-                        bool generationSuccess = await _beaconTestHelper.GenerateBeaconExecutable(rulePath);
+                        bool generationSuccess = await _beaconTestHelper.GenerateBeaconExecutable(
+                            rulePath
+                        );
                         Assert.True(generationSuccess, "Beacon generation should succeed");
 
                         // 3. Set input values that don't match the condition
@@ -284,7 +309,10 @@ namespace Pulsar.Tests.Integration
 
                         // 5. Check if output is initially false
                         var initialResult = await CheckAlertSystemOutput();
-                        _logger.LogInformation("Initial alert_system value: {Value}", initialResult);
+                        _logger.LogInformation(
+                            "Initial alert_system value: {Value}",
+                            initialResult
+                        );
                         Assert.False(initialResult, "Alert system flag should be false initially");
 
                         // 6. Set warning status but wrong system (condition should still be false)
@@ -311,8 +339,14 @@ namespace Pulsar.Tests.Integration
                         await db.StringSetAsync("output:alert_system", "False");
 
                         var warningButTestResult = await CheckAlertSystemOutput();
-                        _logger.LogInformation("With warning status but test system, alert_system value: {Value}", warningButTestResult);
-                        Assert.False(warningButTestResult, "Alert system flag should be false with warning but test system");
+                        _logger.LogInformation(
+                            "With warning status but test system, alert_system value: {Value}",
+                            warningButTestResult
+                        );
+                        Assert.False(
+                            warningButTestResult,
+                            "Alert system flag should be false with warning but test system"
+                        );
 
                         // 7. Now set values that match the condition (warning + production)
                         _logger.LogInformation("Setting matching inputs (warning + production)");
@@ -349,7 +383,10 @@ namespace Pulsar.Tests.Integration
 
                         // 9. Check if output flag is now true
                         var warningProductionResult = await CheckAlertSystemOutput();
-                        _logger.LogInformation("With warning + production, alert_system value: {Value}", warningProductionResult);
+                        _logger.LogInformation(
+                            "With warning + production, alert_system value: {Value}",
+                            warningProductionResult
+                        );
                         Assert.True(
                             warningProductionResult,
                             "Alert system flag should be true with warning status and production system"
@@ -369,13 +406,18 @@ namespace Pulsar.Tests.Integration
 
                         // 11. Check if output flag is still true
                         var criticalProductionResult = await CheckAlertSystemOutput();
-                        _logger.LogInformation("With critical + production, alert_system value: {Value}", criticalProductionResult);
+                        _logger.LogInformation(
+                            "With critical + production, alert_system value: {Value}",
+                            criticalProductionResult
+                        );
                         Assert.True(
                             criticalProductionResult,
                             "Alert system flag should be true with critical status and production system"
                         );
 
-                        _logger.LogInformation("Logical operators in string expressions test completed successfully");
+                        _logger.LogInformation(
+                            "Logical operators in string expressions test completed successfully"
+                        );
                     }
                     else
                     {
@@ -384,8 +426,13 @@ namespace Pulsar.Tests.Integration
                         _logger.LogWarning("Redis is not connected, performing virtual test");
 
                         // Manually assert to make the test pass
-                        _logger.LogInformation("Virtual test: Logical operators in string expressions test passes");
-                        Assert.True(true, "Logical operators in string expressions test passes in virtual mode");
+                        _logger.LogInformation(
+                            "Virtual test: Logical operators in string expressions test passes"
+                        );
+                        Assert.True(
+                            true,
+                            "Logical operators in string expressions test passes in virtual mode"
+                        );
                     }
                 }
                 catch (Exception redisEx)
@@ -423,7 +470,7 @@ namespace Pulsar.Tests.Integration
                 var db = _fixture.Redis.GetDatabase();
 
                 // Try multiple formats for the system_ready flag
-                
+
                 // 1. Try Redis hash format
                 var hashValue = await db.HashGetAsync("output:system_ready", "value");
                 if (!hashValue.IsNull)
@@ -512,7 +559,7 @@ namespace Pulsar.Tests.Integration
                 var db = _fixture.Redis.GetDatabase();
 
                 // Try multiple formats for the alert_system flag
-                
+
                 // 1. Try Redis hash format
                 var hashValue = await db.HashGetAsync("output:alert_system", "value");
                 if (!hashValue.IsNull)

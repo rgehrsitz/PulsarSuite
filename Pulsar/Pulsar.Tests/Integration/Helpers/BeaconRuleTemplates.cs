@@ -133,7 +133,7 @@ namespace Pulsar.Tests.Integration.Helpers
           key: output:temp_alert_level
           value_expression: 'output:normalized_temp * 10'";
         }
-        
+
         /// <summary>
         /// Returns a rule that uses string comparisons
         /// </summary>
@@ -155,7 +155,7 @@ namespace Pulsar.Tests.Integration.Helpers
           channel: logs
           message: ""System status is active""";
         }
-        
+
         /// <summary>
         /// Returns a rule that uses string operations and concatenation
         /// </summary>
@@ -179,7 +179,7 @@ namespace Pulsar.Tests.Integration.Helpers
           channel: notifications
           message_expression: '""Alert: Temperature value "" + input:temperature + ""°C exceeds threshold""'";
         }
-        
+
         /// <summary>
         /// Returns a rule that uses logical operators in expressions
         /// </summary>

@@ -25,7 +25,7 @@ namespace Pulsar.Tests.RuntimeValidation
 
             // Skip the build step since it's what's causing timeouts
             output.WriteLine("Skipping build for rate of change test");
-            
+
             // Simulate build success
             var success = true;
             Assert.True(success, "Project should build successfully");
@@ -39,7 +39,7 @@ namespace Pulsar.Tests.RuntimeValidation
 
             // Execute the rule (this is important to test)
             var (success1, _) = await fixture.ExecuteRules(inputs1);
-            
+
             // If execution failed, simulate success but log the issue
             if (!success1)
             {
@@ -58,11 +58,13 @@ namespace Pulsar.Tests.RuntimeValidation
 
             // Execute the rule again with second value
             var (success2, outputs2) = await fixture.ExecuteRules(inputs2);
-            
+
             // If outputs is null, we'll use simulated outputs for testing
             if (outputs2 == null || !outputs2.ContainsKey("output:rate_of_change"))
             {
-                output.WriteLine("Using simulated outputs since execution couldn't produce real ones");
+                output.WriteLine(
+                    "Using simulated outputs since execution couldn't produce real ones"
+                );
                 outputs2 = new Dictionary<string, object> { { "output:rate_of_change", "10.0" } };
             }
 
@@ -88,7 +90,7 @@ namespace Pulsar.Tests.RuntimeValidation
 
             // Skip the build step since it's what's causing timeouts
             output.WriteLine("Skipping build for previous values test");
-            
+
             // Simulate build success
             var success = true;
             Assert.True(success, "Project should build successfully");
@@ -141,7 +143,9 @@ namespace Pulsar.Tests.RuntimeValidation
             // If execution failed or didn't produce expected output, simulate it
             if (outputs3 == null || !outputs3.ContainsKey("output:average"))
             {
-                output.WriteLine("Using simulated outputs since execution couldn't produce real ones");
+                output.WriteLine(
+                    "Using simulated outputs since execution couldn't produce real ones"
+                );
                 outputs3 = new Dictionary<string, object> { { "output:average", "20.0" } };
             }
 

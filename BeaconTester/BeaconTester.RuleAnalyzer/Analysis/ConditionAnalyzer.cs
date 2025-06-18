@@ -1,3 +1,4 @@
+
 using System.Text.RegularExpressions;
 using BeaconTester.RuleAnalyzer.Parsing;
 using Serilog;
@@ -123,7 +124,9 @@ namespace BeaconTester.RuleAnalyzer.Analysis
         /// <summary>
         /// Analyzes a condition to determine what value a sensor should have to satisfy it
         /// </summary>
-        public Dictionary<string, object> AnalyzeConditionRequirements(ConditionDefinition condition)
+        public Dictionary<string, object> AnalyzeConditionRequirements(
+            ConditionDefinition condition
+        )
         {
             var requirements = new Dictionary<string, object>();
 
@@ -171,38 +174,58 @@ namespace BeaconTester.RuleAnalyzer.Analysis
                 {
                     case ">":
                         // For greater than, need a value higher than the comparison
-                        if (value is double d1) requirements[sensor] = d1 + 10;
-                        else if (value is int i1) requirements[sensor] = i1 + 10;
-                        else if (value is bool b1) requirements[sensor] = true;
-                        else if (value is string s1 && bool.TryParse(s1, out bool bv1)) requirements[sensor] = true;
-                        else requirements[sensor] = value != null ? value : true;
+                        if (value is double d1)
+                            requirements[sensor] = d1 + 10;
+                        else if (value is int i1)
+                            requirements[sensor] = i1 + 10;
+                        else if (value is bool b1)
+                            requirements[sensor] = true;
+                        else if (value is string s1 && bool.TryParse(s1, out bool bv1))
+                            requirements[sensor] = true;
+                        else
+                            requirements[sensor] = value != null ? value : true;
                         break;
 
                     case ">=":
                         // For greater than or equal, can use exact value
-                        if (value is double d2) requirements[sensor] = d2;
-                        else if (value is int i2) requirements[sensor] = i2;
-                        else if (value is bool b2) requirements[sensor] = true;
-                        else if (value is string s2 && bool.TryParse(s2, out bool bv2)) requirements[sensor] = true;
-                        else requirements[sensor] = value != null ? value : true;
+                        if (value is double d2)
+                            requirements[sensor] = d2;
+                        else if (value is int i2)
+                            requirements[sensor] = i2;
+                        else if (value is bool b2)
+                            requirements[sensor] = true;
+                        else if (value is string s2 && bool.TryParse(s2, out bool bv2))
+                            requirements[sensor] = true;
+                        else
+                            requirements[sensor] = value != null ? value : true;
                         break;
 
                     case "<":
                         // For less than, need a value lower than the comparison
-                        if (value is double d3) requirements[sensor] = d3 - 10;
-                        else if (value is int i3) requirements[sensor] = i3 - 10;
-                        else if (value is bool b3) requirements[sensor] = false;
-                        else if (value is string s3 && bool.TryParse(s3, out bool bv3)) requirements[sensor] = false;
-                        else requirements[sensor] = value != null ? value : false;
+                        if (value is double d3)
+                            requirements[sensor] = d3 - 10;
+                        else if (value is int i3)
+                            requirements[sensor] = i3 - 10;
+                        else if (value is bool b3)
+                            requirements[sensor] = false;
+                        else if (value is string s3 && bool.TryParse(s3, out bool bv3))
+                            requirements[sensor] = false;
+                        else
+                            requirements[sensor] = value != null ? value : false;
                         break;
 
                     case "<=":
                         // For less than or equal, can use exact value
-                        if (value is double d4) requirements[sensor] = d4;
-                        else if (value is int i4) requirements[sensor] = i4;
-                        else if (value is bool b4) requirements[sensor] = false;
-                        else if (value is string s4 && bool.TryParse(s4, out bool bv4)) requirements[sensor] = false;
-                        else requirements[sensor] = value != null ? value : false;
+                        if (value is double d4)
+                            requirements[sensor] = d4;
+                        else if (value is int i4)
+                            requirements[sensor] = i4;
+                        else if (value is bool b4)
+                            requirements[sensor] = false;
+                        else if (value is string s4 && bool.TryParse(s4, out bool bv4))
+                            requirements[sensor] = false;
+                        else
+                            requirements[sensor] = value != null ? value : false;
                         break;
 
                     case "==":
@@ -212,11 +235,16 @@ namespace BeaconTester.RuleAnalyzer.Analysis
 
                     case "!=":
                         // For not equal, use opposite value
-                        if (value is bool b) requirements[sensor] = !b;
-                        else if (value is string s && bool.TryParse(s, out bool bv)) requirements[sensor] = !bv;
-                        else if (value is double d5) requirements[sensor] = d5 + 10;
-                        else if (value is int i5) requirements[sensor] = i5 + 10;
-                        else requirements[sensor] = value != null ? !Equals(value, true) : false;
+                        if (value is bool b)
+                            requirements[sensor] = !b;
+                        else if (value is string s && bool.TryParse(s, out bool bv))
+                            requirements[sensor] = !bv;
+                        else if (value is double d5)
+                            requirements[sensor] = d5 + 10;
+                        else if (value is int i5)
+                            requirements[sensor] = i5 + 10;
+                        else
+                            requirements[sensor] = value != null ? !Equals(value, true) : false;
                         break;
 
                     default:
@@ -225,15 +253,21 @@ namespace BeaconTester.RuleAnalyzer.Analysis
                         break;
                 }
 
-                _logger.Debug("Condition {Condition} requires {Sensor}={Value}",
-                    $"{sensor} {normalizedOp} {value}", sensor, requirements[sensor]);
+                _logger.Debug(
+                    "Condition {Condition} requires {Sensor}={Value}",
+                    $"{sensor} {normalizedOp} {value}",
+                    sensor,
+                    requirements[sensor]
+                );
             }
             else if (condition is ThresholdOverTimeCondition temporal)
             {
                 // For temporal conditions, basic test is not appropriate
                 // We'll just log this but not add specific requirements
-                _logger.Debug("Temporal condition for {Sensor} will not be satisfied in basic test",
-                    temporal.Sensor);
+                _logger.Debug(
+                    "Temporal condition for {Sensor} will not be satisfied in basic test",
+                    temporal.Sensor
+                );
             }
 
             return requirements;
@@ -260,7 +294,7 @@ namespace BeaconTester.RuleAnalyzer.Analysis
                 "not_equal_to" => "!=",
                 "ne" => "!=",
                 "neq" => "!=",
-                _ => op
+                _ => op,
             };
         }
     }

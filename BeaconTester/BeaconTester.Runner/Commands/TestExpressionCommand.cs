@@ -67,8 +67,12 @@ namespace BeaconTester.Runner.Commands
                             var key = keyValue[0].Trim();
                             var value = ParseValue(keyValue[1].Trim());
                             inputsDict[key] = value;
-                            logger.Information("Input: {Key} = {Value} ({Type})", 
-                                key, value, value?.GetType().Name ?? "null");
+                            logger.Information(
+                                "Input: {Key} = {Value} ({Type})",
+                                key,
+                                value,
+                                value?.GetType().Name ?? "null"
+                            );
                         }
                     }
                 }
@@ -80,7 +84,7 @@ namespace BeaconTester.Runner.Commands
                     inputsDict["input:pressure"] = 1013.0;
                     inputsDict["input:status"] = "active";
                     inputsDict["input:enabled"] = true;
-                    
+
                     logger.Information("Using default input values");
                 }
 
@@ -93,7 +97,7 @@ namespace BeaconTester.Runner.Commands
                     foreach (var part in parts)
                     {
                         var trimmedPart = part.Trim();
-                        
+
                         // Handle string literals
                         if (trimmedPart.StartsWith("\"") && trimmedPart.EndsWith("\""))
                         {
@@ -117,8 +121,11 @@ namespace BeaconTester.Runner.Commands
                             stringResult += trimmedPart;
                         }
                     }
-                    
-                    logger.Information("Result: {Result} (Directly Evaluated String)", stringResult);
+
+                    logger.Information(
+                        "Result: {Result} (Directly Evaluated String)",
+                        stringResult
+                    );
                     return 0;
                 }
 
@@ -126,8 +133,11 @@ namespace BeaconTester.Runner.Commands
                 var evaluator = new ExpressionEvaluator(logger);
                 var result = await evaluator.EvaluateAsync(expression, inputsDict);
 
-                logger.Information("Result: {Result} ({Type})", 
-                    result, result?.GetType().Name ?? "null");
+                logger.Information(
+                    "Result: {Result} ({Type})",
+                    result,
+                    result?.GetType().Name ?? "null"
+                );
 
                 return 0;
             }

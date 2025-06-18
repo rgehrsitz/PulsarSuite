@@ -7,8 +7,16 @@ set -e  # Exit on any error
 
 # Configuration
 PROJECT_NAME=${1:-"TemperatureExample"}
-RULES_FILE="src/Rules/${PROJECT_NAME}/rules/temperature_rules.yaml"
-CONFIG_FILE="src/Rules/${PROJECT_NAME}/config/system_config.yaml"
+
+# Special handling for TemperatureExample - use canonical location
+if [ "$PROJECT_NAME" = "TemperatureExample" ]; then
+    RULES_FILE="Pulsar/Examples/BasicRules/temperature_rules.yaml"
+    CONFIG_FILE="Pulsar/Examples/BasicRules/system_config.yaml"
+else
+    RULES_FILE="examples/Rules/${PROJECT_NAME}/rules/temperature_rules.yaml"
+    CONFIG_FILE="examples/Rules/${PROJECT_NAME}/config/system_config.yaml"
+fi
+
 OUTPUT_DIR="output"
 BIN_DIR="${OUTPUT_DIR}/Bin/${PROJECT_NAME}"
 DIST_DIR="${OUTPUT_DIR}/dist/${PROJECT_NAME}"
@@ -115,15 +123,27 @@ generate_beacon() {
     log_success "Beacon application generation completed"
 }
 
-# Build Beacon runtime
+# Build Beacon runtime (Debug, managed)
 build_beacon() {
-    log_info "Building Beacon runtime..."
+    log_info "Building Beacon runtime (managed, Debug)..."
     dotnet publish "$DIST_DIR/Beacon/Beacon.Runtime/Beacon.Runtime.csproj" \
         -c Debug \
         -r linux-x64 \
         --self-contained true \
         /p:PublishSingleFile=true
-    log_success "Beacon runtime build completed"
+    log_success "Beacon runtime (managed) build completed"
+}
+
+# Build Beacon runtime (AOT, native)
+build_beacon_aot() {
+    log_info "Building Beacon runtime (AOT, native, Release)..."
+    dotnet publish "$DIST_DIR/Beacon/Beacon.Runtime/Beacon.Runtime.csproj" \
+        -c Release \
+        -r linux-x64 \
+        --self-contained true \
+        /p:PublishAot=true \
+        /p:PublishSingleFile=true
+    log_success "Beacon runtime (AOT/native) build completed"
 }
 
 # Generate test scenarios
@@ -136,25 +156,23 @@ generate_tests() {
     log_success "Test scenarios generation completed"
 }
 
-# Start Beacon (in background)
-start_beacon() {
-    log_info "Starting Beacon runtime..."
+# Start Beacon (AOT, native, in background)
+start_beacon_aot() {
+    log_info "Starting Beacon runtime (AOT/native)..."
     mkdir -p "$REPORTS_DIR"
-
-    # Start Beacon in background
-    cd "$DIST_DIR/Beacon/Beacon.Runtime/bin/Debug/net8.0/linux-x64"
-    nohup dotnet Beacon.Runtime.dll --redis-host=localhost --redis-port=6379 --verbose > "$REPORTS_DIR/beacon.log" 2>&1 &
+    BIN_PATH="$DIST_DIR/Beacon/Beacon.Runtime/bin/Release/net9.0/linux-x64/publish/Beacon.Runtime"
+    if [ ! -f "$BIN_PATH" ]; then
+        log_error "AOT/native binary not found: $BIN_PATH"
+        exit 1
+    fi
+    nohup "$BIN_PATH" --redis-host=localhost --redis-port=6379 --verbose > "$REPORTS_DIR/beacon_aot.log" 2>&1 &
     BEACON_PID=$!
-
-    # Wait for Beacon to start
     sleep 5
-
-    # Check if Beacon is running
     if ps -p $BEACON_PID > /dev/null; then
-        log_success "Beacon started with PID: $BEACON_PID"
-        echo $BEACON_PID > "$REPORTS_DIR/beacon.pid"
+        log_success "Beacon (AOT/native) started with PID: $BEACON_PID"
+        echo $BEACON_PID > "$REPORTS_DIR/beacon_aot.pid"
     else
-        log_error "Failed to start Beacon"
+        log_error "Failed to start Beacon (AOT/native)"
         exit 1
     fi
 }
@@ -178,20 +196,19 @@ run_tests() {
     log_success "Test execution completed"
 }
 
-# Stop Beacon
-stop_beacon() {
-    log_info "Stopping Beacon runtime..."
-
-    if [ -f "$REPORTS_DIR/beacon.pid" ]; then
-        BEACON_PID=$(cat "$REPORTS_DIR/beacon.pid")
+# Stop Beacon (AOT/native)
+stop_beacon_aot() {
+    log_info "Stopping Beacon runtime (AOT/native)..."
+    if [ -f "$REPORTS_DIR/beacon_aot.pid" ]; then
+        BEACON_PID=$(cat "$REPORTS_DIR/beacon_aot.pid")
         if ps -p $BEACON_PID > /dev/null; then
             kill $BEACON_PID
-            log_success "Beacon stopped"
+            log_success "Beacon (AOT/native) stopped"
         fi
-        rm -f "$REPORTS_DIR/beacon.pid"
+        rm -f "$REPORTS_DIR/beacon_aot.pid"
     else
         pkill -f Beacon.Runtime || true
-        log_warning "Beacon process not found or already stopped"
+        log_warning "Beacon (AOT/native) process not found or already stopped"
     fi
 }
 
@@ -229,14 +246,15 @@ main() {
     compile_rules
     generate_beacon
     build_beacon
+    build_beacon_aot
     generate_tests
-    start_beacon
+    start_beacon_aot
 
     # Run tests
     run_tests
 
     # Stop Beacon
-    stop_beacon
+    stop_beacon_aot
 
     # Show results
     show_results
@@ -248,7 +266,8 @@ main() {
     echo "  - Beacon application: $DIST_DIR"
     echo "  - Test scenarios: $TESTS_DIR/test_scenarios.json"
     echo "  - Test results: $REPORTS_DIR/test_results.json"
-    echo "  - Beacon logs: $REPORTS_DIR/beacon.log"
+    echo "  - Beacon logs: $REPORTS_DIR/beacon_aot.log"
+    echo "  - Beacon native binary: $DIST_DIR/Beacon/Beacon.Runtime/bin/Release/net9.0/linux-x64/publish/Beacon.Runtime"
     echo "=========================================="
 }
 
@@ -272,21 +291,22 @@ case "${2:-}" in
         compile_rules
         generate_beacon
         build_beacon
+        build_beacon_aot
         ;;
     "test")
         check_prerequisites
         generate_tests
-        start_beacon
+        start_beacon_aot
         run_tests
-        stop_beacon
+        stop_beacon_aot
         show_results
         ;;
     "start-beacon")
-        start_beacon
+        start_beacon_aot
         echo "Beacon is running. Use 'stop-beacon' to stop it."
         ;;
     "stop-beacon")
-        stop_beacon
+        stop_beacon_aot
         ;;
     *)
         main

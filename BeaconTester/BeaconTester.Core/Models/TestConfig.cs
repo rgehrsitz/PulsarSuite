@@ -61,7 +61,8 @@ namespace BeaconTester.Core.Models
         public int CalculateTimeoutMs(int? overrideMultiplier = null)
         {
             var multiplier = overrideMultiplier ?? DefaultTimeoutMultiplier;
-            return (int)Math.Ceiling(BeaconCycleTimeMs * multiplier * GlobalTimeoutMultiplier) + TimeoutBufferMs;
+            return (int)Math.Ceiling(BeaconCycleTimeMs * multiplier * GlobalTimeoutMultiplier)
+                + TimeoutBufferMs;
         }
 
         /// <summary>

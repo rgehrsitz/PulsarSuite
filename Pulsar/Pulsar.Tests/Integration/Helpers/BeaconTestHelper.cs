@@ -14,7 +14,8 @@ namespace Pulsar.Tests.Integration.Helpers
         ITestOutputHelper output,
         ILogger logger,
         string outputPath,
-        EndToEndTestFixture fixture)
+        EndToEndTestFixture fixture
+    )
     {
         /// <summary>
         /// Generates a test rule file with the specified content

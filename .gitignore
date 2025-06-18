@@ -127,3 +127,22 @@ coverage.*
 # System Files
 .DS_Store
 Thumbs.db
+
+# Generated build artifacts (should not be in source control)
+build/*.cs
+build/RedisService.cs.fixed
+build/EmbeddedConfig.cs
+build/RuleCoordinator.cs
+build/RuleMetadata.cs
+**/Generated/
+*/Generated/*
+Pulsar.Compiler/Generated/
+
+# Experimental/testing build files
+build/e2e.build
+build/final.build
+build/full.e2e.build
+build/minimal*.build
+build/simple.build
+build/PulsarSuite.*.build
+!build/PulsarSuite.build

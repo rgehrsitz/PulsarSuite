@@ -667,7 +667,12 @@ namespace BeaconTester.RuleAnalyzer.Generation
                                 {
                                     var outputKey = dependencyPair.Key; // outputKey is valid here
                                     var rule = dependencyPair.Value;
-                                    var expectedOutputValue = preSetOutputs[outputKey];
+                                    object expectedOutputValue;
+                                    if (!preSetOutputs.TryGetValue(outputKey, out expectedOutputValue))
+                                    {
+                                        _logger.Warning("[TestGen] Dependency output key '{OutputKey}' not found in preSetOutputs. Available keys: [{Keys}] - Skipping this dependency.", outputKey, string.Join(", ", preSetOutputs.Keys));
+                                        continue;
+                                    }
 
                                     // Check if this rule uses this input
                                     if (rule.Conditions != null)

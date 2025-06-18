@@ -68,7 +68,14 @@ namespace BeaconTester.Runner.Commands
             command.AddOption(monitorOption);
 
             // Define the handler method
-            command.SetHandler(RunHandler, scenariosOption, outputOption, redisHostOption, redisPortOption, monitorOption);
+            command.SetHandler(
+                RunHandler,
+                scenariosOption,
+                outputOption,
+                redisHostOption,
+                redisPortOption,
+                monitorOption
+            );
 
             return command;
         }
@@ -76,20 +83,33 @@ namespace BeaconTester.Runner.Commands
         /// <summary>
         /// Handler method for the run command
         /// </summary>
-        private async Task<int> RunHandler(string scenariosPath, string? outputPath, string? redisHost, int redisPort, bool monitor)
+        private async Task<int> RunHandler(
+            string scenariosPath,
+            string? outputPath,
+            string? redisHost,
+            int redisPort,
+            bool monitor
+        )
         {
             // Create empty options object (config will be read from environment variables)
             var testConfigOptions = new TestConfigOptions();
-            
+
             // Execute the command logic and return the result code
-            return await HandleRunCommand(scenariosPath, outputPath, redisHost, redisPort, monitor, testConfigOptions);
+            return await HandleRunCommand(
+                scenariosPath,
+                outputPath,
+                redisHost,
+                redisPort,
+                monitor,
+                testConfigOptions
+            );
         }
-        
+
         /// <summary>
         /// Handles the run command
         /// </summary>
 
-        
+
         /// <summary>
         /// Options class for TestConfig parameters to work around parameter count limitations
         /// </summary>
@@ -156,32 +176,44 @@ namespace BeaconTester.Runner.Commands
 
                 // Create test config with cycle time settings
                 var testConfig = new TestConfig();
-                
+
                 // Apply command line overrides if specified
                 if (configOptions.BeaconCycleTime > 0)
                 {
                     testConfig.BeaconCycleTimeMs = configOptions.BeaconCycleTime;
-                    logger.Information("Using Beacon cycle time: {CycleTime}ms", testConfig.BeaconCycleTimeMs);
+                    logger.Information(
+                        "Using Beacon cycle time: {CycleTime}ms",
+                        testConfig.BeaconCycleTimeMs
+                    );
                 }
-                
+
                 if (configOptions.StepDelayMultiplier > 0)
                 {
                     testConfig.DefaultStepDelayMultiplier = configOptions.StepDelayMultiplier;
-                    logger.Information("Using step delay multiplier: {Multiplier}", testConfig.DefaultStepDelayMultiplier);
+                    logger.Information(
+                        "Using step delay multiplier: {Multiplier}",
+                        testConfig.DefaultStepDelayMultiplier
+                    );
                 }
-                
+
                 if (configOptions.TimeoutMultiplier > 0)
                 {
                     testConfig.DefaultTimeoutMultiplier = configOptions.TimeoutMultiplier;
-                    logger.Information("Using timeout multiplier: {Multiplier}", testConfig.DefaultTimeoutMultiplier);
+                    logger.Information(
+                        "Using timeout multiplier: {Multiplier}",
+                        testConfig.DefaultTimeoutMultiplier
+                    );
                 }
-                
+
                 if (configOptions.GlobalTimeoutMultiplier > 0)
                 {
                     testConfig.GlobalTimeoutMultiplier = configOptions.GlobalTimeoutMultiplier;
-                    logger.Information("Using global timeout multiplier: {Multiplier}", testConfig.GlobalTimeoutMultiplier);
+                    logger.Information(
+                        "Using global timeout multiplier: {Multiplier}",
+                        testConfig.GlobalTimeoutMultiplier
+                    );
                 }
-                
+
                 // Run tests
                 using var testRunner = new TestRunner(redisConfig, logger, testConfig, monitor);
                 var results = await testRunner.RunTestBatchAsync(scenariosDocument.Scenarios);

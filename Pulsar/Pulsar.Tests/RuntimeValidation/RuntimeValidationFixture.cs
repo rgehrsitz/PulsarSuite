@@ -25,6 +25,7 @@ namespace Pulsar.Tests.RuntimeValidation
         private RedisContainer? _redisContainer;
         private ConnectionMultiplexer? _redisConnection;
         private string _testOutputPath;
+
         // We no longer need to keep a reference to the compiled assembly
         private bool _disposed;
 
@@ -112,14 +113,14 @@ namespace Pulsar.Tests.RuntimeValidation
                     "Building test project with {Count} rule files",
                     ruleFiles.Length
                 );
-                
+
                 // Create system config file if it doesn't exist
                 var systemConfigPath = Path.Combine(_testOutputPath, "system_config.yaml");
                 if (!File.Exists(systemConfigPath))
                 {
                     await CreateSystemConfigFile();
                 }
-                
+
                 // Create BuildConfig
                 var buildConfig = new BuildConfig
                 {
@@ -144,7 +145,7 @@ namespace Pulsar.Tests.RuntimeValidation
                     CreateSeparateDirectory = true,
                     RedisConnection = "localhost:" + _redisContainer?.GetMappedPublicPort(6379),
                 };
-                
+
                 // Create a SystemConfig object and assign it to the BuildConfig
                 var systemConfig = new SystemConfig
                 {
@@ -152,27 +153,38 @@ namespace Pulsar.Tests.RuntimeValidation
                     CycleTime = 1000,
                     BufferCapacity = 100,
                     LogLevel = "Debug",
-                    ValidSensors = new List<string> { 
-                        "input:a", "input:b", "input:c", 
-                        "output:sum", "output:complex", "output:log",
-                        "test"
+                    ValidSensors = new List<string>
+                    {
+                        "input:a",
+                        "input:b",
+                        "input:c",
+                        "output:sum",
+                        "output:complex",
+                        "output:log",
+                        "test",
                     },
                     Redis = new Dictionary<string, object>
                     {
                         { "connection", "localhost:" + _redisContainer?.GetMappedPublicPort(6379) },
-                        { "keyPrefix", "test:" }
-                    }
+                        { "keyPrefix", "test:" },
+                    },
                 };
                 buildConfig.SystemConfig = systemConfig;
-                
+
                 // Parse and validate rules
                 var ruleDefinitions = new List<RuleDefinition>();
                 foreach (var ruleFile in ruleFiles)
                 {
                     var ruleContent = await File.ReadAllTextAsync(ruleFile);
-                    try {
+                    try
+                    {
                         // Use the same valid sensors as in the system config
-                        var parsedRules = _parser.ParseRules(ruleContent, systemConfig.ValidSensors, Path.GetFileName(ruleFile), true);
+                        var parsedRules = _parser.ParseRules(
+                            ruleContent,
+                            systemConfig.ValidSensors,
+                            Path.GetFileName(ruleFile),
+                            true
+                        );
                         ruleDefinitions.AddRange(parsedRules);
                     }
                     catch (Exception ex)
@@ -186,7 +198,7 @@ namespace Pulsar.Tests.RuntimeValidation
                     }
                 }
                 buildConfig.RuleDefinitions = ruleDefinitions;
-                
+
                 // Generate source code
                 var compiler = new AOTRuleCompiler();
                 var options = new CompilerOptions
@@ -194,13 +206,13 @@ namespace Pulsar.Tests.RuntimeValidation
                     OutputDirectory = _testOutputPath,
                     ValidSensors = systemConfig.ValidSensors,
                     AllowInvalidSensors = true,
-                    BuildConfig = buildConfig
+                    BuildConfig = buildConfig,
                 };
-                
+
                 // Use BeaconBuildOrchestrator for AOT-compatible builds
                 var orchestrator = new BeaconBuildOrchestrator();
                 var buildResult = await orchestrator.BuildBeaconAsync(buildConfig);
-                
+
                 if (!buildResult.Success)
                 {
                     _logger.LogError(
@@ -209,7 +221,7 @@ namespace Pulsar.Tests.RuntimeValidation
                     );
                     return false;
                 }
-                
+
                 // Actually build the generated project
                 var beaconDir = Path.Combine(_testOutputPath, "Beacon");
                 if (!Directory.Exists(beaconDir))
@@ -217,7 +229,7 @@ namespace Pulsar.Tests.RuntimeValidation
                     _logger.LogError("Beacon directory not found at {Path}", beaconDir);
                     return false;
                 }
-                
+
                 // Run dotnet build on the Beacon.Runtime project
                 var processStartInfo = new ProcessStartInfo
                 {
@@ -229,16 +241,16 @@ namespace Pulsar.Tests.RuntimeValidation
                     UseShellExecute = false,
                     CreateNoWindow = true,
                 };
-                
+
                 var process = new Process
                 {
                     StartInfo = processStartInfo,
                     EnableRaisingEvents = true,
                 };
-                
+
                 var outputBuilder = new StringBuilder();
                 var errorBuilder = new StringBuilder();
-                
+
                 process.OutputDataReceived += (sender, e) =>
                 {
                     if (!string.IsNullOrEmpty(e.Data))
@@ -247,7 +259,7 @@ namespace Pulsar.Tests.RuntimeValidation
                         outputBuilder.AppendLine(e.Data);
                     }
                 };
-                
+
                 process.ErrorDataReceived += (sender, e) =>
                 {
                     if (!string.IsNullOrEmpty(e.Data))
@@ -256,18 +268,21 @@ namespace Pulsar.Tests.RuntimeValidation
                         errorBuilder.AppendLine(e.Data);
                     }
                 };
-                
+
                 process.Start();
                 process.BeginOutputReadLine();
                 process.BeginErrorReadLine();
                 await process.WaitForExitAsync();
-                
+
                 if (process.ExitCode != 0)
                 {
-                    _logger.LogError("Failed to build Beacon project: {Error}", errorBuilder.ToString());
+                    _logger.LogError(
+                        "Failed to build Beacon project: {Error}",
+                        errorBuilder.ToString()
+                    );
                     return false;
                 }
-                
+
                 _logger.LogInformation("Successfully built Beacon project with AOT compatibility");
                 return true;
             }
@@ -283,7 +298,9 @@ namespace Pulsar.Tests.RuntimeValidation
         /// </summary>
         /// <param name="inputs">Optional dictionary of inputs to pass to the rules</param>
         /// <returns>A tuple containing (success, outputs)</returns>
-        public async Task<(bool success, Dictionary<string, object>? outputs)> ExecuteRules(Dictionary<string, object>? inputs = null)
+        public async Task<(bool success, Dictionary<string, object>? outputs)> ExecuteRules(
+            Dictionary<string, object>? inputs = null
+        )
         {
             try
             {
@@ -293,24 +310,28 @@ namespace Pulsar.Tests.RuntimeValidation
                 // Execute the rules
                 // Try to find the compiled DLL
                 var dllPath = FindCompiledAssembly();
-                
+
                 if (string.IsNullOrEmpty(dllPath) || !File.Exists(dllPath))
                 {
                     _logger.LogError("Compiled assembly not found");
                     return (false, null);
                 }
-                
+
                 _logger.LogInformation("Found compiled assembly at {Path}", dllPath);
-                
+
                 // Create inputs file for the test if provided
                 if (inputs != null && inputs.Count > 0)
                 {
                     var inputsJson = System.Text.Json.JsonSerializer.Serialize(inputs);
                     var inputsPath = Path.Combine(_testOutputPath, "test-inputs.json");
                     await File.WriteAllTextAsync(inputsPath, inputsJson);
-                    _logger.LogInformation("Created inputs file at {Path} with {Count} inputs", inputsPath, inputs.Count);
+                    _logger.LogInformation(
+                        "Created inputs file at {Path} with {Count} inputs",
+                        inputsPath,
+                        inputs.Count
+                    );
                 }
-                
+
                 var processStartInfo = new ProcessStartInfo
                 {
                     FileName = "dotnet",
@@ -326,13 +347,13 @@ namespace Pulsar.Tests.RuntimeValidation
                     EnableRaisingEvents = true,
                 };
                 var jsonOutputs = new List<string>();
-                
+
                 process.OutputDataReceived += (sender, e) =>
                 {
                     if (!string.IsNullOrEmpty(e.Data))
                     {
                         _logger.LogInformation("[Beacon] {Output}", e.Data);
-                        
+
                         // Check if the output is a JSON object (outputs from the rules)
                         if (e.Data.TrimStart().StartsWith("{") && e.Data.TrimEnd().EndsWith("}"))
                         {
@@ -352,26 +373,34 @@ namespace Pulsar.Tests.RuntimeValidation
                 process.BeginErrorReadLine();
                 // Wait for the process to exit
                 await process.WaitForExitAsync();
-                
+
                 // Parse outputs if available
                 Dictionary<string, object>? outputDict = null;
                 if (jsonOutputs.Count > 0)
                 {
-                    _logger.LogInformation("Found {Count} JSON outputs from rule execution", jsonOutputs.Count);
-                    
+                    _logger.LogInformation(
+                        "Found {Count} JSON outputs from rule execution",
+                        jsonOutputs.Count
+                    );
+
                     try
                     {
                         // Use the last JSON output (should contain the final state)
                         var lastOutput = jsonOutputs.Last();
-                        outputDict = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, object>>(lastOutput);
-                        _logger.LogInformation("Parsed outputs: {Keys}", outputDict != null ? string.Join(", ", outputDict.Keys) : "none");
+                        outputDict = System.Text.Json.JsonSerializer.Deserialize<
+                            Dictionary<string, object>
+                        >(lastOutput);
+                        _logger.LogInformation(
+                            "Parsed outputs: {Keys}",
+                            outputDict != null ? string.Join(", ", outputDict.Keys) : "none"
+                        );
                     }
                     catch (Exception ex)
                     {
                         _logger.LogError(ex, "Failed to parse rule outputs");
                     }
                 }
-                
+
                 // Memory monitoring will stop automatically after the specified duration
                 return (process.ExitCode == 0, outputDict);
             }
@@ -388,12 +417,16 @@ namespace Pulsar.Tests.RuntimeValidation
         /// <param name="duration">Duration to monitor memory usage</param>
         /// <param name="cycleCount">Number of cycles to monitor</param>
         /// <param name="memoryCallback">Callback to receive memory usage updates</param>
-        public async Task MonitorMemoryUsage(TimeSpan duration, int cycleCount = 1, Action<long>? memoryCallback = null)
+        public async Task MonitorMemoryUsage(
+            TimeSpan duration,
+            int cycleCount = 1,
+            Action<long>? memoryCallback = null
+        )
         {
             var cts = new CancellationTokenSource(duration);
             var process = Process.GetCurrentProcess();
             var intervalMs = (int)(duration.TotalMilliseconds / cycleCount);
-            
+
             try
             {
                 for (int i = 0; i < cycleCount && !cts.Token.IsCancellationRequested; i++)
@@ -402,10 +435,10 @@ namespace Pulsar.Tests.RuntimeValidation
                     var memoryBytes = process.WorkingSet64;
                     var memoryMB = memoryBytes / (1024 * 1024);
                     _logger.LogInformation("Memory usage: {MemoryMB} MB", memoryMB);
-                    
+
                     // Call the callback if provided
                     memoryCallback?.Invoke(memoryBytes);
-                    
+
                     if (i < cycleCount - 1) // Don't delay on the last iteration
                     {
                         await Task.Delay(intervalMs, cts.Token);
@@ -427,7 +460,8 @@ namespace Pulsar.Tests.RuntimeValidation
         /// </summary>
         public async Task CreateMinimalRuleFile()
         {
-            var ruleContent = @"rules:
+            var ruleContent =
+                @"rules:
   - name: TestRule
     description: A test rule
     conditions:
@@ -453,7 +487,8 @@ namespace Pulsar.Tests.RuntimeValidation
         /// </summary>
         public async Task CreateSimpleRuleFile()
         {
-            var ruleContent = @"rules:
+            var ruleContent =
+                @"rules:
   - name: SimpleRule
     description: A simple test rule
     conditions:
@@ -479,7 +514,8 @@ namespace Pulsar.Tests.RuntimeValidation
         /// </summary>
         public async Task CreateComplexRuleFile()
         {
-            var ruleContent = @"rules:
+            var ruleContent =
+                @"rules:
   - name: ComplexRule
     description: A complex test rule with nested conditions
     conditions:
@@ -530,7 +566,10 @@ namespace Pulsar.Tests.RuntimeValidation
             var configContent = GetSystemConfigContent();
             var configFilePath = Path.Combine(_testOutputPath, "system_config.yaml");
             await File.WriteAllTextAsync(configFilePath, configContent);
-            _logger.LogInformation("Created system config file at {ConfigFilePath}", configFilePath);
+            _logger.LogInformation(
+                "Created system config file at {ConfigFilePath}",
+                configFilePath
+            );
         }
 
         /// <summary>
@@ -579,7 +618,7 @@ bufferCapacity: 100";
 
             return TestUtilities.RedisUtilities.CreateRedisConfig(_redisContainer);
         }
-        
+
         /// <summary>
         /// Searches for the compiled assembly in the output directory
         /// </summary>
@@ -587,23 +626,42 @@ bufferCapacity: 100";
         private string? FindCompiledAssembly()
         {
             _logger.LogInformation("Searching for compiled assembly...");
-            
+
             // Common paths to check
             var possiblePaths = new List<string>
             {
                 // Standard path for a project compiled with dotnet build
-                Path.Combine(_testOutputPath, "Beacon", "bin", "Debug", "net9.0", "Beacon.Runtime.Test.dll"),
-                
+                Path.Combine(
+                    _testOutputPath,
+                    "Beacon",
+                    "bin",
+                    "Debug",
+                    "net9.0",
+                    "Beacon.Runtime.Test.dll"
+                ),
                 // Search in the root of the output directory
                 Path.Combine(_testOutputPath, "Beacon.Runtime.Test.dll"),
-                
                 // Check in runtime subdirectory
-                Path.Combine(_testOutputPath, "Beacon", "Beacon.Runtime", "bin", "Debug", "net9.0", "Beacon.Runtime.Test.dll"),
-                
+                Path.Combine(
+                    _testOutputPath,
+                    "Beacon",
+                    "Beacon.Runtime",
+                    "bin",
+                    "Debug",
+                    "net9.0",
+                    "Beacon.Runtime.Test.dll"
+                ),
                 // Check in the direct output directory structure
-                Path.Combine(_testOutputPath, "Beacon.Runtime.Test", "bin", "Debug", "net9.0", "Beacon.Runtime.Test.dll")
+                Path.Combine(
+                    _testOutputPath,
+                    "Beacon.Runtime.Test",
+                    "bin",
+                    "Debug",
+                    "net9.0",
+                    "Beacon.Runtime.Test.dll"
+                ),
             };
-            
+
             // Check each path
             foreach (var path in possiblePaths)
             {
@@ -614,11 +672,15 @@ bufferCapacity: 100";
                     return path;
                 }
             }
-            
+
             // If none of the specific paths worked, search recursively
             _logger.LogInformation("Searching recursively for the DLL...");
-            var foundFiles = Directory.GetFiles(_testOutputPath, "Beacon.Runtime.Test.dll", SearchOption.AllDirectories);
-            
+            var foundFiles = Directory.GetFiles(
+                _testOutputPath,
+                "Beacon.Runtime.Test.dll",
+                SearchOption.AllDirectories
+            );
+
             if (foundFiles.Length > 0)
             {
                 _logger.LogInformation("Found {Count} possible assemblies", foundFiles.Length);
@@ -626,7 +688,7 @@ bufferCapacity: 100";
                 {
                     _logger.LogDebug("Found: {Path}", file);
                 }
-                
+
                 // Return the first match that has 'bin' in the path (most likely the actual build output)
                 var binPath = foundFiles.FirstOrDefault(p => p.Contains("bin"));
                 if (!string.IsNullOrEmpty(binPath))
@@ -634,12 +696,12 @@ bufferCapacity: 100";
                     _logger.LogInformation("Selected assembly in bin directory: {Path}", binPath);
                     return binPath;
                 }
-                
+
                 // Otherwise just return the first one
                 _logger.LogInformation("Selected first found assembly: {Path}", foundFiles[0]);
                 return foundFiles[0];
             }
-            
+
             _logger.LogError("No compiled assembly found");
             return null;
         }

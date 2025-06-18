@@ -1,12 +1,15 @@
 // File: Pulsar.Tests/Mocks/MockRedisService.cs
 // Version: 1.1.0
 
-using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+<<<<<<< HEAD
 using Beacon.Runtime.Interfaces;
+=======
+using Microsoft.Extensions.Logging;
+>>>>>>> 8b7c346332a26f768b0c87b04a580da20b2811ca
 
 namespace Pulsar.Tests.Mocks
 {
@@ -227,8 +230,14 @@ namespace Pulsar.Tests.Mocks
         /// </summary>
         public RedisService(RedisConfiguration config, ILoggerFactory loggerFactory)
         {
+<<<<<<< HEAD
             _logger = loggerFactory?.CreateLogger<RedisService>() ??
                       Microsoft.Extensions.Logging.Abstractions.NullLogger<RedisService>.Instance;
+=======
+            _logger =
+                loggerFactory?.CreateLogger<RedisService>()
+                ?? Microsoft.Extensions.Logging.Abstractions.NullLogger<RedisService>.Instance;
+>>>>>>> 8b7c346332a26f768b0c87b04a580da20b2811ca
 
             // In a real implementation, this would connect to Redis
         }
@@ -334,22 +343,39 @@ namespace Pulsar.Tests.Mocks
 
             foreach (var kvp in outputs)
             {
-                var redisKey = kvp.Key.StartsWith(OUTPUT_PREFIX) ? kvp.Key : $"{OUTPUT_PREFIX}{kvp.Key}";
+                var redisKey = kvp.Key.StartsWith(OUTPUT_PREFIX)
+                    ? kvp.Key
+                    : $"{OUTPUT_PREFIX}{kvp.Key}";
                 _values[redisKey] = kvp.Value;
             }
 
             return Task.CompletedTask;
         }
 
-        public Task<Dictionary<string, (double Value, DateTime Timestamp)>> GetSensorValuesAsync(IEnumerable<string> sensorKeys)
+        public Task<Dictionary<string, (double Value, DateTime Timestamp)>> GetSensorValuesAsync(
+            IEnumerable<string> sensorKeys
+        )
         {
             var result = new Dictionary<string, (double Value, DateTime Timestamp)>();
 
             foreach (var sensorKey in sensorKeys)
             {
+<<<<<<< HEAD
                 var redisKey = sensorKey.StartsWith(INPUT_PREFIX) ? sensorKey : $"{INPUT_PREFIX}{sensorKey}";
                 if (_values.TryGetValue(redisKey, out var value) &&
                     (value is double doubleValue || double.TryParse(value.ToString(), out doubleValue)))
+=======
+                var redisKey = sensorKey.StartsWith(INPUT_PREFIX)
+                    ? sensorKey
+                    : $"{INPUT_PREFIX}{sensorKey}";
+                if (
+                    _values.TryGetValue(redisKey, out var value)
+                    && (
+                        value is double doubleValue
+                        || double.TryParse(value.ToString(), out doubleValue)
+                    )
+                )
+>>>>>>> 8b7c346332a26f768b0c87b04a580da20b2811ca
                 {
                     result[sensorKey] = (doubleValue, DateTime.UtcNow);
                 }
@@ -379,7 +405,9 @@ namespace Pulsar.Tests.Mocks
 
             foreach (var kvp in state)
             {
-                var redisKey = kvp.Key.StartsWith(STATE_PREFIX) ? kvp.Key : $"{STATE_PREFIX}{kvp.Key}";
+                var redisKey = kvp.Key.StartsWith(STATE_PREFIX)
+                    ? kvp.Key
+                    : $"{STATE_PREFIX}{kvp.Key}";
                 _values[redisKey] = kvp.Value;
             }
 
@@ -391,8 +419,18 @@ namespace Pulsar.Tests.Mocks
             var result = new List<(double Value, DateTime Timestamp)>();
 
             var sensorKey = sensor.StartsWith(INPUT_PREFIX) ? sensor : $"{INPUT_PREFIX}{sensor}";
+<<<<<<< HEAD
             if (_values.TryGetValue(sensorKey, out var value) &&
                 (value is double doubleValue || double.TryParse(value.ToString(), out doubleValue)))
+=======
+            if (
+                _values.TryGetValue(sensorKey, out var value)
+                && (
+                    value is double doubleValue
+                    || double.TryParse(value.ToString(), out doubleValue)
+                )
+            )
+>>>>>>> 8b7c346332a26f768b0c87b04a580da20b2811ca
             {
                 result.Add((doubleValue, DateTime.UtcNow));
             }

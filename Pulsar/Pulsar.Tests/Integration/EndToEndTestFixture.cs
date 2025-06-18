@@ -233,7 +233,9 @@ validSensors:
 cycleTime: 100
 redis:
   endpoints:
-    - " + connectionString + @"
+    - "
+                + connectionString
+                + @"
   poolSize: 4
   retryCount: 3
   retryBaseDelayMs: 100

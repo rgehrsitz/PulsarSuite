@@ -1,8 +1,8 @@
 // Use the mock classes instead
-using Pulsar.Tests.Mocks;
-using Pulsar.Tests.TestUtilities;
 using System;
 using System.Threading.Tasks;
+using Pulsar.Tests.Mocks;
+using Pulsar.Tests.TestUtilities;
 using Xunit;
 using Xunit.Abstractions;
 
@@ -10,7 +10,8 @@ namespace Pulsar.Tests.Integration
 {
     [Trait("Category", "Integration")]
     public class RedisIntegrationTests(RedisTestFixture fixture, ITestOutputHelper output)
-        : IClassFixture<RedisTestFixture>, IAsyncLifetime
+        : IClassFixture<RedisTestFixture>,
+            IAsyncLifetime
     {
         private string _uniquePrefix = $"test:{Guid.NewGuid():N}";
 
@@ -137,17 +138,19 @@ namespace Pulsar.Tests.Integration
             // Arrange - Get retry configuration
             var retryCount = fixture.RedisService.RetryPolicy.MaxRetryCount;
             var baseDelay = fixture.RedisService.RetryPolicy.BaseDelayMilliseconds;
-            
+
             // Assert - Just verify that retry policy is configured with reasonable values
             Assert.Equal(3, retryCount);
             Assert.Equal(100, baseDelay);
-            
-            output.WriteLine($"Redis retry policy configured with: MaxRetryCount={retryCount}, BaseDelay={baseDelay}ms");
-            
+
+            output.WriteLine(
+                $"Redis retry policy configured with: MaxRetryCount={retryCount}, BaseDelay={baseDelay}ms"
+            );
+
             // Test health check function
             var isHealthy = fixture.RedisService.IsHealthy;
             Assert.True(isHealthy, "Redis should be healthy in test environment");
-            
+
             // No need to actually force errors - we're just verifying configuration
             await Task.CompletedTask;
         }

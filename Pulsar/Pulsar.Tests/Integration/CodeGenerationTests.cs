@@ -32,11 +32,11 @@ namespace Pulsar.Tests.Integration
                 { "output", OutputPath },
                 { "config", Path.Combine("TestData", "system_config.yaml") },
             };
-            
+
             // Use the new command pattern
             var generateCommand = new Pulsar.Compiler.Commands.GenerateCommand(_fixture.Logger);
             var result = await generateCommand.RunAsync(options);
-            
+
             // Convert result to expected format for this test
             var success = result == 0;
 

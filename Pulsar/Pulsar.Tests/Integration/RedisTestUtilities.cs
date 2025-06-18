@@ -1,7 +1,7 @@
-using Microsoft.Extensions.Logging;
-using Pulsar.Tests.Mocks; // Use our mock classes instead
 using System;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
+using Pulsar.Tests.Mocks; // Use our mock classes instead
 using Xunit;
 
 namespace Pulsar.Tests.Integration

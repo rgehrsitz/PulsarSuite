@@ -58,8 +58,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Compile Include="../Common/ConditionAnalyzerShared.cs" />
-    <Compile Include="../Common/ValueGenerationHelper.cs" />
+    <Compile Include="../../Common/ConditionAnalyzerShared.cs" />
+    <Compile Include="../../Common/ValueGenerationHelper.cs" />
   </ItemGroup>
 
   <!-- Runtime reference removed as part of migration to template-based approach -->

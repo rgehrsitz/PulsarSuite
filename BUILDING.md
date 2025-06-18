@@ -38,7 +38,7 @@ The build system can work with any valid rules file, regardless of its name or l
 
 ```bash
 # Specify a rules file explicitly
-dotnet build /t:ValidateRules /p:RulesFile=/home/user/PulsarSuite/src/Rules/MyProject/rules/custom_rules.yaml
+dotnet build /t:ValidateRules /p:RulesFile=/home/user/PulsarSuite/examples/Rules/MyProject/rules/custom_rules.yaml
 ```
 
 If no rules file is specified, the system will look for a file named `temperature_rules.yaml` in the project's rules directory.

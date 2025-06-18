@@ -9,14 +9,13 @@ namespace Pulsar.Compiler.Config
     /// <summary>
     /// Generates and manages templates for the Beacon AOT-compatible solution structure
     /// </summary>
-    public class BeaconTemplateManager
+    public class BeaconTemplateManager : BaseTemplateManager
     {
-        private readonly ILogger _logger;
         private readonly TemplateManager _templateManager;
-        
+
         public BeaconTemplateManager(ILogger? logger = null)
+            : base(logger ?? LoggingConfig.GetLogger().ForContext<BeaconTemplateManager>())
         {
-            _logger = logger ?? LoggingConfig.GetLogger().ForContext<BeaconTemplateManager>();
             _templateManager = new TemplateManager(_logger);
         }
 
@@ -91,7 +90,9 @@ namespace Pulsar.Compiler.Config
         private void LogDirectoryContents(string dir, string label)
         {
             string logPath = Path.Combine(AppContext.BaseDirectory, "diagnostic.log");
-            Console.WriteLine($"[DIAGNOSTIC] LogDirectoryContents CALLED for label: {label}, dir: {dir}");
+            Console.WriteLine(
+                $"[DIAGNOSTIC] LogDirectoryContents CALLED for label: {label}, dir: {dir}"
+            );
             Console.WriteLine($"[DIAGNOSTIC] Writing diagnostic log to: {logPath}");
             try
             {
@@ -106,7 +107,9 @@ namespace Pulsar.Compiler.Config
                     Console.WriteLine(fileMsg);
                     File.AppendAllText(logPath, fileMsg + Environment.NewLine);
                 }
-                foreach (var subdir in Directory.GetDirectories(dir, "*", SearchOption.AllDirectories))
+                foreach (
+                    var subdir in Directory.GetDirectories(dir, "*", SearchOption.AllDirectories)
+                )
                 {
                     string dirMsg = $"[DIAGNOSTIC] {label}: Directory: {subdir}";
                     _logger.Information(dirMsg);
@@ -271,7 +274,9 @@ namespace Pulsar.Compiler.Config
             sb.AppendLine("    <PackageReference Include=\"NRedisStack\" Version=\"0.13.1\" />");
             sb.AppendLine("    <PackageReference Include=\"Polly\" Version=\"8.3.0\" />");
             sb.AppendLine("    <PackageReference Include=\"prometheus-net\" Version=\"8.2.1\" />");
-            sb.AppendLine("    <PackageReference Include=\"prometheus-net.AspNetCore\" Version=\"8.2.1\" />");
+            sb.AppendLine(
+                "    <PackageReference Include=\"prometheus-net.AspNetCore\" Version=\"8.2.1\" />"
+            );
             sb.AppendLine("    <PackageReference Include=\"Serilog\" Version=\"4.2.0\" />");
             sb.AppendLine(
                 "    <PackageReference Include=\"Serilog.Extensions.Logging\" Version=\"8.0.0\" />"
@@ -347,7 +352,6 @@ namespace Pulsar.Compiler.Config
                 "    <PackageReference Include=\"Testcontainers.Redis\" Version=\"3.8.0\" />"
             );
             sb.AppendLine("  </ItemGroup>");
-            sb.AppendLine();
 
             // Add project reference to runtime project
             sb.AppendLine("  <ItemGroup>");
@@ -369,15 +373,19 @@ namespace Pulsar.Compiler.Config
         {
             _logger.Information("[DIAGNOSTIC] Entered CopyRuntimeTemplateFiles");
             _logger.Information("[CopyRuntimeTemplateFiles] Starting copy to {RuntimeDir}", runtimeDir);
-            // Clean and recreate the project directories to ensure a fresh state
-            CleanAndRecreateDirectory(Path.Combine(runtimeDir, "Generated"));
-            CleanAndRecreateDirectory(Path.Combine(runtimeDir, "Services"));
-            CleanAndRecreateDirectory(Path.Combine(runtimeDir, "Buffers"));
-            CleanAndRecreateDirectory(Path.Combine(runtimeDir, "Interfaces"));
-            CleanAndRecreateDirectory(Path.Combine(runtimeDir, "Models"));
-            CleanAndRecreateDirectory(Path.Combine(runtimeDir, "Rules"));
-
             _logger.Information("[CopyRuntimeTemplateFiles] Copying template files to runtime directory: {RuntimeDir}", runtimeDir);
+            // Clean and recreate the project directories to ensure a fresh state
+            base.CleanAndRecreateDirectory(Path.Combine(runtimeDir, "Generated"));
+            base.CleanAndRecreateDirectory(Path.Combine(runtimeDir, "Services"));
+            base.CleanAndRecreateDirectory(Path.Combine(runtimeDir, "Buffers"));
+            base.CleanAndRecreateDirectory(Path.Combine(runtimeDir, "Interfaces"));
+            base.CleanAndRecreateDirectory(Path.Combine(runtimeDir, "Models"));
+            base.CleanAndRecreateDirectory(Path.Combine(runtimeDir, "Rules"));
+
+            _logger.Information(
+                "[CopyRuntimeTemplateFiles] Copying template files to runtime directory: {RuntimeDir}",
+                runtimeDir
+            );
 
             // Copy interface templates first - IMPORTANT for resolving reference issues
             CopyInterfaceFiles(runtimeDir);
@@ -392,43 +400,58 @@ namespace Pulsar.Compiler.Config
             CopyBufferFiles(runtimeDir);
 
             // Copy rule templates
-            CopyTemplateFile(
+            base.CopyTemplateFile(
                 "Runtime/Rules/RuleBase.cs",
                 Path.Combine(runtimeDir, "Rules", "RuleBase.cs")
             );
 
+            // Copy ThresholdHelper.cs (required for generated code)
+            base.CopyTemplateFile(
+                Path.Combine("Runtime", "ThresholdHelper.cs"),
+                Path.Combine(runtimeDir, "ThresholdHelper.cs")
+            );
+
             // Copy RuntimeOrchestrator and other core templates
-            CopyTemplateFile(
+            base.CopyTemplateFile(
                 "Runtime/RuntimeOrchestrator.cs",
                 Path.Combine(runtimeDir, "RuntimeOrchestrator.cs")
             );
-            CopyTemplateFile(
+            base.CopyTemplateFile(
                 "Runtime/TemplateRuleCoordinator.cs",
                 Path.Combine(runtimeDir, "RuleCoordinator.cs")
             );
 
             // Copy AOT compatibility file
-            CopyTemplateFile("trimming.xml", Path.Combine(runtimeDir, "trimming.xml"));
+            base.CopyTemplateFile("trimming.xml", Path.Combine(runtimeDir, "trimming.xml"));
 
             // --- NEW: Copy compiled rule files into Generated directory ---
             var generatedDir = Path.Combine(runtimeDir, "Generated");
             try
             {
                 _logger.Information("========== [DIAGNOSTIC] BEFORE COPY ==========");
-                if (!string.IsNullOrWhiteSpace(buildConfig.CompiledRulesDir) && Directory.Exists(buildConfig.CompiledRulesDir))
+                if (
+                    !string.IsNullOrWhiteSpace(buildConfig.CompiledRulesDir)
+                    && Directory.Exists(buildConfig.CompiledRulesDir)
+                )
                 {
                     var preFiles = Directory.GetFiles(buildConfig.CompiledRulesDir, "*.cs");
                     foreach (var f in preFiles)
                         _logger.Information($"[DIAGNOSTIC] SourceDir contains: {f}");
-                    var preGenFiles = Directory.Exists(generatedDir) ? Directory.GetFiles(generatedDir, "*.cs") : new string[0];
+                    var preGenFiles = Directory.Exists(generatedDir)
+                        ? Directory.GetFiles(generatedDir, "*.cs")
+                        : new string[0];
                     foreach (var f in preGenFiles)
                         _logger.Information($"[DIAGNOSTIC] GeneratedDir before copy contains: {f}");
 
                     // Copy ALL .cs files from CompiledRulesDir into Generated, not just RuleGroup*.cs and RuleCoordinator.cs
-                    var compiledRuleFiles = Directory.GetFiles(buildConfig.CompiledRulesDir, "*.cs").ToList();
+                    var compiledRuleFiles = Directory
+                        .GetFiles(buildConfig.CompiledRulesDir, "*.cs")
+                        .ToList();
                     if (compiledRuleFiles.Count == 0)
                     {
-                        _logger.Warning($"[DIAGNOSTIC] No .cs files found in CompiledRulesDir: {buildConfig.CompiledRulesDir}");
+                        _logger.Warning(
+                            $"[DIAGNOSTIC] No .cs files found in CompiledRulesDir: {buildConfig.CompiledRulesDir}"
+                        );
                     }
                     foreach (var file in compiledRuleFiles)
                     {
@@ -436,26 +459,39 @@ namespace Pulsar.Compiler.Config
                         try
                         {
                             File.Copy(file, destFile, true);
-                            _logger.Information($"[DIAGNOSTIC] Copied compiled rule file: {file} -> {destFile}");
+                            _logger.Information(
+                                $"[DIAGNOSTIC] Copied compiled rule file: {file} -> {destFile}"
+                            );
                         }
                         catch (Exception ex)
                         {
-                            _logger.Error(ex, $"[DIAGNOSTIC] Error copying file: {file} -> {destFile}");
+                            _logger.Error(
+                                ex,
+                                $"[DIAGNOSTIC] Error copying file: {file} -> {destFile}"
+                            );
                         }
                     }
                     // List all files in Generated after copy
-                    var allGenFiles = Directory.Exists(generatedDir) ? Directory.GetFiles(generatedDir, "*.cs") : new string[0];
-                    _logger.Information($"[DIAGNOSTIC] GeneratedDir now contains {allGenFiles.Length} files:");
+                    var allGenFiles = Directory.Exists(generatedDir)
+                        ? Directory.GetFiles(generatedDir, "*.cs")
+                        : new string[0];
+                    _logger.Information(
+                        $"[DIAGNOSTIC] GeneratedDir now contains {allGenFiles.Length} files:"
+                    );
                     foreach (var f in allGenFiles)
                         _logger.Information($"[DIAGNOSTIC]   {f}");
-                    var postGenFiles = Directory.Exists(generatedDir) ? Directory.GetFiles(generatedDir, "*.cs") : new string[0];
+                    var postGenFiles = Directory.Exists(generatedDir)
+                        ? Directory.GetFiles(generatedDir, "*.cs")
+                        : new string[0];
                     _logger.Information("========== [DIAGNOSTIC] AFTER COPY ==========");
                     foreach (var f in postGenFiles)
                         _logger.Information($"[DIAGNOSTIC] GeneratedDir after copy contains: {f}");
                 }
                 else
                 {
-                    _logger.Warning($"[DIAGNOSTIC] CompiledRulesDir not set or does not exist: {buildConfig.CompiledRulesDir}");
+                    _logger.Warning(
+                        $"[DIAGNOSTIC] CompiledRulesDir not set or does not exist: {buildConfig.CompiledRulesDir}"
+                    );
                 }
             }
             catch (Exception ex)
@@ -473,19 +509,19 @@ namespace Pulsar.Compiler.Config
         private void CopyInterfaceFiles(string runtimeDir)
         {
             var interfacesDir = Path.Combine(runtimeDir, "Interfaces");
-            CopyTemplateFile(
+            base.CopyTemplateFile(
                 "Interfaces/ICompiledRules.cs",
                 Path.Combine(interfacesDir, "ICompiledRules.cs")
             );
-            CopyTemplateFile(
+            base.CopyTemplateFile(
                 "Interfaces/IRuleCoordinator.cs",
                 Path.Combine(interfacesDir, "IRuleCoordinator.cs")
             );
-            CopyTemplateFile(
+            base.CopyTemplateFile(
                 "Interfaces/IRuleGroup.cs",
                 Path.Combine(interfacesDir, "IRuleGroup.cs")
             );
-            CopyTemplateFile(
+            base.CopyTemplateFile(
                 "Interfaces/IRedisService.cs",
                 Path.Combine(interfacesDir, "IRedisService.cs")
             );
@@ -498,11 +534,11 @@ namespace Pulsar.Compiler.Config
         {
             var modelsDir = Path.Combine(runtimeDir, "Models");
             _logger.Information("Copying model templates to {Path}", modelsDir);
-            CopyTemplateFile(
+            base.CopyTemplateFile(
                 "Runtime/Models/RedisConfiguration.cs",
                 Path.Combine(modelsDir, "RedisConfiguration.cs")
             );
-            CopyTemplateFile(
+            base.CopyTemplateFile(
                 "Runtime/Models/RuntimeConfig.cs",
                 Path.Combine(modelsDir, "RuntimeConfig.cs")
             );
@@ -537,51 +573,68 @@ namespace Pulsar.Compiler.Config
         /// </summary>
         private void CopyServiceFiles(string runtimeDir)
         {
-            _logger.Information("[CopyServiceFiles] Copying service files to {RuntimeDir}", runtimeDir);
+            _logger.Information(
+                "[CopyServiceFiles] Copying service files to {RuntimeDir}",
+                runtimeDir
+            );
             var servicesDir = Path.Combine(runtimeDir, "Services");
 
             // Copy individual service files to avoid duplicates
-            _logger.Information("[CopyServiceFiles] Preparing to copy RedisService.cs from template to {Dest}", Path.Combine(servicesDir, "RedisService.cs"));
-            
+            _logger.Information(
+                "[CopyServiceFiles] Preparing to copy RedisService.cs from template to {Dest}",
+                Path.Combine(servicesDir, "RedisService.cs")
+            );
+
             // Special handling for RedisService.cs to ensure it's properly copied
             string redisServiceTemplate = "Runtime/Services/RedisService.cs";
             string redisServiceDest = Path.Combine(servicesDir, "RedisService.cs");
-            
+
             // This prevents the file from getting corrupted during the copy process
-            try {
+            try
+            {
                 string templatePath = GetTemplateFilePath(redisServiceTemplate);
-                if (File.Exists(templatePath)) {
+                if (File.Exists(templatePath))
+                {
                     string content = File.ReadAllText(templatePath);
                     Directory.CreateDirectory(servicesDir);
                     File.WriteAllText(redisServiceDest, content);
-                    _logger.Information("[CopyServiceFiles] Successfully created RedisService.cs using direct text copy approach");
-                } else {
-                    _logger.Error("[CopyServiceFiles] Could not find RedisService.cs template at {TemplatePath}", templatePath);
+                    _logger.Information(
+                        "[CopyServiceFiles] Successfully created RedisService.cs using direct text copy approach"
+                    );
                 }
-            } catch (Exception ex) {
+                else
+                {
+                    _logger.Error(
+                        "[CopyServiceFiles] Could not find RedisService.cs template at {TemplatePath}",
+                        templatePath
+                    );
+                }
+            }
+            catch (Exception ex)
+            {
                 _logger.Error(ex, "[CopyServiceFiles] Error during direct copy of RedisService.cs");
                 // Fall back to regular file copy as a last resort
-                CopyTemplateFile(redisServiceTemplate, redisServiceDest);
+                base.CopyTemplateFile(redisServiceTemplate, redisServiceDest);
             }
-            
+
             // Copy other service files normally
-            CopyTemplateFile(
+            base.CopyTemplateFile(
                 "Runtime/Services/RedisMetrics.cs",
                 Path.Combine(servicesDir, "RedisMetrics.cs")
             );
-            CopyTemplateFile(
+            base.CopyTemplateFile(
                 "Runtime/Services/RedisHealthCheck.cs",
                 Path.Combine(servicesDir, "RedisHealthCheck.cs")
             );
-            CopyTemplateFile(
+            base.CopyTemplateFile(
                 "Runtime/Services/RedisLoggingConfiguration.cs",
                 Path.Combine(servicesDir, "RedisLoggingConfiguration.cs")
             );
-            CopyTemplateFile(
+            base.CopyTemplateFile(
                 "Runtime/Services/MetricsService.cs",
                 Path.Combine(servicesDir, "MetricsService.cs")
             );
-            CopyTemplateFile(
+            base.CopyTemplateFile(
                 "Runtime/Services/LoggingService.cs",
                 Path.Combine(servicesDir, "LoggingService.cs")
             );
@@ -595,7 +648,10 @@ namespace Pulsar.Compiler.Config
         /// </summary>
         private void UpdateServiceFiles(string servicesDir)
         {
-            _logger.Debug("[UpdateServiceFiles] Updating service files in directory: {ServicesDir}", servicesDir);
+            _logger.Debug(
+                "[UpdateServiceFiles] Updating service files in directory: {ServicesDir}",
+                servicesDir
+            );
             foreach (var file in Directory.GetFiles(servicesDir))
             {
                 if (file != null)
@@ -613,7 +669,10 @@ namespace Pulsar.Compiler.Config
                             "using Beacon.Runtime.Interfaces;\r\nusing Beacon.Runtime.Models;"
                         );
                         modified = true;
-                        _logger.Debug("[UpdateServiceFiles] Added Models namespace to {File}", fileName);
+                        _logger.Debug(
+                            "[UpdateServiceFiles] Added Models namespace to {File}",
+                            fileName
+                        );
                     }
 
                     // Fix RedisConfiguration references
@@ -631,7 +690,10 @@ namespace Pulsar.Compiler.Config
                                 "using Serilog.Formatting.Compact;\r\nusing Beacon.Runtime.Models;"
                             );
                             modified = true;
-                            _logger.Debug("[UpdateServiceFiles] Added Models namespace (special case) to {File}", fileName);
+                            _logger.Debug(
+                                "[UpdateServiceFiles] Added Models namespace (special case) to {File}",
+                                fileName
+                            );
                         }
                     }
 
@@ -639,7 +701,11 @@ namespace Pulsar.Compiler.Config
                     {
                         File.WriteAllText(file, content);
                         var destInfo = new FileInfo(file);
-                        _logger.Information("[UpdateServiceFiles] Updated namespace references in {File} ({FileLen} bytes)", fileName, destInfo.Length);
+                        _logger.Information(
+                            "[UpdateServiceFiles] Updated namespace references in {File} ({FileLen} bytes)",
+                            fileName,
+                            destInfo.Length
+                        );
                     }
                     else
                     {
@@ -684,21 +750,23 @@ namespace Pulsar.Compiler.Config
             }
 
             // Copy buffer files but skip RingBufferManager if CircularBuffer.cs already exists with a RingBufferManager
-            var circularBufferContent = GetTemplateContent("Runtime/Buffers/CircularBuffer.cs");
+            var circularBufferContent = base.GetTemplateContent(
+                "Runtime/Buffers/CircularBuffer.cs"
+            );
             bool circularBufferHasRingBufferManager = circularBufferContent.Contains(
                 "public class RingBufferManager"
             );
 
             // Copy CircularBuffer.cs first
-            CopyTemplateFile(
+            base.CopyTemplateFile(
                 "Runtime/Buffers/CircularBuffer.cs",
                 Path.Combine(buffersDir, "CircularBuffer.cs")
             );
-            CopyTemplateFile(
+            base.CopyTemplateFile(
                 "Runtime/Buffers/IDateTimeProvider.cs",
                 Path.Combine(buffersDir, "IDateTimeProvider.cs")
             );
-            CopyTemplateFile(
+            base.CopyTemplateFile(
                 "Runtime/Buffers/SystemDateTimeProvider.cs",
                 Path.Combine(buffersDir, "SystemDateTimeProvider.cs")
             );
@@ -707,7 +775,7 @@ namespace Pulsar.Compiler.Config
             if (!circularBufferHasRingBufferManager && !hasRingBufferManager)
             {
                 _logger.Information("Copying separate RingBufferManager implementation");
-                CopyTemplateFile(
+                base.CopyTemplateFile(
                     "Runtime/Buffers/RingBufferManager.cs",
                     Path.Combine(buffersDir, "RingBufferManager.cs")
                 );
@@ -718,32 +786,6 @@ namespace Pulsar.Compiler.Config
                     "Skipping RingBufferManager.cs as CircularBuffer.cs already contains it"
                 );
             }
-        }
-
-        /// <summary>
-        /// Helper method to clean and recreate a directory
-        /// </summary>
-        private void CleanAndRecreateDirectory(string directory)
-        {
-            if (Directory.Exists(directory))
-            {
-                try
-                {
-                    Directory.Delete(directory, true);
-                    _logger.Debug("Deleted existing directory: {Path}", directory);
-                }
-                catch (Exception ex)
-                {
-                    _logger.Warning(
-                        "Could not delete directory {Path}: {Error}",
-                        directory,
-                        ex.Message
-                    );
-                }
-            }
-
-            Directory.CreateDirectory(directory);
-            _logger.Debug("Created directory: {Path}", directory);
         }
 
         /// <summary>
@@ -852,9 +894,7 @@ namespace Pulsar.Compiler.Config
             sb.AppendLine(
                 "                var metricsService = new MetricsService(logger, Environment.MachineName);"
             );
-            sb.AppendLine(
-                "                metricsService.StartMetricsServer(9090);"
-            );
+            sb.AppendLine("                metricsService.StartMetricsServer(9090);");
             sb.AppendLine(
                 "                logger.Information(\"Prometheus metrics available at http://localhost:9090/metrics\");"
             );
@@ -871,9 +911,7 @@ namespace Pulsar.Compiler.Config
             );
             sb.AppendLine();
             sb.AppendLine("                // Run the main cycle loop");
-            sb.AppendLine(
-                "                await orchestrator.StartAsync(config.CycleTime);"
-            );
+            sb.AppendLine("                await orchestrator.StartAsync(config.CycleTime);");
             sb.AppendLine();
             sb.AppendLine("                // Wait for Ctrl+C");
             sb.AppendLine("                var cancelSource = new CancellationTokenSource();");
@@ -887,7 +925,9 @@ namespace Pulsar.Compiler.Config
             sb.AppendLine("                // Wait until cancellation is requested");
             sb.AppendLine("                try");
             sb.AppendLine("                {");
-            sb.AppendLine("                    await Task.Delay(Timeout.Infinite, cancelSource.Token);");
+            sb.AppendLine(
+                "                    await Task.Delay(Timeout.Infinite, cancelSource.Token);"
+            );
             sb.AppendLine("                }");
             sb.AppendLine("                catch (OperationCanceledException)");
             sb.AppendLine("                {");
@@ -924,13 +964,14 @@ namespace Pulsar.Compiler.Config
             sb.AppendLine("                    retainedFileCountLimit: 7");
             sb.AppendLine("                );");
             sb.AppendLine();
+
             sb.AppendLine("            var logger = logConfig.CreateLogger();");
             sb.AppendLine("            Log.Logger = logger;");
             sb.AppendLine("            return logger;");
             sb.AppendLine("        }");
             sb.AppendLine("    }");
             sb.AppendLine("}");
-            
+
             // Write the Program.cs file to disk
             File.WriteAllText(programPath, sb.ToString());
             _logger.Information("Generated Program.cs file: {Path}", programPath);
@@ -1033,231 +1074,6 @@ namespace Pulsar.Compiler.Config
 
             File.WriteAllText(basicTestPath, sb.ToString());
             _logger.Information("Generated basic test class: {Path}", basicTestPath);
-        }
-
-        /// <summary>
-        /// Copy a template file from the source templates to a destination path
-        /// </summary>
-        private void CopyTemplateFile(string templatePath, string destinationPath)
-        {
-            _logger.Information("[CopyTemplateFile] Attempting to copy from template '{TemplatePath}' to destination '{DestinationPath}'", templatePath, destinationPath);
-            try
-            {
-                _logger.Debug("[CopyTemplateFile] Requested copy from template '{TemplatePath}' to destination '{DestinationPath}'", templatePath, destinationPath);
-                string? directoryPath = Path.GetDirectoryName(destinationPath);
-                if (!string.IsNullOrEmpty(directoryPath))
-                {
-                    Directory.CreateDirectory(directoryPath);
-                }
-                else
-                {
-                    _logger.Warning("[CopyTemplateFile] Cannot create directory - Path is null or empty for {Destination}", destinationPath);
-                }
-
-                // Find the actual template file path
-                string templateFilePath = null;
-                try
-                {
-                    templateFilePath = GetTemplateFilePath(templatePath);
-                    _logger.Debug("[CopyTemplateFile] Resolved template file path: {TemplateFilePath}", templateFilePath);
-                }
-                catch (Exception ex)
-                {
-                    _logger.Error(ex, "[CopyTemplateFile] Failed to resolve template file path for {TemplatePath}", templatePath);
-                }
-                if (!string.IsNullOrEmpty(templateFilePath) && File.Exists(templateFilePath))
-                {
-                    File.Copy(templateFilePath, destinationPath, true);
-                    var srcInfo = new FileInfo(templateFilePath);
-                    var destInfo = new FileInfo(destinationPath);
-                    _logger.Information(
-                        "[CopyTemplateFile] Copied template (binary): {Source} ({SrcLen} bytes) to {Destination} ({DestLen} bytes)",
-                        templateFilePath, srcInfo.Length, destinationPath, destInfo.Length
-                    );
-
-                    // Byte-for-byte comparison after copy
-                    bool filesMatch = FilesAreIdentical(templateFilePath, destinationPath);
-                    if (!filesMatch)
-                    {
-                        _logger.Warning("[CopyTemplateFile] WARNING: Source and destination files differ after copy! {Source} -> {Destination}", templateFilePath, destinationPath);
-                    }
-                    else
-                    {
-                        _logger.Information("[CopyTemplateFile] Source and destination files are identical after copy.");
-                    }
-
-                    // Direct diagnostic output for RedisService.cs
-                    if (Path.GetFileName(templateFilePath).Contains("RedisService"))
-                    {
-                        try
-                        {
-                            string diagnosticDir = Path.Combine(Path.GetTempPath(), "PulsarDiagnostic");
-                            Directory.CreateDirectory(diagnosticDir);
-
-                            // Save copy of template file
-                            string templateCopyPath = Path.Combine(diagnosticDir, "RedisService_template.cs");
-                            File.Copy(templateFilePath, templateCopyPath, true);
-
-                            // Save copy of destination file
-                            string destCopyPath = Path.Combine(diagnosticDir, "RedisService_output.cs");
-                            File.Copy(destinationPath, destCopyPath, true);
-
-                            // Output diagnostic info
-                            string diagFile = Path.Combine(diagnosticDir, "copy_diagnostics.txt");
-                            using (var writer = new StreamWriter(diagFile, true))
-                            {
-                                writer.WriteLine($"=== COPY DIAGNOSTIC: {DateTime.Now} ===");
-                                writer.WriteLine($"Source: {templateFilePath}, Length: {srcInfo.Length} bytes");
-                                writer.WriteLine($"Destination: {destinationPath}, Length: {destInfo.Length} bytes");
-                                writer.WriteLine($"Files identical: {filesMatch}");
-                                writer.WriteLine("Template file sample (first 500 chars):");
-                                writer.WriteLine(File.ReadAllText(templateFilePath).Substring(0, Math.Min(500, (int)srcInfo.Length)));
-                                writer.WriteLine("\nDestination file sample (first 500 chars):");
-                                writer.WriteLine(File.ReadAllText(destinationPath).Substring(0, Math.Min(500, (int)destInfo.Length)));
-                                writer.WriteLine("=== END DIAGNOSTIC ===");
-                                writer.WriteLine();
-                            }
-
-                            Console.WriteLine($"DIAGNOSTIC: Files saved to {diagnosticDir}");
-                        }
-                        catch (Exception ex)
-                        {
-                            Console.WriteLine($"Failed to create diagnostic files: {ex.Message}");
-                        }
-                    }
-                }
-                else
-                {
-                    _logger.Error("[CopyTemplateFile] Template file not found: {TemplatePath}", templatePath);
-                    throw new FileNotFoundException($"Template file not found: {templatePath}");
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.Error(ex, "[CopyTemplateFile] Exception copying template {TemplatePath} to {DestinationPath}", templatePath, destinationPath);
-            }
-        }
-
-        // Helper: compare two files byte-for-byte
-        private bool FilesAreIdentical(string filePath1, string filePath2)
-        {
-            const int bufferSize = 1024 * 8;
-            using (var fs1 = new FileStream(filePath1, FileMode.Open, FileAccess.Read))
-            using (var fs2 = new FileStream(filePath2, FileMode.Open, FileAccess.Read))
-            {
-                if (fs1.Length != fs2.Length)
-                    return false;
-                var buffer1 = new byte[bufferSize];
-                var buffer2 = new byte[bufferSize];
-                int read1, read2;
-                do
-                {
-                    read1 = fs1.Read(buffer1, 0, bufferSize);
-                    read2 = fs2.Read(buffer2, 0, bufferSize);
-                    if (read1 != read2)
-                        return false;
-                    for (int i = 0; i < read1; i++)
-                    {
-                        if (buffer1[i] != buffer2[i])
-                            return false;
-                    }
-                } while (read1 > 0);
-                return true;
-            }
-        }
-
-        // Helper to get the full template file path (mirrors logic in GetTemplateContent)
-        private string GetTemplateFilePath(string templateFileName)
-        {
-            var possiblePaths = new[]
-            {
-                Path.Combine("Pulsar.Compiler", "Config", "Templates", templateFileName),
-                Path.Combine(
-                    Path.GetDirectoryName(typeof(TemplateManager).Assembly.Location) ?? "",
-                    "Config",
-                    "Templates",
-                    templateFileName
-                ),
-            };
-            foreach (var path in possiblePaths)
-            {
-                var normalizedPath = Path.GetFullPath(path);
-                if (File.Exists(normalizedPath))
-                {
-                    return normalizedPath;
-                }
-            }
-            throw new FileNotFoundException($"Template file not found: {templateFileName}");
-        }
-
-        /// <summary>
-        /// Gets the content of a template file
-        /// </summary>
-        private string GetTemplateContent(string templateFileName)
-        {
-            // Try multiple possible locations for the template files
-            var possiblePaths = new[]
-            {
-                // Direct path from working directory
-                Path.Combine("Pulsar.Compiler", "Config", "Templates", templateFileName),
-                // Path relative to assembly location
-                Path.Combine(
-                    Path.GetDirectoryName(typeof(TemplateManager).Assembly.Location) ?? "",
-                    "Config",
-                    "Templates",
-                    templateFileName
-                ),
-                // Path from assembly base directory
-                Path.Combine(
-                    AppDomain.CurrentDomain.BaseDirectory,
-                    "Config",
-                    "Templates",
-                    templateFileName
-                ),
-                // Path relative to project root (go up from bin directory)
-                Path.Combine(
-                    Directory.GetCurrentDirectory(),
-                    "..",
-                    "..",
-                    "..",
-                    "Pulsar.Compiler",
-                    "Config",
-                    "Templates",
-                    templateFileName
-                ),
-                // Absolute path based on solution directory structure
-                Path.Combine(
-                    Directory.GetCurrentDirectory(),
-                    "..",
-                    "..",
-                    "..",
-                    "..",
-                    "Pulsar.Compiler",
-                    "Config",
-                    "Templates",
-                    templateFileName
-                ),
-            };
-
-            foreach (var path in possiblePaths)
-            {
-                var normalizedPath = Path.GetFullPath(path);
-                if (File.Exists(normalizedPath))
-                {
-                    _logger.Debug("Found template at: {Path}", normalizedPath);
-                    return File.ReadAllText(normalizedPath);
-                }
-            }
-
-            _logger.Error(
-                "Template file not found: {TemplateFile}. Searched in: {Paths}",
-                templateFileName,
-                string.Join(", ", possiblePaths)
-            );
-
-            throw new FileNotFoundException(
-                $"Template file not found: {templateFileName}. Searched in: {string.Join(", ", possiblePaths)}"
-            );
         }
     }
 }
