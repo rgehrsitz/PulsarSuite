@@ -1,140 +1,113 @@
 <?xml version="1.0" encoding="utf-8"?>
-<Project>
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003" DefaultTargets="Build">
 
   <!-- Properties -->
   <PropertyGroup>
-    <SolutionDir Condition="'$(SolutionDir)' == ''">$(MSBuildThisFileDirectory)../</SolutionDir>
-    <SrcDir>$(SolutionDir)src/</SrcDir>
-    <RulesDir>$(SrcDir)Rules/</RulesDir>
-    <TestsDir>$(SrcDir)Tests/</TestsDir>
-    <BinDir>$(SrcDir)Bin/</BinDir>
-    <OutputDir>$(SolutionDir)output/</OutputDir>
-    <DistDir>$(OutputDir)dist/</DistDir>
-    <ReportsDir>$(OutputDir)reports/</ReportsDir>
-    <ProjectName Condition="'$(ProjectName)' == ''">DefaultProject</ProjectName>
-    <ProjectRulesDir>$(RulesDir)$(ProjectName)/</ProjectRulesDir>
-    <RulesFile>$(RulesFile)</RulesFile>
-    <ConfigFile>$(ConfigFile)</ConfigFile>
-    <ProjectTestsDir>$(TestsDir)$(ProjectName)/</ProjectTestsDir>
-    <ProjectBinDir>$(BinDir)$(ProjectName)/</ProjectBinDir>
-    <ProjectDistDir>$(DistDir)$(ProjectName)/</ProjectDistDir>
-    <ProjectReportsDir>$(ReportsDir)$(ProjectName)/</ProjectReportsDir>
-    <TestScenariosFile>$(ProjectTestsDir)/test_scenarios.json</TestScenariosFile>
-    <TestResultsFile>$(ProjectReportsDir)/test_results.json</TestResultsFile>
-    
-    <!-- Tools paths -->
-    <PulsarDir>$(SolutionDir)Pulsar/</PulsarDir>
-    <BeaconTesterDir>$(SolutionDir)BeaconTester/</BeaconTesterDir>
-    <PulsarCompilerProject>$(PulsarDir)Pulsar.Compiler/Pulsar.Compiler.csproj</PulsarCompilerProject>
-    <BeaconTesterRunnerProject>$(BeaconTesterDir)BeaconTester.Runner/BeaconTester.Runner.csproj</BeaconTesterRunnerProject>
+    <SolutionDir>$(MSBuildThisFileDirectory)..\</SolutionDir>
+    <PulsarDir>$(SolutionDir)Pulsar\</PulsarDir>
+    <BeaconTesterDir>$(SolutionDir)BeaconTester\</BeaconTesterDir>
+    <SrcDir>$(SolutionDir)src\</SrcDir>
+    <OutputDir>$(SolutionDir)output\</OutputDir>
+    <DistDir>$(OutputDir)dist\</OutputDir>
+    <BinDir>$(OutputDir)Bin\</OutputDir>
+    <TestsDir>$(OutputDir)Tests\</OutputDir>
+    <ReportsDir>$(OutputDir)reports\</ReportsDir>
+    <LogsDir>$(OutputDir)logs\</LogsDir>
+
+    <!-- Project-specific paths -->
+    <ProjectBinDir>$(BinDir)$(ProjectName)\</ProjectBinDir>
+    <ProjectDistDir>$(DistDir)$(ProjectName)\</ProjectDistDir>
+    <ProjectTestsDir>$(TestsDir)$(ProjectName)\</ProjectTestsDir>
+    <ProjectReportsDir>$(ReportsDir)$(ProjectName)\</ProjectReportsDir>
+    <ProjectLogsDir>$(LogsDir)$(ProjectName)\</ProjectLogsDir>
+
+    <!-- Tool paths -->
+    <PulsarCompilerProject>$(PulsarDir)Pulsar.Compiler\Pulsar.Compiler.csproj</PulsarCompilerProject>
+    <BeaconTesterRunnerProject>$(BeaconTesterDir)BeaconTester.Runner\BeaconTester.Runner.csproj</BeaconTesterRunnerProject>
+
+    <!-- Default values -->
+    <ProjectName Condition="'$(ProjectName)' == ''">TemperatureExample</ProjectName>
+    <RulesFile Condition="'$(RulesFile)' == ''">$(SrcDir)Rules\$(ProjectName)\rules\temperature_rules.yaml</RulesFile>
+    <ConfigFile Condition="'$(ConfigFile)' == ''">$(SrcDir)Rules\$(ProjectName)\config\system_config.yaml</ConfigFile>
+    <Configuration Condition="'$(Configuration)' == ''">Debug</Configuration>
+
+    <!-- Test configuration -->
+    <BeaconCycleTime>500</BeaconCycleTime>
+    <StepDelayMultiplier>2</StepDelayMultiplier>
+    <TimeoutMultiplier>3</TimeoutMultiplier>
   </PropertyGroup>
 
-  <!-- Item Groups -->
-  <ItemGroup>
-    <RuleFiles Include="$(ProjectRulesDir)rules/**/*.yaml" />
-    <ConfigFiles Include="$(ProjectRulesDir)config/**/*.json" />
-  </ItemGroup>
-
-  <!-- Targets -->
+  <!-- Clean target -->
   <Target Name="Clean">
-    <RemoveDir Directories="$(ProjectTestsDir)" ContinueOnError="true" />
-    <RemoveDir Directories="$(ProjectBinDir)" ContinueOnError="true" />
-    <RemoveDir Directories="$(ProjectDistDir)" ContinueOnError="true" />
-    <RemoveDir Directories="$(ProjectReportsDir)" ContinueOnError="true" />
-    <MakeDir Directories="$(ProjectTestsDir)" />
-    <MakeDir Directories="$(ProjectBinDir)" />
-    <MakeDir Directories="$(ProjectDistDir)" />
-    <MakeDir Directories="$(ProjectReportsDir)" />
-  </Target>
-
-  <Target Name="ValidateInputs" BeforeTargets="ValidateRules;CompileRules;BuildBeacon">
-    <Error Text="MSBuild property 'RulesFile' must be set (/p:RulesFile=...)" Condition="'$(RulesFile)' == ''" />
-    <Error Text="RulesFile '$(SolutionDir)$(RulesFile)' not found" Condition="!Exists('$(SolutionDir)$(RulesFile)')" />
-    <Error Text="MSBuild property 'ConfigFile' must be set (/p:ConfigFile=...)" Condition="'$(ConfigFile)' == ''" />
-    <Error Text="ConfigFile '$(SolutionDir)$(ConfigFile)' not found" Condition="!Exists('$(SolutionDir)$(ConfigFile)')" />
-  </Target>
-
-  <Target Name="ValidateRules">
-    <Exec Command="dotnet run --project $(PulsarCompilerProject) validate --rules=$(SolutionDir)$(RulesFile) --config=$(SolutionDir)$(ConfigFile)" WorkingDirectory="$(PulsarDir)" />
-  </Target>
-
-  <Target Name="CompileRules" DependsOnTargets="ValidateRules">
-    <MakeDir Directories="$(ProjectBinDir)" />
-    <Exec Command="dotnet run --project $(PulsarCompilerProject) compile --rules=$(SolutionDir)$(RulesFile) --output=$(ProjectBinDir) --config=$(SolutionDir)$(ConfigFile)" WorkingDirectory="$(PulsarDir)" />
-  </Target>
-
-  <Target Name="GenerateTests" DependsOnTargets="CompileRules">
-    <MakeDir Directories="$(ProjectTestsDir)" />
-    <Exec Command="dotnet run --project $(BeaconTesterRunnerProject) generate --rules=$(SolutionDir)$(RulesFile) --output=$(SolutionDir)$(TestScenariosFile)" WorkingDirectory="$(BeaconTesterDir)" />
-  </Target>
-
-  <Target Name="BuildBeacon" DependsOnTargets="CompileRules">
-    <Message Text="Generating Beacon solution…" Importance="high" />
-    <Exec Command="dotnet run --project $(PulsarCompilerProject) beacon --rules=$(SolutionDir)$(RulesFile) --compiled-rules-dir=$(SolutionDir)$(ProjectBinDir) --output=$(ProjectDistDir) --config=$(SolutionDir)$(ConfigFile) --target=linux-x64" WorkingDirectory="$(PulsarDir)" />
-    <Message Text="Publishing Beacon.Runtime…" Importance="high" />
-    <Exec Command="dotnet publish $(ProjectDistDir)/Beacon/Beacon.Runtime/Beacon.Runtime.csproj -c Release -r linux-x64 --self-contained true /p:PublishSingleFile=true" WorkingDirectory="$(SolutionDir)" />
-  </Target>
-
-  <Target Name="RunTests" DependsOnTargets="BuildBeacon;GenerateTests">
-    <MakeDir Directories="$(ProjectReportsDir)" />
-    <Exec Command="dotnet run --project $(BeaconTesterRunnerProject) run --scenarios=$(SolutionDir)$(TestScenariosFile) --output=$(SolutionDir)$(TestResultsFile) --redis-host=localhost --redis-port=6379" WorkingDirectory="$(BeaconTesterDir)" />
-  </Target>
-
-  <Target Name="Build" DependsOnTargets="Clean;CompileRules;GenerateTests">
-    <!-- Full build process without running tests -->
-    <Message Text="Build completed successfully. Use RunEndToEnd target to run the full end-to-end test." Importance="high" />
-  </Target>
-
-  <Target Name="RunEndToEnd">
-    <!-- Full end-to-end test including starting and stopping Beacon -->
-    <Message Text="========== END-TO-END RULE TESTING WORKFLOW ==========" Importance="high" />
-    
-    <!-- Clean environment -->
-    <Message Text="[1] Cleaning environment..." Importance="high" />
+    <Message Text="Cleaning environment..." Importance="high" />
     <Exec Command="pkill -f Beacon.Runtime || true" ContinueOnError="true" />
     <Exec Command="pkill -f BeaconTester || true" ContinueOnError="true" />
-    <Exec Command='redis-cli keys "*" | xargs -r redis-cli del' ContinueOnError='true' />
+    <Exec Command="redis-cli FLUSHALL" ContinueOnError="true" />
     <RemoveDir Directories="$(ProjectReportsDir)" ContinueOnError="true" />
+    <RemoveDir Directories="$(ProjectLogsDir)" ContinueOnError="true" />
+    <RemoveDir Directories="$(ProjectDistDir)" ContinueOnError="true" />
+    <RemoveDir Directories="$(ProjectBinDir)" ContinueOnError="true" />
+    <RemoveDir Directories="$(ProjectTestsDir)" ContinueOnError="true" />
+    <Message Text="Environment cleaned." Importance="high" />
+  </Target>
+
+  <!-- Validate rules -->
+  <Target Name="ValidateRules">
+    <Message Text="Validating rules..." Importance="high" />
+    <Exec Command="dotnet run --project $(PulsarCompilerProject) validate --rules=$(RulesFile) --config=$(ConfigFile)" />
+    <Message Text="Rules validation completed." Importance="high" />
+  </Target>
+
+  <!-- Compile rules -->
+  <Target Name="CompileRules" DependsOnTargets="ValidateRules">
+    <Message Text="Compiling rules..." Importance="high" />
+    <MakeDir Directories="$(ProjectBinDir)" />
+    <Exec Command="dotnet run --project $(PulsarCompilerProject) compile --rules=$(RulesFile) --config=$(ConfigFile) --output=$(ProjectBinDir)" />
+    <Message Text="Rules compilation completed." Importance="high" />
+  </Target>
+
+  <!-- Generate Beacon application -->
+  <Target Name="GenerateBeacon" DependsOnTargets="CompileRules">
+    <Message Text="Generating Beacon application..." Importance="high" />
+    <MakeDir Directories="$(ProjectDistDir)" />
+    <Exec Command="dotnet run --project $(PulsarCompilerProject) beacon --rules=$(RulesFile) --compiled-rules-dir=$(ProjectBinDir) --output=$(ProjectDistDir) --config=$(ConfigFile) --target=linux-x64" />
+    <Message Text="Beacon application generation completed." Importance="high" />
+  </Target>
+
+  <!-- Build Beacon runtime -->
+  <Target Name="BuildBeacon" DependsOnTargets="GenerateBeacon">
+    <Message Text="Building Beacon runtime..." Importance="high" />
+    <Exec Command="dotnet publish $(ProjectDistDir)/Beacon/Beacon.Runtime/Beacon.Runtime.csproj -c $(Configuration) -r linux-x64 --self-contained true /p:PublishSingleFile=true" />
+    <Message Text="Beacon runtime build completed." Importance="high" />
+  </Target>
+
+  <!-- Generate test scenarios -->
+  <Target Name="GenerateTests" DependsOnTargets="CompileRules">
+    <Message Text="Generating test scenarios..." Importance="high" />
+    <MakeDir Directories="$(ProjectTestsDir)" />
+    <Exec Command="dotnet run --project $(BeaconTesterRunnerProject) generate --rules=$(RulesFile) --output=$(ProjectTestsDir)/test_scenarios.json" WorkingDirectory="$(BeaconTesterDir)" />
+    <Message Text="Test scenarios generation completed." Importance="high" />
+  </Target>
+
+  <!-- Run tests (requires Beacon to be running) -->
+  <Target Name="RunTests" DependsOnTargets="GenerateTests">
+    <Message Text="Running tests..." Importance="high" />
     <MakeDir Directories="$(ProjectReportsDir)" />
-    <Message Text="[OK] Environment cleaned" Importance="high" />
-    
-    <!-- Set environment variables -->
     <PropertyGroup>
-      <BeaconCycleTime>500</BeaconCycleTime>
-      <StepDelayMultiplier>2</StepDelayMultiplier>
-      <TimeoutMultiplier>2</TimeoutMultiplier>
+      <BeaconTesterEnvVars>BEACON_CYCLE_TIME=$(BeaconCycleTime) STEP_DELAY_MULTIPLIER=$(StepDelayMultiplier) TIMEOUT_MULTIPLIER=$(TimeoutMultiplier)</BeaconTesterEnvVars>
     </PropertyGroup>
-    
-    <!-- Run Pulsar to compile rules -->
-    <Message Text="[2] Running Pulsar to compile rules into Beacon application..." Importance="high" />
-    <CallTarget Targets="CompileRules" />
-    <Message Text="[OK] Pulsar successfully compiled rules into Beacon application" Importance="high" />
-    
-    <!-- Generate test scenarios -->
-    <Message Text="[3] Generating test scenarios..." Importance="high" />
-    <CallTarget Targets="GenerateTests" />
-    <Message Text="[OK] Test scenarios generated successfully" Importance="high" />
-    
-    <!-- Start Beacon application -->
-    <Message Text="[4] Starting Beacon application..." Importance="high" />
-    <Exec Command="cd $(ProjectBinDir)/Beacon/Beacon.Runtime/bin/Debug/net9.0/linux-x64 &amp;&amp; BEACON_LOG_LEVEL=Debug dotnet Beacon.Runtime.dll --nometrics --testmode --test-cycle-time $(BeaconCycleTime) --verbose > $(ProjectReportsDir)/beacon.log 2>&amp;1 &amp;" />
-    <Exec Command="sleep 5" />
-    <Message Text="[OK] Beacon is running" Importance="high" />
-    
-    <!-- Run tests -->
-    <Message Text="[5] Running tests against Beacon..." Importance="high" />
-    <CallTarget Targets="RunTests" />
-    
-    <!-- Kill Beacon -->
-    <Exec Command="pkill -f Beacon.Runtime || true" ContinueOnError="true" />
-    <Exec Command="sleep 2" />
-    
-    <!-- Final cleanup -->
-    <Message Text="[6] Final cleanup..." Importance="high" />
-    <Exec Command='redis-cli keys "*" | xargs -r redis-cli del' ContinueOnError='true' />
-    <Message Text="[OK] Final cleanup complete" Importance="high" />
-    
-    <Message Text="======== END-TO-END TEST COMPLETED ========" Importance="high" />
+    <Exec Command="$(BeaconTesterEnvVars) dotnet run --project $(BeaconTesterRunnerProject) run --scenarios=$(ProjectTestsDir)/test_scenarios.json --output=$(ProjectReportsDir)/test_results.json --redis-host=localhost --redis-port=6379" WorkingDirectory="$(BeaconTesterDir)" />
+    <Message Text="Test execution completed." Importance="high" />
+  </Target>
+
+  <!-- Full end-to-end workflow -->
+  <Target Name="RunEndToEnd" DependsOnTargets="Clean;BuildBeacon;RunTests">
+    <Message Text="End-to-end workflow completed successfully!" Importance="high" />
+  </Target>
+
+  <!-- Default build target -->
+  <Target Name="Build" DependsOnTargets="BuildBeacon">
+    <Message Text="Build completed successfully." Importance="high" />
   </Target>
 
 </Project>

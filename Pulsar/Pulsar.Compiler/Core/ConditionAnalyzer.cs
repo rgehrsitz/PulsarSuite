@@ -4,6 +4,7 @@ using System.Text.RegularExpressions;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Pulsar.Compiler.Models;
+using Common;
 
 namespace Pulsar.Compiler.Core
 {
@@ -38,24 +39,8 @@ namespace Pulsar.Compiler.Core
             ConditionDefinition condition,
             Dictionary<string, RuleDefinition> rules)
         {
-            var dependencies = new HashSet<string>();
-
-            switch (condition)
-            {
-                case ComparisonCondition comparison:
-                    dependencies.Add(comparison.Sensor);
-                    break;
-
-                case ExpressionCondition expression:
-                    dependencies.UnionWith(ExtractSensorsFromExpression(expression.Expression));
-                    break;
-
-                case ThresholdOverTimeCondition threshold:
-                    dependencies.Add(threshold.Sensor);
-                    break;
-            }
-
-            return dependencies;
+            // Use shared logic for sensor extraction
+            return ConditionAnalyzerShared.ExtractSensors(condition);
         }
 
         /// <summary>
@@ -107,7 +92,8 @@ namespace Pulsar.Compiler.Core
         /// </summary>
         public bool IsTemporalCondition(ConditionDefinition condition)
         {
-            return condition is ThresholdOverTimeCondition;
+            // Use shared logic for temporal detection
+            return ConditionAnalyzerShared.HasTemporalCondition(condition);
         }
 
         /// <summary>

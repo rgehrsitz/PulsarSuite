@@ -6,6 +6,7 @@ using System.IO;
 using System.Text.Json;
 using Beacon.Compiler;
 using Serilog;
+using Beacon.Runtime.Models;
 
 namespace Beacon.Runtime.Rules
 {
@@ -60,20 +61,20 @@ namespace Beacon.Runtime.Rules
 
             if (
                 requireSensors
-                && (config.RequiredSensors == null || config.RequiredSensors.Length == 0)
+                && (config.ValidSensors == null || config.ValidSensors.Count == 0)
             )
             {
-                _logger.Error("Required sensors not configured");
+                _logger.Error("Valid sensors not configured");
                 throw new InvalidOperationException(
-                    "Required sensors must be configured when requireSensors is true"
+                    "Valid sensors must be configured when requireSensors is true"
                 );
             }
 
-            if (config.CycleTime.HasValue && config.CycleTime.Value < TimeSpan.FromMilliseconds(10))
+            if (config.CycleTime < 10)
             {
                 _logger.Warning(
                     "Cycle time is very low ({CycleTime}ms), this may impact performance",
-                    config.CycleTime.Value.TotalMilliseconds
+                    config.CycleTime
                 );
             }
 

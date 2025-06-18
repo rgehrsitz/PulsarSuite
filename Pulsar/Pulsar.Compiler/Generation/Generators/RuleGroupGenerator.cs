@@ -68,7 +68,7 @@ namespace Pulsar.Compiler.Generation.Generators
 
             // Required sensors property - include both inputs and outputs that are referenced in conditions
             var allSensors = new HashSet<string>();
-            
+
             // Add all input sensors and output sensors referenced in conditions
             foreach (var rule in rules)
             {
@@ -78,7 +78,7 @@ namespace Pulsar.Compiler.Generation.Generators
                 {
                     allSensors.Add(sensor);
                 }
-                
+
                 // Also explicitly ensure output sensors referenced in conditions are added
                 if (rule.Conditions != null)
                 {
@@ -89,7 +89,7 @@ namespace Pulsar.Compiler.Generation.Generators
                     }
                 }
             }
-            
+
             // Before generating the RequiredSensors array, add input sensors necessary for rule actions
             // Collect any input references from actions for each rule in this group
             foreach (var rule in rules)
@@ -101,7 +101,7 @@ namespace Pulsar.Compiler.Generation.Generators
                         // Check for input references in the value expression
                         var matches = System.Text.RegularExpressions.Regex.Matches(
                             setValueAction.ValueExpression, "input:[a-zA-Z0-9_]+");
-                        
+
                         foreach (System.Text.RegularExpressions.Match match in matches)
                         {
                             allSensors.Add(match.Value);
@@ -109,7 +109,7 @@ namespace Pulsar.Compiler.Generation.Generators
                     }
                 }
             }
-            
+
             sb.AppendLine("        public string[] RequiredSensors => new[]");
             sb.AppendLine("        {");
             foreach (var sensor in allSensors)
@@ -181,37 +181,9 @@ namespace Pulsar.Compiler.Generation.Generators
             );
             sb.AppendLine("        {");
             sb.AppendLine(
-                "            // Implementation of threshold checking using BufferManager"
+                "            var values = BufferManager.GetValues(sensor, TimeSpan.FromMilliseconds(duration)).Select(v => v.Value);"
             );
-            sb.AppendLine(
-                "            var values = BufferManager.GetValues(sensor, TimeSpan.FromMilliseconds(duration));"
-            );
-            sb.AppendLine("            if (values == null || !values.Any()) return false;");
-            sb.AppendLine();
-            sb.AppendLine("            switch (comparisonOperator)");
-            sb.AppendLine("            {");
-            sb.AppendLine(
-                "                case \">\": return values.All(v => Convert.ToDouble(v.Value) > threshold);"
-            );
-            sb.AppendLine(
-                "                case \"<\": return values.All(v => Convert.ToDouble(v.Value) < threshold);"
-            );
-            sb.AppendLine(
-                "                case \">=\": return values.All(v => Convert.ToDouble(v.Value) >= threshold);"
-            );
-            sb.AppendLine(
-                "                case \"<=\": return values.All(v => Convert.ToDouble(v.Value) <= threshold);"
-            );
-            sb.AppendLine(
-                "                case \"==\": return values.All(v => Convert.ToDouble(v.Value) == threshold);"
-            );
-            sb.AppendLine(
-                "                case \"!=\": return values.All(v => Convert.ToDouble(v.Value) != threshold);"
-            );
-            sb.AppendLine(
-                "                default: throw new ArgumentException($\"Unsupported comparison operator: {comparisonOperator}\");"
-            );
-            sb.AppendLine("            }");
+            sb.AppendLine("            return ThresholdHelper.CheckThreshold(values, threshold, comparisonOperator);");
             sb.AppendLine("        }");
             sb.AppendLine();
 

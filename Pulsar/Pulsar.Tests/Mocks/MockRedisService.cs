@@ -6,6 +6,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Beacon.Runtime.Interfaces;
 
 namespace Pulsar.Tests.Mocks
 {
@@ -39,7 +40,7 @@ namespace Pulsar.Tests.Mocks
         public int RetryCount { get; set; }
         public int RetryBaseDelayMs { get; set; }
     }
-    
+
     /// <summary>
     /// Configuration for Redis retry policy
     /// </summary>
@@ -49,12 +50,12 @@ namespace Pulsar.Tests.Mocks
         /// Gets the maximum number of retry attempts
         /// </summary>
         public int MaxRetryCount { get; }
-        
+
         /// <summary>
         /// Gets the base delay in milliseconds between retry attempts
         /// </summary>
         public int BaseDelayMilliseconds { get; }
-        
+
         /// <summary>
         /// Creates a new retry policy configuration
         /// </summary>
@@ -84,17 +85,17 @@ namespace Pulsar.Tests.Mocks
         /// </summary>
         /// <returns>Dictionary of input values</returns>
         Task<Dictionary<string, object>> GetAllInputsAsync();
-        
+
         /// <summary>
         /// Gets input values (alias for GetAllInputsAsync)
         /// </summary>
         Task<Dictionary<string, object>> GetInputsAsync();
-        
+
         /// <summary>
         /// Gets output values from Redis
         /// </summary>
         Task<Dictionary<string, object>> GetOutputsAsync();
-        
+
         /// <summary>
         /// Gets state values from Redis
         /// </summary>
@@ -122,7 +123,7 @@ namespace Pulsar.Tests.Mocks
         /// <param name="outputs">Dictionary of output values</param>
         /// <returns>Task representing the asynchronous operation</returns>
         Task SetOutputValuesAsync(Dictionary<string, double> outputs);
-        
+
         /// <summary>
         /// Sets state values in Redis
         /// </summary>
@@ -149,47 +150,47 @@ namespace Pulsar.Tests.Mocks
         /// <param name="message">The message to publish</param>
         /// <returns>The number of clients that received the message</returns>
         Task<long> PublishAsync(string channel, string message);
-        
+
         /// <summary>
         /// Sets a hash field in Redis
         /// </summary>
         Task<bool> HashSetAsync(string key, string field, string value);
-        
+
         /// <summary>
         /// Gets a hash field from Redis
         /// </summary>
         Task<string?> HashGetAsync(string key, string field);
-        
+
         /// <summary>
         /// Gets all hash fields from Redis
         /// </summary>
         Task<Dictionary<string, string>?> HashGetAllAsync(string key);
-        
+
         /// <summary>
         /// Deletes a key from Redis
         /// </summary>
         Task<bool> DeleteKeyAsync(string key);
-        
+
         /// <summary>
         /// Legacy method - Gets a value from Redis with type conversion
         /// </summary>
         Task<T?> GetValue<T>(string key);
-        
+
         /// <summary>
         /// Legacy method - Gets a value from Redis as object
         /// </summary>
         Task<object?> GetValue(string key);
-        
+
         /// <summary>
         /// Legacy method - Sets a value in Redis
         /// </summary>
         Task SetValue(string key, object value);
-        
+
         /// <summary>
         /// Legacy method - Sends a message to a Redis channel
         /// </summary>
         Task SendMessage(string channel, object message);
-        
+
         /// <summary>
         /// Legacy method - Subscribes to a Redis channel
         /// </summary>
@@ -205,7 +206,7 @@ namespace Pulsar.Tests.Mocks
         private readonly Dictionary<string, List<Action<string, object>>> _subscribers = new();
         private readonly ILogger _logger;
         private bool _disposed;
-        
+
         // Redis key prefixes
         private const string INPUT_PREFIX = "input:";
         private const string OUTPUT_PREFIX = "output:";
@@ -215,7 +216,7 @@ namespace Pulsar.Tests.Mocks
         /// Gets whether the Redis service is healthy
         /// </summary>
         public bool IsHealthy => true;
-        
+
         /// <summary>
         /// Gets retry policy information
         /// </summary>
@@ -226,9 +227,9 @@ namespace Pulsar.Tests.Mocks
         /// </summary>
         public RedisService(RedisConfiguration config, ILoggerFactory loggerFactory)
         {
-            _logger = loggerFactory?.CreateLogger<RedisService>() ?? 
+            _logger = loggerFactory?.CreateLogger<RedisService>() ??
                       Microsoft.Extensions.Logging.Abstractions.NullLogger<RedisService>.Instance;
-            
+
             // In a real implementation, this would connect to Redis
         }
 
@@ -286,7 +287,7 @@ namespace Pulsar.Tests.Mocks
                 if (kvp.Key.StartsWith(INPUT_PREFIX))
                 {
                     result[kvp.Key] = kvp.Value;
-                    
+
                     // Also add the unprefixed version
                     var sensorName = kvp.Key.Substring(INPUT_PREFIX.Length);
                     result[sensorName] = kvp.Value;
@@ -294,7 +295,7 @@ namespace Pulsar.Tests.Mocks
             }
             return Task.FromResult(result);
         }
-        
+
         public Task<Dictionary<string, object>> GetInputsAsync()
         {
             return GetAllInputsAsync();
@@ -330,30 +331,30 @@ namespace Pulsar.Tests.Mocks
         {
             if (outputs == null || outputs.Count == 0)
                 return Task.CompletedTask;
-                
+
             foreach (var kvp in outputs)
             {
                 var redisKey = kvp.Key.StartsWith(OUTPUT_PREFIX) ? kvp.Key : $"{OUTPUT_PREFIX}{kvp.Key}";
                 _values[redisKey] = kvp.Value;
             }
-            
+
             return Task.CompletedTask;
         }
 
         public Task<Dictionary<string, (double Value, DateTime Timestamp)>> GetSensorValuesAsync(IEnumerable<string> sensorKeys)
         {
             var result = new Dictionary<string, (double Value, DateTime Timestamp)>();
-            
+
             foreach (var sensorKey in sensorKeys)
             {
                 var redisKey = sensorKey.StartsWith(INPUT_PREFIX) ? sensorKey : $"{INPUT_PREFIX}{sensorKey}";
-                if (_values.TryGetValue(redisKey, out var value) && 
+                if (_values.TryGetValue(redisKey, out var value) &&
                     (value is double doubleValue || double.TryParse(value.ToString(), out doubleValue)))
                 {
                     result[sensorKey] = (doubleValue, DateTime.UtcNow);
                 }
             }
-            
+
             return Task.FromResult(result);
         }
 
@@ -361,13 +362,13 @@ namespace Pulsar.Tests.Mocks
         {
             if (outputs == null || outputs.Count == 0)
                 return Task.CompletedTask;
-                
+
             var convertedOutputs = new Dictionary<string, object>();
             foreach (var kvp in outputs)
             {
                 convertedOutputs[kvp.Key] = kvp.Value;
             }
-            
+
             return SetOutputsAsync(convertedOutputs);
         }
 
@@ -375,27 +376,27 @@ namespace Pulsar.Tests.Mocks
         {
             if (state == null || state.Count == 0)
                 return Task.CompletedTask;
-                
+
             foreach (var kvp in state)
             {
                 var redisKey = kvp.Key.StartsWith(STATE_PREFIX) ? kvp.Key : $"{STATE_PREFIX}{kvp.Key}";
                 _values[redisKey] = kvp.Value;
             }
-            
+
             return Task.CompletedTask;
         }
 
         public Task<(double Value, DateTime Timestamp)[]> GetValues(string sensor, int count)
         {
             var result = new List<(double Value, DateTime Timestamp)>();
-            
+
             var sensorKey = sensor.StartsWith(INPUT_PREFIX) ? sensor : $"{INPUT_PREFIX}{sensor}";
-            if (_values.TryGetValue(sensorKey, out var value) && 
+            if (_values.TryGetValue(sensorKey, out var value) &&
                 (value is double doubleValue || double.TryParse(value.ToString(), out doubleValue)))
             {
                 result.Add((doubleValue, DateTime.UtcNow));
             }
-            
+
             return Task.FromResult(result.ToArray());
         }
 
@@ -406,10 +407,10 @@ namespace Pulsar.Tests.Mocks
                 // If there are no subscribers, return 0 as per Redis behavior
                 return 0L;
             }
-            
+
             // Deliver message to subscribers
             await SendMessage(channel, message);
-            
+
             // Return the number of subscribers that received the message
             return handlers.Count;
         }
@@ -428,7 +429,7 @@ namespace Pulsar.Tests.Mocks
             {
                 return Task.FromResult(value?.ToString());
             }
-            
+
             return Task.FromResult<string?>(null);
         }
 
@@ -436,7 +437,7 @@ namespace Pulsar.Tests.Mocks
         {
             var result = new Dictionary<string, string>();
             var prefix = $"{key}:";
-            
+
             foreach (var kvp in _values)
             {
                 if (kvp.Key.StartsWith(prefix))
@@ -445,14 +446,14 @@ namespace Pulsar.Tests.Mocks
                     result[field] = kvp.Value?.ToString() ?? string.Empty;
                 }
             }
-            
+
             return Task.FromResult(result.Count > 0 ? result : null);
         }
 
         public Task<bool> DeleteKeyAsync(string key)
         {
             bool removed = _values.Remove(key);
-            
+
             // Also try to remove hash keys
             var prefix = $"{key}:";
             var hashKeys = _values.Keys.Where(k => k.StartsWith(prefix)).ToList();
@@ -461,7 +462,7 @@ namespace Pulsar.Tests.Mocks
                 _values.Remove(hashKey);
                 removed = true;
             }
-            
+
             return Task.FromResult(removed);
         }
 
@@ -470,7 +471,7 @@ namespace Pulsar.Tests.Mocks
             Dispose(true);
             GC.SuppressFinalize(this);
         }
-        
+
         protected virtual void Dispose(bool disposing)
         {
             if (!_disposed)
@@ -481,7 +482,7 @@ namespace Pulsar.Tests.Mocks
                     _values.Clear();
                     _subscribers.Clear();
                 }
-                
+
                 _disposed = true;
             }
         }

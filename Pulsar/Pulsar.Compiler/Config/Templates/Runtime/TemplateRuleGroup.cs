@@ -8,6 +8,7 @@ using Beacon.Runtime.Buffers;
 using Beacon.Runtime.Interfaces;
 using Beacon.Runtime.Services;
 using Microsoft.Extensions.Logging;
+using Beacon.Runtime;
 
 namespace Beacon.Runtime.Rules
 {
@@ -78,38 +79,9 @@ namespace Beacon.Runtime.Rules
             string comparisonOperator
         )
         {
-            return comparisonOperator switch
-            {
-                ">" or ">=" => _bufferManager.IsAboveThresholdForDuration(
-                    sensor,
-                    threshold,
-                    duration
-                ),
-                "<" or "<=" => _bufferManager.IsBelowThresholdForDuration(
-                    sensor,
-                    threshold,
-                    duration
-                ),
-                "==" => _bufferManager.IsAboveThresholdForDuration(sensor, threshold, duration)
-                    && !_bufferManager.IsAboveThresholdForDuration(
-                        sensor,
-                        threshold + 0.000001,
-                        duration
-                    ),
-                "!=" => _bufferManager.IsAboveThresholdForDuration(
-                    sensor,
-                    threshold + 0.000001,
-                    duration
-                )
-                    || _bufferManager.IsBelowThresholdForDuration(
-                        sensor,
-                        threshold - 0.000001,
-                        duration
-                    ),
-                _ => throw new ArgumentException(
-                    $"Unknown comparison operator: {comparisonOperator}"
-                ),
-            };
+            // Gather values from the buffer for the given sensor and duration
+            var values = _bufferManager.GetValues(sensor, duration).Select(v => v.Value);
+            return ThresholdHelper.CheckThreshold(values, threshold, comparisonOperator);
         }
     }
 }

@@ -1,6 +1,7 @@
 using System.Text.RegularExpressions;
 using BeaconTester.RuleAnalyzer.Parsing;
 using Serilog;
+using Common;
 
 namespace BeaconTester.RuleAnalyzer.Analysis
 {
@@ -30,87 +31,8 @@ namespace BeaconTester.RuleAnalyzer.Analysis
         /// </summary>
         public HashSet<string> ExtractSensors(ConditionDefinition condition)
         {
-            var sensors = new HashSet<string>();
-
-            if (condition is ConditionGroup group)
-            {
-                // Process 'all' conditions
-                foreach (var wrapper in group.All)
-                {
-                    if (wrapper.Condition != null)
-                    {
-                        var childSensors = ExtractSensors(wrapper.Condition);
-                        sensors.UnionWith(childSensors);
-                    }
-                }
-
-                // Process 'any' conditions
-                foreach (var wrapper in group.Any)
-                {
-                    if (wrapper.Condition != null)
-                    {
-                        var childSensors = ExtractSensors(wrapper.Condition);
-                        sensors.UnionWith(childSensors);
-                    }
-                }
-            }
-            else if (condition is ComparisonCondition comparison)
-            {
-                // Add the sensor directly
-                if (!string.IsNullOrEmpty(comparison.Sensor))
-                {
-                    sensors.Add(comparison.Sensor);
-                }
-
-                // Check value expression for sensors
-                if (!string.IsNullOrEmpty(comparison.ValueExpression))
-                {
-                    var expressionSensors = ExtractSensorsFromExpression(
-                        comparison.ValueExpression
-                    );
-                    sensors.UnionWith(expressionSensors);
-                }
-            }
-            else if (condition is ExpressionCondition expression)
-            {
-                // Extract sensors from the expression
-                if (!string.IsNullOrEmpty(expression.Expression))
-                {
-                    var expressionSensors = ExtractSensorsFromExpression(expression.Expression);
-                    sensors.UnionWith(expressionSensors);
-                }
-            }
-            else if (condition is ThresholdOverTimeCondition temporal)
-            {
-                // Add the sensor directly
-                if (!string.IsNullOrEmpty(temporal.Sensor))
-                {
-                    sensors.Add(temporal.Sensor);
-                }
-            }
-
-            return sensors;
-        }
-
-        /// <summary>
-        /// Extracts sensors from an expression string
-        /// </summary>
-        public HashSet<string> ExtractSensorsFromExpression(string expression)
-        {
-            var sensors = new HashSet<string>();
-
-            if (string.IsNullOrEmpty(expression))
-                return sensors;
-
-            // Find all matches
-            var matches = SensorRegex.Matches(expression);
-
-            foreach (Match match in matches.Cast<Match>())
-            {
-                sensors.Add(match.Value);
-            }
-
-            return sensors;
+            // Use shared logic for sensor extraction
+            return ConditionAnalyzerShared.ExtractSensors(condition);
         }
 
         /// <summary>
@@ -118,27 +40,8 @@ namespace BeaconTester.RuleAnalyzer.Analysis
         /// </summary>
         public bool HasTemporalCondition(ConditionDefinition condition)
         {
-            if (condition is ThresholdOverTimeCondition)
-                return true;
-
-            if (condition is ConditionGroup group)
-            {
-                // Check 'all' conditions
-                foreach (var wrapper in group.All)
-                {
-                    if (wrapper.Condition != null && HasTemporalCondition(wrapper.Condition))
-                        return true;
-                }
-
-                // Check 'any' conditions
-                foreach (var wrapper in group.Any)
-                {
-                    if (wrapper.Condition != null && HasTemporalCondition(wrapper.Condition))
-                        return true;
-                }
-            }
-
-            return false;
+            // Use shared logic for temporal detection
+            return ConditionAnalyzerShared.HasTemporalCondition(condition);
         }
 
         /// <summary>
@@ -191,7 +94,7 @@ namespace BeaconTester.RuleAnalyzer.Analysis
                     return (0, 100); // Default range
             }
         }
-        
+
         /// <summary>
         /// Normalizes a value to its proper type, especially handling string representations of boolean values
         /// </summary>
@@ -199,7 +102,7 @@ namespace BeaconTester.RuleAnalyzer.Analysis
         {
             if (value == null)
                 return false;
-                
+
             // Handle string booleans
             if (value is string strValue)
             {
@@ -209,21 +112,21 @@ namespace BeaconTester.RuleAnalyzer.Analysis
                     return false;
                 if (double.TryParse(strValue, out double numVal))
                     return numVal;
-                    
+
                 // Return the string if it's not a boolean or number
                 return strValue;
             }
-            
+
             return value;
         }
-        
+
         /// <summary>
         /// Analyzes a condition to determine what value a sensor should have to satisfy it
         /// </summary>
         public Dictionary<string, object> AnalyzeConditionRequirements(ConditionDefinition condition)
         {
             var requirements = new Dictionary<string, object>();
-            
+
             if (condition is ConditionGroup group)
             {
                 // For 'all' conditions (AND), we need to satisfy all
@@ -238,7 +141,7 @@ namespace BeaconTester.RuleAnalyzer.Analysis
                         }
                     }
                 }
-                
+
                 // For 'any' conditions (OR), satisfying one is enough, but to simplify
                 // we'll try to satisfy all of them too
                 foreach (var wrapper in group.Any)
@@ -259,10 +162,10 @@ namespace BeaconTester.RuleAnalyzer.Analysis
                 var sensor = comparison.Sensor;
                 var op = comparison.Operator?.ToLowerInvariant() ?? "equal_to";
                 var value = comparison.Value;
-                
+
                 // Normalize the operator
                 string normalizedOp = NormalizeOperator(op);
-                
+
                 // Determine what value this sensor needs to have
                 switch (normalizedOp)
                 {
@@ -274,7 +177,7 @@ namespace BeaconTester.RuleAnalyzer.Analysis
                         else if (value is string s1 && bool.TryParse(s1, out bool bv1)) requirements[sensor] = true;
                         else requirements[sensor] = value != null ? value : true;
                         break;
-                        
+
                     case ">=":
                         // For greater than or equal, can use exact value
                         if (value is double d2) requirements[sensor] = d2;
@@ -283,7 +186,7 @@ namespace BeaconTester.RuleAnalyzer.Analysis
                         else if (value is string s2 && bool.TryParse(s2, out bool bv2)) requirements[sensor] = true;
                         else requirements[sensor] = value != null ? value : true;
                         break;
-                        
+
                     case "<":
                         // For less than, need a value lower than the comparison
                         if (value is double d3) requirements[sensor] = d3 - 10;
@@ -292,7 +195,7 @@ namespace BeaconTester.RuleAnalyzer.Analysis
                         else if (value is string s3 && bool.TryParse(s3, out bool bv3)) requirements[sensor] = false;
                         else requirements[sensor] = value != null ? value : false;
                         break;
-                        
+
                     case "<=":
                         // For less than or equal, can use exact value
                         if (value is double d4) requirements[sensor] = d4;
@@ -301,12 +204,12 @@ namespace BeaconTester.RuleAnalyzer.Analysis
                         else if (value is string s4 && bool.TryParse(s4, out bool bv4)) requirements[sensor] = false;
                         else requirements[sensor] = value != null ? value : false;
                         break;
-                        
+
                     case "==":
                         // For equal, use exact value
                         requirements[sensor] = value ?? true;
                         break;
-                        
+
                     case "!=":
                         // For not equal, use opposite value
                         if (value is bool b) requirements[sensor] = !b;
@@ -315,27 +218,27 @@ namespace BeaconTester.RuleAnalyzer.Analysis
                         else if (value is int i5) requirements[sensor] = i5 + 10;
                         else requirements[sensor] = value != null ? !Equals(value, true) : false;
                         break;
-                        
+
                     default:
                         // Default to using the value as-is
                         requirements[sensor] = value ?? true;
                         break;
                 }
-                
-                _logger.Debug("Condition {Condition} requires {Sensor}={Value}", 
+
+                _logger.Debug("Condition {Condition} requires {Sensor}={Value}",
                     $"{sensor} {normalizedOp} {value}", sensor, requirements[sensor]);
             }
             else if (condition is ThresholdOverTimeCondition temporal)
             {
                 // For temporal conditions, basic test is not appropriate
                 // We'll just log this but not add specific requirements
-                _logger.Debug("Temporal condition for {Sensor} will not be satisfied in basic test", 
+                _logger.Debug("Temporal condition for {Sensor} will not be satisfied in basic test",
                     temporal.Sensor);
             }
-            
+
             return requirements;
         }
-        
+
         /// <summary>
         /// Normalizes various operator representations to standard form
         /// </summary>

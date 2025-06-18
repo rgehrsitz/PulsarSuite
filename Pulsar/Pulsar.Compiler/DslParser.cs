@@ -37,8 +37,7 @@ namespace Pulsar.Compiler.Parsers
                 IParser parser,
                 Type expectedType,
                 Func<IParser, Type, object?> nestedObjectDeserializer,
-                out object? value,
-                ObjectDeserializer rootDeserializer
+                out object? value
             )
             {
                 value = null;
@@ -69,8 +68,6 @@ namespace Pulsar.Compiler.Parsers
                         if (start.HasValue)
                         {
                             rule.LineNumber = (int)start.Value.Line; // Cast long to int
-
-                            // ACTUAL CODE CHANGE: Fix the null reference assignment by using null coalescing operator
                             rule.OriginalText = parser.Current?.ToString() ?? string.Empty;
                         }
                         return true;
@@ -457,7 +454,7 @@ namespace Pulsar.Compiler.Parsers
                             "Threshold over time condition must specify a positive duration"
                         );
                     }
-                    
+
                     // Convert the threshold value properly
                     double thresholdValue = 0;
                     if (condition.ConditionDetails.Threshold > 0)
@@ -723,7 +720,7 @@ namespace Pulsar.Compiler.Parsers
 
         [YamlMember(Alias = "message")]
         public string Message { get; set; } = string.Empty;
-        
+
         [YamlMember(Alias = "message_expression")]
         public string? MessageExpression { get; set; }
     }

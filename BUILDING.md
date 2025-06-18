@@ -1,9 +1,10 @@
-# Build System Documentation
+# Build System Documentation (Experimental)
 
-This document describes the MSBuild-based build system for Pulsar/Beacon and BeaconTester projects.
+**Note:** The MSBuild-based system described here was an experimental approach to streamline builds. While functional to some extent, the primary and currently recommended workflow relies on the direct `dotnet` CLI commands detailed in `README.md`. This document is retained for informational purposes regarding that experimental system.
 
-## Project Structure
+## Project Structure (for MSBuild Experiment)
 
+The following structure was used for the MSBuild experiment:
 ```text
 PulsarSuite/
 ├── src/                 # Source code and input files
@@ -12,15 +13,15 @@ PulsarSuite/
 │   │       ├── rules/  # YAML rule files
 │   │       └── config/ # Configuration files
 │   ├── Tests/         # Generated test files
-│   └── Bin/           # Compiled binaries
+│   └── Bin/           # Compiled binaries (Note: README.md uses output/Bin)
 ├── build/              # Build configuration
-│   └── PulsarSuite.core.build  # Main build file
-└── output/             # Build outputs
+│   └── PulsarSuite.core.build  # Main build file for the experiment
+└── output/             # Build outputs (Consistent with README.md)
     ├── dist/           # Distributable Beacon apps
     └── reports/        # Test reports
 ```
 
-## Using the Build System
+## Using the Build System (Experimental)
 
 The build system uses .NET's built-in MSBuild capabilities, so all commands are run using `dotnet build` with appropriate parameters.
 
@@ -67,7 +68,7 @@ dotnet build /t:RunTests /p:ProjectName=MyProject /p:RulesFile=/path/to/rules.ya
 dotnet build /p:ProjectName=MyProject /p:RulesFile=/path/to/rules.yaml
 ```
 
-### Known Issues and Workarounds
+### Known Issues and Workarounds (for MSBuild Experiment)
 
 #### RedisService.cs Template Issue
 
@@ -90,9 +91,9 @@ The RedisService.cs template in Pulsar.Compiler can have issues with C# pattern 
 <Copy SourceFiles="$(FixedRedisServicePath)" DestinationFiles="$(RedisServicePath)" OverwriteReadOnlyFiles="true" />
 ```
 
-This MSBuild approach ensures that no manual intervention or shell scripts are required to fix the issue.
+This MSBuild approach ensured that no manual intervention or shell scripts were required to fix the issue during the experiment.
 
-#### End-to-End Test Process
+#### End-to-End Test Process (for MSBuild Experiment)
 
 The complete workflow for testing with the fixed RedisService.cs template:
 

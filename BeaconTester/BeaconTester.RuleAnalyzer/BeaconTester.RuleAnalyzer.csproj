@@ -1,17 +1,25 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net9.0</TargetFramework>
+    <TargetFramework>net8.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="YamlDotNet" Version="16.3.0" />
+    <PackageReference Include="YamlDotNet" Version="13.7.1" />
+    <PackageReference Include="Microsoft.Extensions.Logging" Version="8.0.0" />
+    <PackageReference Include="Serilog" Version="3.1.1" />
+    <PackageReference Include="Serilog.Extensions.Logging" Version="8.0.0" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\BeaconTester.Core\BeaconTester.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Include="../../Common/ConditionAnalyzerShared.cs" />
+    <Compile Include="../../Common/ValueGenerationHelper.cs" />
   </ItemGroup>
 
 </Project>

@@ -4,6 +4,7 @@
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using Beacon.Runtime.Interfaces;
 
 namespace Pulsar.Runtime.Services
 {
@@ -19,17 +20,17 @@ namespace Pulsar.Runtime.Services
         /// </summary>
         /// <returns>Dictionary of input values</returns>
         Task<Dictionary<string, object>> GetAllInputsAsync();
-        
+
         /// <summary>
         /// Gets input values (alias for GetAllInputsAsync)
         /// </summary>
         Task<Dictionary<string, object>> GetInputsAsync();
-        
+
         /// <summary>
         /// Gets output values from Redis
         /// </summary>
         Task<Dictionary<string, object>> GetOutputsAsync();
-        
+
         /// <summary>
         /// Gets state values from Redis
         /// </summary>
@@ -57,7 +58,7 @@ namespace Pulsar.Runtime.Services
         /// <param name="outputs">Dictionary of output values</param>
         /// <returns>Task representing the asynchronous operation</returns>
         Task SetOutputValuesAsync(Dictionary<string, double> outputs);
-        
+
         /// <summary>
         /// Sets state values in Redis
         /// </summary>
@@ -84,22 +85,22 @@ namespace Pulsar.Runtime.Services
         /// <param name="message">The message to publish</param>
         /// <returns>The number of clients that received the message</returns>
         Task<long> PublishAsync(string channel, string message);
-        
+
         /// <summary>
         /// Sets a hash field in Redis
         /// </summary>
         Task<bool> HashSetAsync(string key, string field, string value);
-        
+
         /// <summary>
         /// Gets a hash field from Redis
         /// </summary>
         Task<string?> HashGetAsync(string key, string field);
-        
+
         /// <summary>
         /// Gets all hash fields from Redis
         /// </summary>
         Task<Dictionary<string, string>?> HashGetAllAsync(string key);
-        
+
         /// <summary>
         /// Deletes a key from Redis
         /// </summary>
