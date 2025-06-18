@@ -1,27 +1,9 @@
 #!/bin/bash
 
 # PulsarSuite Build and Test Script
-# This script provides a simplified workflow for building and testing Beacon applications
+# This script builds the entire PulsarSuite and runs end-to-end tests
 
-set -e  # Exit on any error
-
-# Configuration
-PROJECT_NAME=${1:-"TemperatureExample"}
-
-# Special handling for TemperatureExample - use canonical location
-if [ "$PROJECT_NAME" = "TemperatureExample" ]; then
-    RULES_FILE="Pulsar/Examples/BasicRules/temperature_rules.yaml"
-    CONFIG_FILE="Pulsar/Examples/BasicRules/system_config.yaml"
-else
-    RULES_FILE="examples/Rules/${PROJECT_NAME}/rules/temperature_rules.yaml"
-    CONFIG_FILE="examples/Rules/${PROJECT_NAME}/config/system_config.yaml"
-fi
-
-OUTPUT_DIR="output"
-BIN_DIR="${OUTPUT_DIR}/Bin/${PROJECT_NAME}"
-DIST_DIR="${OUTPUT_DIR}/dist/${PROJECT_NAME}"
-TESTS_DIR="${OUTPUT_DIR}/Tests/${PROJECT_NAME}"
-REPORTS_DIR="${OUTPUT_DIR}/reports/${PROJECT_NAME}"
+set -e
 
 # Colors for output
 RED='\033[0;31m'
@@ -30,285 +12,117 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
-# Helper functions
-log_info() {
-    echo -e "${BLUE}[INFO]${NC} $1"
+# Script directory
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
+
+echo -e "${BLUE}=== PulsarSuite Build and Test ===${NC}"
+echo "Project root: $PROJECT_ROOT"
+
+# Create output directories
+OUTPUT_DIR="$PROJECT_ROOT/output"
+LOGS_DIR="$OUTPUT_DIR/logs"
+REPORTS_DIR="$OUTPUT_DIR/reports"
+
+mkdir -p "$OUTPUT_DIR" "$LOGS_DIR" "$REPORTS_DIR"
+
+# Log file
+LOG_FILE="$LOGS_DIR/build-$(date +%Y%m%d-%H%M%S).log"
+
+# Function to log messages
+log() {
+    echo -e "$1"
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] $2" >> "$LOG_FILE"
 }
 
-log_success() {
-    echo -e "${GREEN}[SUCCESS]${NC} $1"
-}
+# Function to run command with logging
+run_cmd() {
+    local cmd="$1"
+    local description="$2"
 
-log_warning() {
-    echo -e "${YELLOW}[WARNING]${NC} $1"
-}
+    log "${YELLOW}Running: $description${NC}" "$description"
+    log "${BLUE}Command: $cmd${NC}" "Command: $cmd"
 
-log_error() {
-    echo -e "${RED}[ERROR]${NC} $1"
-}
-
-# Check prerequisites
-check_prerequisites() {
-    log_info "Checking prerequisites..."
-
-    if ! command -v dotnet &> /dev/null; then
-        log_error "dotnet CLI not found. Please install .NET SDK 8.0 or higher."
-        exit 1
-    fi
-
-    if ! command -v redis-cli &> /dev/null; then
-        log_warning "redis-cli not found. Redis server may not be running."
-    fi
-
-    if [ ! -f "$RULES_FILE" ]; then
-        log_error "Rules file not found: $RULES_FILE"
-        exit 1
-    fi
-
-    if [ ! -f "$CONFIG_FILE" ]; then
-        log_error "Config file not found: $CONFIG_FILE"
-        exit 1
-    fi
-
-    log_success "Prerequisites check completed"
-}
-
-# Clean environment
-clean_environment() {
-    log_info "Cleaning environment..."
-
-    # Stop any running Beacon processes
-    pkill -f Beacon.Runtime || true
-    pkill -f BeaconTester || true
-
-    # Clear Redis
-    redis-cli FLUSHALL || true
-
-    # Remove output directories
-    rm -rf "$BIN_DIR" "$DIST_DIR" "$TESTS_DIR" "$REPORTS_DIR"
-
-    log_success "Environment cleaned"
-}
-
-# Validate rules
-validate_rules() {
-    log_info "Validating rules..."
-    dotnet run --project Pulsar/Pulsar.Compiler/Pulsar.Compiler.csproj validate \
-        --rules="$RULES_FILE" \
-        --config="$CONFIG_FILE"
-    log_success "Rules validation completed"
-}
-
-# Compile rules
-compile_rules() {
-    log_info "Compiling rules..."
-    mkdir -p "$BIN_DIR"
-    dotnet run --project Pulsar/Pulsar.Compiler/Pulsar.Compiler.csproj compile \
-        --rules="$RULES_FILE" \
-        --config="$CONFIG_FILE" \
-        --output="$BIN_DIR"
-    log_success "Rules compilation completed"
-}
-
-# Generate Beacon application
-generate_beacon() {
-    log_info "Generating Beacon application..."
-    mkdir -p "$DIST_DIR"
-    dotnet run --project Pulsar/Pulsar.Compiler/Pulsar.Compiler.csproj beacon \
-        --rules="$RULES_FILE" \
-        --compiled-rules-dir="$BIN_DIR" \
-        --output="$DIST_DIR" \
-        --config="$CONFIG_FILE" \
-        --target=linux-x64
-    log_success "Beacon application generation completed"
-}
-
-# Build Beacon runtime (Debug, managed)
-build_beacon() {
-    log_info "Building Beacon runtime (managed, Debug)..."
-    dotnet publish "$DIST_DIR/Beacon/Beacon.Runtime/Beacon.Runtime.csproj" \
-        -c Debug \
-        -r linux-x64 \
-        --self-contained true \
-        /p:PublishSingleFile=true
-    log_success "Beacon runtime (managed) build completed"
-}
-
-# Build Beacon runtime (AOT, native)
-build_beacon_aot() {
-    log_info "Building Beacon runtime (AOT, native, Release)..."
-    dotnet publish "$DIST_DIR/Beacon/Beacon.Runtime/Beacon.Runtime.csproj" \
-        -c Release \
-        -r linux-x64 \
-        --self-contained true \
-        /p:PublishAot=true \
-        /p:PublishSingleFile=true
-    log_success "Beacon runtime (AOT/native) build completed"
-}
-
-# Generate test scenarios
-generate_tests() {
-    log_info "Generating test scenarios..."
-    mkdir -p "$TESTS_DIR"
-    dotnet run --project BeaconTester/BeaconTester.Runner/BeaconTester.Runner.csproj generate \
-        --rules="$RULES_FILE" \
-        --output="$TESTS_DIR/test_scenarios.json"
-    log_success "Test scenarios generation completed"
-}
-
-# Start Beacon (AOT, native, in background)
-start_beacon_aot() {
-    log_info "Starting Beacon runtime (AOT/native)..."
-    mkdir -p "$REPORTS_DIR"
-    BIN_PATH="$DIST_DIR/Beacon/Beacon.Runtime/bin/Release/net9.0/linux-x64/publish/Beacon.Runtime"
-    if [ ! -f "$BIN_PATH" ]; then
-        log_error "AOT/native binary not found: $BIN_PATH"
-        exit 1
-    fi
-    nohup "$BIN_PATH" --redis-host=localhost --redis-port=6379 --verbose > "$REPORTS_DIR/beacon_aot.log" 2>&1 &
-    BEACON_PID=$!
-    sleep 5
-    if ps -p $BEACON_PID > /dev/null; then
-        log_success "Beacon (AOT/native) started with PID: $BEACON_PID"
-        echo $BEACON_PID > "$REPORTS_DIR/beacon_aot.pid"
+    if eval "$cmd" >> "$LOG_FILE" 2>&1; then
+        log "${GREEN}✓ Success: $description${NC}" "Success: $description"
     else
-        log_error "Failed to start Beacon (AOT/native)"
+        log "${RED}✗ Failed: $description${NC}" "Failed: $description"
+        log "${RED}Check log file: $LOG_FILE${NC}" "Check log file: $LOG_FILE"
         exit 1
     fi
 }
 
-# Run tests
-run_tests() {
-    log_info "Running tests..."
-    mkdir -p "$REPORTS_DIR"
+# Step 1: Build Pulsar Compiler
+log "${BLUE}Step 1: Building Pulsar Compiler...${NC}" "Step 1: Building Pulsar Compiler"
+run_cmd "cd '$PROJECT_ROOT/Pulsar/Pulsar.Compiler' && dotnet build -c Release" "Build Pulsar Compiler"
 
-    # Set environment variables for BeaconTester
-    export BEACON_CYCLE_TIME=500
-    export STEP_DELAY_MULTIPLIER=2
-    export TIMEOUT_MULTIPLIER=3
+# Step 2: Build BeaconTester
+log "${BLUE}Step 2: Building BeaconTester...${NC}" "Step 2: Building BeaconTester"
+run_cmd "cd '$PROJECT_ROOT/BeaconTester' && dotnet build -c Release" "Build BeaconTester"
 
-    dotnet run --project BeaconTester/BeaconTester.Runner/BeaconTester.Runner.csproj run \
-        --scenarios="$TESTS_DIR/test_scenarios.json" \
-        --output="$REPORTS_DIR/test_results.json" \
-        --redis-host=localhost \
-        --redis-port=6379
+# Step 3: Compile rules using Pulsar
+log "${BLUE}Step 3: Compiling rules with Pulsar...${NC}" "Step 3: Compiling rules with Pulsar"
 
-    log_success "Test execution completed"
-}
+# Use the new consolidated structure
+RULES_DIR="$PROJECT_ROOT/rules"
+CONFIG_FILE="$PROJECT_ROOT/config/system_config.yaml"
+OUTPUT_PATH="$OUTPUT_DIR/beacon"
 
-# Stop Beacon (AOT/native)
-stop_beacon_aot() {
-    log_info "Stopping Beacon runtime (AOT/native)..."
-    if [ -f "$REPORTS_DIR/beacon_aot.pid" ]; then
-        BEACON_PID=$(cat "$REPORTS_DIR/beacon_aot.pid")
-        if ps -p $BEACON_PID > /dev/null; then
-            kill $BEACON_PID
-            log_success "Beacon (AOT/native) stopped"
-        fi
-        rm -f "$REPORTS_DIR/beacon_aot.pid"
-    else
-        pkill -f Beacon.Runtime || true
-        log_warning "Beacon (AOT/native) process not found or already stopped"
-    fi
-}
+# Check if rules directory exists
+if [ ! -d "$RULES_DIR" ]; then
+    log "${RED}Error: Rules directory not found: $RULES_DIR${NC}" "Error: Rules directory not found: $RULES_DIR"
+    log "${YELLOW}Please run the consolidation script first: ./scripts/consolidate-rules.sh${NC}" "Please run the consolidation script first"
+    exit 1
+fi
 
-# Show results
-show_results() {
-    log_info "Test results:"
-    if [ -f "$REPORTS_DIR/test_results.json" ]; then
-        # Count successful and failed tests
-        SUCCESS_COUNT=$(grep -c '"success": true' "$REPORTS_DIR/test_results.json" || echo "0")
-        FAILED_COUNT=$(grep -c '"success": false' "$REPORTS_DIR/test_results.json" || echo "0")
+# Check if config file exists
+if [ ! -f "$CONFIG_FILE" ]; then
+    log "${RED}Error: Config file not found: $CONFIG_FILE${NC}" "Error: Config file not found: $CONFIG_FILE"
+    exit 1
+fi
 
-        echo "  Successful tests: $SUCCESS_COUNT"
-        echo "  Failed tests: $FAILED_COUNT"
+# Use the first rule file found (or all rule files)
+FIRST_RULE_FILE=$(find "$RULES_DIR" -name "*.yaml" | head -1)
+if [ -z "$FIRST_RULE_FILE" ]; then
+    log "${RED}Error: No rule files found in $RULES_DIR${NC}" "Error: No rule files found in $RULES_DIR"
+    exit 1
+fi
 
-        if [ "$FAILED_COUNT" -gt 0 ]; then
-            log_warning "Some tests failed. Check $REPORTS_DIR/test_results.json for details."
-        else
-            log_success "All tests passed!"
-        fi
-    else
-        log_error "Test results file not found"
-    fi
-}
+# Prefer temperature_rules.yaml if it exists
+if [ -f "$RULES_DIR/temperature_rules.yaml" ]; then
+    FIRST_RULE_FILE="$RULES_DIR/temperature_rules.yaml"
+fi
 
-# Main workflow
-main() {
-    echo "=========================================="
-    echo "PulsarSuite Build and Test Workflow"
-    echo "Project: $PROJECT_NAME"
-    echo "=========================================="
+log "${BLUE}Using rule file: $FIRST_RULE_FILE${NC}" "Using rule file: $FIRST_RULE_FILE"
+log "${BLUE}Using config file: $CONFIG_FILE${NC}" "Using config file: $CONFIG_FILE"
 
-    check_prerequisites
-    clean_environment
-    validate_rules
-    compile_rules
-    generate_beacon
-    build_beacon
-    build_beacon_aot
-    generate_tests
-    start_beacon_aot
+run_cmd "cd '$PROJECT_ROOT/Pulsar/Pulsar.Compiler' && dotnet run --project . -- beacon --rules '$FIRST_RULE_FILE' --config '$CONFIG_FILE' --output '$OUTPUT_PATH'" "Compile rules with Pulsar"
 
-    # Run tests
-    run_tests
+# Step 4: Build Beacon runtime
+log "${BLUE}Step 4: Building Beacon runtime...${NC}" "Step 4: Building Beacon runtime"
+run_cmd "cd '$OUTPUT_PATH/Beacon' && dotnet build -c Release" "Build Beacon runtime"
 
-    # Stop Beacon
-    stop_beacon_aot
+# Step 5: Run BeaconTester
+log "${BLUE}Step 5: Running BeaconTester...${NC}" "Step 5: Running BeaconTester"
 
-    # Show results
-    show_results
+# Find the test scenarios file
+TEST_SCENARIOS="$PROJECT_ROOT/examples/Tests/DefaultProject/test_scenarios.json"
+if [ ! -f "$TEST_SCENARIOS" ]; then
+    log "${YELLOW}Warning: Test scenarios file not found: $TEST_SCENARIOS${NC}" "Warning: Test scenarios file not found"
+    log "${YELLOW}Skipping BeaconTester execution${NC}" "Skipping BeaconTester execution"
+else
+    run_cmd "cd '$PROJECT_ROOT/BeaconTester/BeaconTester.Runner' && dotnet run --project . -- run --scenarios '$TEST_SCENARIOS' --output '$REPORTS_DIR'" "Run BeaconTester"
+fi
 
-    echo "=========================================="
-    log_success "Workflow completed!"
-    echo "Output files:"
-    echo "  - Compiled rules: $BIN_DIR"
-    echo "  - Beacon application: $DIST_DIR"
-    echo "  - Test scenarios: $TESTS_DIR/test_scenarios.json"
-    echo "  - Test results: $REPORTS_DIR/test_results.json"
-    echo "  - Beacon logs: $REPORTS_DIR/beacon_aot.log"
-    echo "  - Beacon native binary: $DIST_DIR/Beacon/Beacon.Runtime/bin/Release/net9.0/linux-x64/publish/Beacon.Runtime"
-    echo "=========================================="
-}
+# Step 6: Generate report
+log "${BLUE}Step 6: Generating test report...${NC}" "Step 6: Generating test report"
+if [ -f "$TEST_SCENARIOS" ]; then
+    run_cmd "cd '$PROJECT_ROOT/BeaconTester/BeaconTester.Runner' && dotnet run --project . -- report --input '$REPORTS_DIR' --output '$REPORTS_DIR/report.html'" "Generate test report"
+fi
 
-# Handle command line arguments
-case "${2:-}" in
-    "clean")
-        clean_environment
-        ;;
-    "validate")
-        check_prerequisites
-        validate_rules
-        ;;
-    "compile")
-        check_prerequisites
-        validate_rules
-        compile_rules
-        ;;
-    "build")
-        check_prerequisites
-        validate_rules
-        compile_rules
-        generate_beacon
-        build_beacon
-        build_beacon_aot
-        ;;
-    "test")
-        check_prerequisites
-        generate_tests
-        start_beacon_aot
-        run_tests
-        stop_beacon_aot
-        show_results
-        ;;
-    "start-beacon")
-        start_beacon_aot
-        echo "Beacon is running. Use 'stop-beacon' to stop it."
-        ;;
-    "stop-beacon")
-        stop_beacon_aot
-        ;;
-    *)
-        main
-        ;;
-esac
+log "${GREEN}=== Build and Test Complete ===${NC}" "Build and Test Complete"
+log "${GREEN}Output directory: $OUTPUT_DIR${NC}" "Output directory: $OUTPUT_DIR"
+log "${GREEN}Log file: $LOG_FILE${NC}" "Log file: $LOG_FILE"
+if [ -f "$TEST_SCENARIOS" ]; then
+    log "${GREEN}Test report: $REPORTS_DIR/report.html${NC}" "Test report: $REPORTS_DIR/report.html"
+fi

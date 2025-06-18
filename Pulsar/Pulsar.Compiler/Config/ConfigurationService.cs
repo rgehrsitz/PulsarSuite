@@ -62,7 +62,7 @@ namespace Pulsar.Compiler.Config
             string target = options.GetValueOrDefault("target", "win-x64");
             string compiledRulesDir = options.GetValueOrDefault("compiled-rules-dir", "");
 
-            _logger.Debug("Creating Beacon build config with: outputPath={OutputPath}, target={Target}", 
+            _logger.Debug("Creating Beacon build config with: outputPath={OutputPath}, target={Target}",
                 outputPath, target);
 
             return new BuildConfig
@@ -79,8 +79,8 @@ namespace Pulsar.Compiler.Config
                 GenerateDebugInfo = false,
                 OptimizeOutput = true,
                 Namespace = "Beacon.Runtime",
-                RedisConnection = 
-                    systemConfig.Redis != null && systemConfig.Redis.TryGetValue("endpoints", out var endpoints) 
+                RedisConnection =
+                    systemConfig.Redis != null && systemConfig.Redis.TryGetValue("endpoints", out var endpoints)
                         && endpoints is List<string> endpointList && endpointList.Count > 0
                             ? endpointList[0].ToString()
                             : "localhost:6379",
@@ -103,7 +103,7 @@ namespace Pulsar.Compiler.Config
         public async Task<SystemConfig> LoadSystemConfig(string configPath)
         {
             _logger.Debug("Loading system config from {Path}", configPath);
-            
+
             if (!File.Exists(configPath))
             {
                 // Try looking in the parent directory
@@ -112,7 +112,7 @@ namespace Pulsar.Compiler.Config
                         ?? throw new InvalidOperationException("Parent directory not found"),
                     configPath
                 );
-                
+
                 if (File.Exists(parentPath))
                 {
                     _logger.Debug("Using config from parent directory: {Path}", parentPath);
@@ -130,31 +130,69 @@ namespace Pulsar.Compiler.Config
             var deserializer = new DeserializerBuilder()
                 .WithNamingConvention(CamelCaseNamingConvention.Instance)
                 .Build();
-                
+
             var config = deserializer.Deserialize<SystemConfig>(yaml);
-            
+
             // Validate and set defaults
-            if (config.ValidSensors == null)
+            if (config.ValidSensors == null || config.ValidSensors.Count == 0)
             {
-                _logger.Warning("ValidSensors is null in system config, creating empty list");
-                config.ValidSensors = new List<string>();
+                _logger.Warning("ValidSensors is null or empty in system config, auto-populating from all rule files in 'rules/' directory");
+                var rulesDir = Path.Combine(AppContext.BaseDirectory, "../../../../../../rules");
+                if (!Directory.Exists(rulesDir))
+                {
+                    rulesDir = Path.Combine(Directory.GetCurrentDirectory(), "rules");
+                }
+                if (Directory.Exists(rulesDir))
+                {
+                    var allRuleFiles = Directory.GetFiles(rulesDir, "*.yaml", SearchOption.AllDirectories);
+                    var allSensors = new HashSet<string>();
+                    var parser = new Pulsar.Compiler.Parsers.DslParser();
+                    foreach (var ruleFile in allRuleFiles)
+                    {
+                        try
+                        {
+                            var ruleYaml = File.ReadAllText(ruleFile);
+                            var rules = parser.ParseRules(ruleYaml, new List<string>(), Path.GetFileName(ruleFile), true);
+                            foreach (var rule in rules)
+                            {
+                                if (rule.InputSensors != null)
+                                    foreach (var s in rule.InputSensors)
+                                        allSensors.Add(s);
+                                if (rule.OutputSensors != null)
+                                    foreach (var s in rule.OutputSensors)
+                                        allSensors.Add(s);
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.Warning(ex, $"Failed to parse rule file {ruleFile} for sensor extraction");
+                        }
+                    }
+                    config.ValidSensors = allSensors.ToList();
+                    _logger.Information("Auto-populated validSensors from rules: {Sensors}", string.Join(", ", config.ValidSensors));
+                }
+                else
+                {
+                    _logger.Warning("Could not find 'rules/' directory to auto-populate validSensors");
+                    config.ValidSensors = new List<string>();
+                }
             }
-            
+
             if (config.CycleTime <= 0)
             {
                 _logger.Warning("Invalid cycle time {CycleTime}ms, using default 100ms", config.CycleTime);
                 config.CycleTime = 100;
             }
-            
+
             if (config.BufferCapacity <= 0)
             {
                 _logger.Warning("Invalid buffer capacity {BufferCapacity}, using default 100", config.BufferCapacity);
                 config.BufferCapacity = 100;
             }
-            
-            _logger.Information("Successfully loaded system config with {SensorCount} valid sensors", 
+
+            _logger.Information("Successfully loaded system config with {SensorCount} valid sensors",
                 config.ValidSensors.Count);
-                
+
             return config;
         }
 
