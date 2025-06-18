@@ -13,8 +13,8 @@ An initial inventory of all `.md` and `.rst` files in the repo. Please update th
 | PULSAR_BEACONTESTER.md                                             | Missing  | Removed                                           |
 | PULSAR_BEACONTESTER_INTEGRATION.md                                 | Accurate | Updated to MSBuild targets (reviewed: OK)         |
 | Pulsar/CLAUDE.md                                                   | Missing  | Removed                                           |
-| Pulsar/Examples/BasicRules/README.md                               | Accurate | Example valid but could be streamlined (reviewed: OK) |
-| Pulsar/Examples/README.md                                          | Accurate | Overview correct; consolidate example docs (reviewed: OK) |
+| Pulsar/Examples/BasicRules/README.md                               | Outdated | Directory no longer exists - moved to rules/ structure |
+| Pulsar/Examples/README.md                                          | Outdated | Directory no longer exists - moved to rules/ structure |
 | Pulsar/Pulsar.Tests/RuntimeValidation/README.md                    | Accurate | Test docs up-to-date (reviewed: OK) |
 | Pulsar/bugs.md                                                     | Missing  | Removed                                           |
 | Pulsar/cleanup_status.md                                           | Missing  | Removed                                           |

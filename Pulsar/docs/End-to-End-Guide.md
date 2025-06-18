@@ -13,7 +13,7 @@
 
 ## Creating Custom YAML Rules
 
-First, create a YAML file containing your rule definitions. Rules should follow this structure:
+First, create a YAML file containing your rule definitions in the `rules/` directory. Rules should follow this structure:
 
 ```yaml
 rules:
@@ -23,29 +23,24 @@ rules:
       all:
         - condition:
             type: comparison
-            sensor: temperature
+            sensor: input:temperature
             operator: greater_than
             value: 30
     actions:
       - set_value:
-          key: temp_alert
+          key: output:temp_alert
           value: 1
 ```
 
-Save this as `my-rules.yaml`. For more examples, refer to [Rules-Engine.md](Rules-Engine.md) or examine `TestData/sample-rules.yaml`.
+Save this as `rules/my-rules.yaml`. For more examples, refer to [Rules-Engine.md](Rules-Engine.md) or examine the files in the `rules/` directory.
 
 ## Creating System Configuration
 
-Create a system configuration file (`system_config.yaml`) that includes:
+Create a system configuration file (`config/system_config.yaml`) that includes:
 
 ```yaml
 version: 1
-validSensors:
-  - temperature
-  - humidity
-  - pressure
-  - temp_alert
-  - system_status
+# validSensors is optional - will be auto-populated from your rules
 cycleTime: 100  # milliseconds between cycles
 redis:
   endpoints:
@@ -73,25 +68,66 @@ logLevel: Information  # Optional logging level
 logFile: logs/pulsar.log  # Optional log file path
 ```
 
+**Note**: The `validSensors` list is now optional. The system will automatically scan all rule files in the `rules/` directory and extract all unique sensors for validation and build.
+
 ## Compiling with Pulsar
+
+### Automated Workflow (Recommended)
+
+Use the main build script for the complete workflow:
+
+```bash
+./scripts/build-and-test.sh
+```
+
+This script:
+1. Builds Pulsar Compiler
+2. Builds BeaconTester
+3. Compiles rules using Pulsar
+4. Builds Beacon runtime
+5. Runs BeaconTester (if test scenarios exist)
+6. Generates test reports
+
+### Manual Commands
 
 You can manually validate, compile, and generate the Beacon solution using dotnet CLI:
 
 ```bash
 # 1. Validate rules
-dotnet run --project Pulsar/Pulsar.Compiler/Pulsar.Compiler.csproj validate --rules=my-rules.yaml --config=system_config.yaml
+dotnet run --project Pulsar/Pulsar.Compiler/Pulsar.Compiler.csproj validate --rules=rules/my-rules.yaml --config=config/system_config.yaml
 
 # 2. Compile rules
-dotnet run --project Pulsar/Pulsar.Compiler/Pulsar.Compiler.csproj compile --rules=my-rules.yaml --config=system_config.yaml --output=output/Bin
+dotnet run --project Pulsar/Pulsar.Compiler/Pulsar.Compiler.csproj compile --rules=rules/my-rules.yaml --config=config/system_config.yaml --output=output/Bin
 
 # 3. Generate Beacon solution
-dotnet run --project Pulsar/Pulsar.Compiler/Pulsar.Compiler.csproj beacon --rules=my-rules.yaml --compiled-rules-dir=output/Bin --output=MyBeacon --config=system_config.yaml --target=linux-x64
+dotnet run --project Pulsar/Pulsar.Compiler/Pulsar.Compiler.csproj beacon --rules=rules/my-rules.yaml --output=MyBeacon --config=config/system_config.yaml --target=linux-x64
 ```
 
 Or, if you have a published standalone version of Pulsar:
 
 ```bash
-Pulsar.Compiler beacon --rules=my-rules.yaml --config=system_config.yaml --output=MyBeacon
+Pulsar.Compiler beacon --rules=rules/my-rules.yaml --config=config/system_config.yaml --output=MyBeacon
+```
+
+### Project Structure
+
+The new consolidated structure is:
+
+```
+PulsarSuite/
+├── rules/                    # All rule definitions
+│   ├── temperature_rules.yaml
+│   ├── advanced_rules.yaml
+│   └── my-rules.yaml
+├── config/                   # System configuration
+│   └── system_config.yaml    # Single config for all rules
+├── scripts/                  # Build and utility scripts
+│   ├── build-and-test.sh     # Main build script
+│   └── consolidate-rules.sh  # Rules consolidation script
+├── Pulsar/                   # Rules compiler
+├── BeaconTester/             # Testing framework
+├── output/                   # Build outputs
+└── examples/                 # Example test scenarios
 ```
 
 ### Required Template Files
@@ -148,19 +184,19 @@ Run the Pulsar compiler to generate a Beacon solution:
 
 ```bash
 # 1. Validate rules
-dotnet run --project Pulsar.Compiler -- validate --rules=my-rules.yaml --config=system_config.yaml
+dotnet run --project Pulsar.Compiler -- validate --rules=rules/my-rules.yaml --config=config/system_config.yaml
 
 # 2. Compile rules
-dotnet run --project Pulsar.Compiler -- compile --rules=my-rules.yaml --config=system_config.yaml --output=output/Bin
+dotnet run --project Pulsar.Compiler -- compile --rules=rules/my-rules.yaml --config=config/system_config.yaml --output=output/Bin
 
 # 3. Generate Beacon solution
-dotnet run --project Pulsar.Compiler -- beacon --rules=my-rules.yaml --compiled-rules-dir=output/Bin --output=MyBeacon --config=system_config.yaml --target=linux-x64
+dotnet run --project Pulsar.Compiler -- beacon --rules=rules/my-rules.yaml --output=MyBeacon --config=config/system_config.yaml --target=linux-x64
 ```
 
 If using a standalone published version of Pulsar:
 
 ```bash
-Pulsar.Compiler beacon --rules=my-rules.yaml --config=system_config.yaml --output=MyBeacon
+Pulsar.Compiler beacon --rules=rules/my-rules.yaml --config=config/system_config.yaml --output=MyBeacon
 ```
 
 This will create a directory structure in `MyBeacon/` containing:
@@ -175,8 +211,8 @@ This will create a directory structure in `MyBeacon/` containing:
 When working with Pulsar and Beacon in a version-controlled environment, follow these best practices:
 
 1. **Include in Version Control**:
-   - Rule definition files (YAML)
-   - System configuration files (YAML)
+   - Rule definition files (YAML) in `rules/`
+   - System configuration files (YAML) in `config/`
    - Custom scripts for running the compiler
    - Documentation
 
@@ -373,8 +409,8 @@ COPY --from=build /app ./
 COPY --from=build /source/Pulsar.Compiler/Config/Templates ./Pulsar.Compiler/Config/Templates/
 
 # Add sample files
-COPY TestData/sample-rules.yaml ./examples/
-COPY system_config.yaml ./examples/
+COPY rules/sample_rules.yaml ./examples/
+COPY config/system_config.yaml ./examples/
 
 ENTRYPOINT ["./Pulsar.Compiler"]
 CMD ["--help"]
@@ -490,112 +526,6 @@ To customize templates:
 4. Run Pulsar with the `--template-path=<your-templates-dir>` option
 
 ## CLI Reference
-
-### Basic Usage
-```bash
-dotnet run --project Pulsar.Compiler -- <command> [options]
-```
-
-### Commands
-
-- **beacon**: Generate Beacon solution
-  ```bash
-  dotnet run --project Pulsar.Compiler -- beacon --rules=<rules> --config=<config> --output=<dir> [--target=<runtime>] [--verbose]
-  ```
-- **compile**: Compile rules into project
-- **validate**: Validate rules only
-- **test**: Run rule tests
-- **init**: Initialize new project
-- **generate**: Generate project with defaults
-
-### Common Options
-
-- `--rules <path>`: Path to rule YAML (required)
-- `--config <path>`: System config YAML
-- `--output <path>`: Output directory
-- `--target <runtime>`: Runtime ID (win-x64, linux-x64)
-- `--verbose`: Verbose logging
-
-### Examples
-```bash
-# Beacon
-dotnet run --project Pulsar.Compiler -- beacon --rules=my-rules.yaml --config=system_config.yaml --output=MyBeacon
-
-# Test only
-dotnet run --project Pulsar.Compiler -- test --rules=my-rules.yaml --config=system_config.yaml
-```
-
-## AOT Implementation
-
-Pulsar now outputs fully AOT-compatible Beacon projects via template-based code generation.
-
-### Overview
-
-- Transitioned from Pulsar.Runtime to templates in `Pulsar.Compiler/Config/Templates`
-- Generates standalone C# solution with runtime, tests, and trimming support
-
-### Goals
-
-- AOT compatibility & trimming
-- Standalone execution
-- Enhanced debugging traceability
-
-### Key Components
-
-1. **CodeGenerator** with fixed generators for AOT
-2. **BeaconTemplateManager**: scaffolds solution & projects
-3. **BeaconBuildOrchestrator**: generates and builds via dotnet CLI
-4. **Enhanced Redis Integration**
-5. **Temporal Buffer** supporting object values
-
-### Status
-
-- **Completed**: Template migration, AOT compatibility, Redis, testing
-- **In Progress**: Documentation updates (now done), performance tuning
-
-## Testing Guide
-
-This section consolidates testing instructions from the Testing Guide.
-
-### Test Categories
-
-- Rule parsing & validation
-- AOT compilation tests
-- Runtime execution (Beacon + Redis)
-- Performance & memory usage
-- Temporal rule behavior tests
-
-### End-to-End Tests via MSBuild
-
-```bash
-dotnet msbuild build/PulsarSuite.core.build /t:RunEndToEnd -p:ProjectName=MyProject
-```
-
-### Running Tests
-
-```bash
-dotnet test --filter "Category=Integration"
-```
-
-### Testing with Redis
-
-Uses TestContainers to spin up Redis; requires Docker.
-
-```
-
-Follow these instructions to make the following change to my code document.
-
-Instruction: Replace emphasis-based Basic Usage with a proper heading to fix MD036 (no-emphasis-as-heading)
-
-Code Edit:
-```
-{{ ... }}
-- **Basic Usage**
-+ ### Basic Usage
-{{ ... }}
-```
-
-### CLI Reference
 
 ### Basic Usage
 ```bash
