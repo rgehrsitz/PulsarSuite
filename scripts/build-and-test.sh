@@ -157,7 +157,7 @@ fi
 # Step 9: Generate report
 log "${BLUE}Step 9: Generating test report...${NC}" "Step 9: Generating test report"
 if [ -f "$GENERATED_TEST_FILE" ]; then
-    run_cmd "cd '$PROJECT_ROOT/BeaconTester/BeaconTester.Runner' && dotnet run --project . -- report --input '$REPORTS_DIR' --output '$REPORTS_DIR/report.html'" "Generate test report"
+    run_cmd "cd '$PROJECT_ROOT/BeaconTester/BeaconTester.Runner' && dotnet run --project . -- report --results '$REPORTS_DIR/test_results.json' --output '$REPORTS_DIR/report.html'" "Generate test report"
 fi
 
 log "${GREEN}=== Build and Test Complete ===${NC}" "Build and Test Complete"

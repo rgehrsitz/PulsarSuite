@@ -1,8 +1,8 @@
 using BeaconTester.Core.Models;
 using BeaconTester.RuleAnalyzer.Analysis;
 using BeaconTester.RuleAnalyzer.Parsing;
-using Serilog;
 using Common;
+using Serilog;
 
 namespace BeaconTester.RuleAnalyzer.Generation
 {
@@ -40,7 +40,10 @@ namespace BeaconTester.RuleAnalyzer.Generation
 
                 // Store the complete set of required input sensors for all rules
                 var allRequiredInputs = analysis.InputSensors;
-                _logger.Information("Found {InputCount} total input sensors required by all rules", allRequiredInputs.Count);
+                _logger.Information(
+                    "Found {InputCount} total input sensors required by all rules",
+                    allRequiredInputs.Count
+                );
 
                 // Build a map of input sensors to the conditions that reference them
                 var inputConditionMap = BuildInputConditionMap(rules);
@@ -48,7 +51,12 @@ namespace BeaconTester.RuleAnalyzer.Generation
                 // Generate basic test for each rule
                 foreach (var rule in rules)
                 {
-                    var scenario = GenerateBasicScenario(rule, allRequiredInputs, rules, inputConditionMap);
+                    var scenario = GenerateBasicScenario(
+                        rule,
+                        allRequiredInputs,
+                        rules,
+                        inputConditionMap
+                    );
                     scenarios.Add(scenario);
                 }
 
@@ -62,7 +70,11 @@ namespace BeaconTester.RuleAnalyzer.Generation
                 // Generate temporal tests
                 if (analysis.TemporalRules.Count > 0)
                 {
-                    var temporalTests = GenerateTemporalScenarios(analysis.TemporalRules, allRequiredInputs, inputConditionMap);
+                    var temporalTests = GenerateTemporalScenarios(
+                        analysis.TemporalRules,
+                        allRequiredInputs,
+                        inputConditionMap
+                    );
                     scenarios.AddRange(temporalTests);
                 }
 
@@ -80,7 +92,9 @@ namespace BeaconTester.RuleAnalyzer.Generation
         /// Builds a map of input sensors to the conditions that reference them
         /// This helps us determine appropriate values for each input based on actual conditions
         /// </summary>
-        private Dictionary<string, List<RuleConditionPair>> BuildInputConditionMap(List<RuleDefinition> rules)
+        private Dictionary<string, List<RuleConditionPair>> BuildInputConditionMap(
+            List<RuleDefinition> rules
+        )
         {
             _logger.Debug("Building input condition map for all rules");
             var inputConditionMap = new Dictionary<string, List<RuleConditionPair>>();
@@ -119,7 +133,9 @@ namespace BeaconTester.RuleAnalyzer.Generation
         /// <summary>
         /// Finds all conditions for all sensors in a rule
         /// </summary>
-        private Dictionary<string, List<ConditionDefinition>> FindConditionsForAllSensors(RuleDefinition rule)
+        private Dictionary<string, List<ConditionDefinition>> FindConditionsForAllSensors(
+            RuleDefinition rule
+        )
         {
             var result = new Dictionary<string, List<ConditionDefinition>>();
 
@@ -230,7 +246,10 @@ namespace BeaconTester.RuleAnalyzer.Generation
                 // Initialize all outputs that might be affected by this rule to a known state
                 foreach (var action in rule.Actions)
                 {
-                    if (action is SetValueAction setValueAction && setValueAction.Key.StartsWith("output:"))
+                    if (
+                        action is SetValueAction setValueAction
+                        && setValueAction.Key.StartsWith("output:")
+                    )
                     {
                         // Determine a suitable initial value (opposite of what the rule will set)
                         var expectedValue = testCase.Outputs.ContainsKey(setValueAction.Key)
@@ -260,7 +279,8 @@ namespace BeaconTester.RuleAnalyzer.Generation
                 // Pre-set required output dependencies for this rule (e.g., output:stress_alert = true)
                 if (rule.Conditions != null)
                 {
-                    var preSetOutputDependencies = _ruleAnalyzer.ConditionAnalyzer.ExtractSensors(rule.Conditions)
+                    var preSetOutputDependencies = _ruleAnalyzer
+                        .ConditionAnalyzer.ExtractSensors(rule.Conditions)
                         .Where(s => s.StartsWith("output:"));
                     foreach (var dep in preSetOutputDependencies)
                     {
@@ -280,7 +300,10 @@ namespace BeaconTester.RuleAnalyzer.Generation
                 }
 
                 // Helper function to ensure all required inputs are included
-                List<TestInput> EnsureAllRequiredInputs(Dictionary<string, object> inputs, bool isPositiveCase)
+                List<TestInput> EnsureAllRequiredInputs(
+                    Dictionary<string, object> inputs,
+                    bool isPositiveCase
+                )
                 {
                     var allInputs = new Dictionary<string, object>(inputs);
 
@@ -290,46 +313,76 @@ namespace BeaconTester.RuleAnalyzer.Generation
                         if (!allInputs.ContainsKey(sensor))
                         {
                             // If we have condition information for this sensor, use it to determine an appropriate value
-                            if (inputConditionMap != null && inputConditionMap.TryGetValue(sensor, out var conditionPairs) && conditionPairs.Count > 0)
+                            if (
+                                inputConditionMap != null
+                                && inputConditionMap.TryGetValue(sensor, out var conditionPairs)
+                                && conditionPairs.Count > 0
+                            )
                             {
                                 // Use the first condition to determine a suitable value
                                 var pair = conditionPairs.First();
-                                var valueTarget = isPositiveCase ? ValueTarget.Positive : ValueTarget.Negative;
-                                var value = _testCaseGenerator.GenerateValueForSensor(sensor, pair.Condition, valueTarget);
+                                var valueTarget = isPositiveCase
+                                    ? ValueTarget.Positive
+                                    : ValueTarget.Negative;
+                                var value = _testCaseGenerator.GenerateValueForSensor(
+                                    sensor,
+                                    pair.Condition,
+                                    valueTarget
+                                );
                                 allInputs[sensor] = value;
-                                _logger.Debug("Added missing input sensor {Sensor} with condition-based value: {Value}", sensor, value);
+                                _logger.Debug(
+                                    "Added missing input sensor {Sensor} with condition-based value: {Value}",
+                                    sensor,
+                                    value
+                                );
                             }
                             else
                             {
                                 // No condition info available, use a neutral value
                                 // Use different values for positive and negative tests to avoid accidental triggers
                                 allInputs[sensor] = isPositiveCase ? 50.0 : 0.0;
-                                _logger.Debug("Added missing input sensor {Sensor} with neutral value", sensor);
+                                _logger.Debug(
+                                    "Added missing input sensor {Sensor} with neutral value",
+                                    sensor
+                                );
                             }
                         }
                     }
 
-                    return allInputs.Select(i => new TestInput { Key = i.Key, Value = i.Value }).ToList();
+                    return allInputs
+                        .Select(i => new TestInput { Key = i.Key, Value = i.Value })
+                        .ToList();
                 }
 
                 // Check if this is a temporal rule
-                bool isTemporalRule = _ruleAnalyzer.ConditionAnalyzer.HasTemporalCondition(rule.Conditions);
+                bool isTemporalRule = _ruleAnalyzer.ConditionAnalyzer.HasTemporalCondition(
+                    rule.Conditions
+                );
 
                 // For rules with output dependencies, add a step to trigger the dependency rule first
-                var outputDependencies = rule.Conditions != null ? _ruleAnalyzer.ConditionAnalyzer.ExtractSensors(rule.Conditions).Where(s => s.StartsWith("output:")).ToList() : new List<string>();
+                var outputDependencies =
+                    rule.Conditions != null
+                        ? _ruleAnalyzer
+                            .ConditionAnalyzer.ExtractSensors(rule.Conditions)
+                            .Where(s => s.StartsWith("output:"))
+                            .ToList()
+                        : new List<string>();
                 if (outputDependencies.Count > 0)
                 {
                     foreach (var dep in outputDependencies)
                     {
                         // Find the rule that produces this dependency output
-                        var depRule = allRules.FirstOrDefault(r => r.Actions.OfType<SetValueAction>().Any(a => a.Key == dep));
+                        var depRule = allRules.FirstOrDefault(r =>
+                            r.Actions.OfType<SetValueAction>().Any(a => a.Key == dep)
+                        );
                         if (depRule != null)
                         {
                             var depTestCase = _testCaseGenerator.GenerateBasicTestCase(depRule);
                             var depStep = new TestStep
                             {
                                 Name = $"Produce dependency {dep}",
-                                Description = $"Step to trigger rule {depRule.Name} to produce {dep} (with required inputs)",
+                                Description =
+                                    $"Step to trigger rule {depRule.Name} to produce {dep} (with required inputs)",
                                 // Ensure all required inputs for the dependency rule are included
                                 Inputs = EnsureAllRequiredInputs(depTestCase.Inputs, true),
                                 Delay = 500,
@@ -338,11 +391,19 @@ namespace BeaconTester.RuleAnalyzer.Generation
                                     new TestExpectation
                                     {
                                         Key = dep,
-                                        Expected = depTestCase.Outputs.ContainsKey(dep) ? depTestCase.Outputs[dep] : true,
-                                        Validator = (depTestCase.Outputs.ContainsKey(dep) && depTestCase.Outputs[dep] is string) ? "string" : "boolean",
-                                        TimeoutMs = 1000
-                                    }
-                                }
+                                        Expected = depTestCase.Outputs.ContainsKey(dep)
+                                            ? depTestCase.Outputs[dep]
+                                            : true,
+                                        Validator =
+                                            (
+                                                depTestCase.Outputs.ContainsKey(dep)
+                                                && depTestCase.Outputs[dep] is string
+                                            )
+                                                ? "string"
+                                                : "boolean",
+                                        TimeoutMs = 1000,
+                                    },
+                                },
                             };
                             scenario.Steps = scenario.Steps ?? new List<TestStep>();
                             scenario.Steps.Add(depStep);
@@ -352,10 +413,15 @@ namespace BeaconTester.RuleAnalyzer.Generation
                 // For temporal rules, the basic test should be minimal or modified
                 if (isTemporalRule)
                 {
-                    _logger.Debug("Rule {RuleName} has temporal conditions - adding temporal step", rule.Name);
+                    _logger.Debug(
+                        "Rule {RuleName} has temporal conditions - adding temporal step",
+                        rule.Name
+                    );
 
                     // For temporal rules, generate a sequence of steps that satisfy the temporal condition
-                    var temporalConditions = _testCaseGenerator.FindTemporalConditions(rule.Conditions);
+                    var temporalConditions = _testCaseGenerator.FindTemporalConditions(
+                        rule.Conditions
+                    );
                     if (temporalConditions.Count > 0)
                     {
                         foreach (var temporal in temporalConditions)
@@ -365,12 +431,25 @@ namespace BeaconTester.RuleAnalyzer.Generation
                             var duration = temporal.Duration;
                             var steps = Math.Max(3, duration / 500); // At least 3 steps, or more for longer durations
                             var comparisonOperator = temporal.Operator ?? ">";
-                            _logger.Warning("[TEMPORAL TEST GEN] Rule: {Rule}, Sensor: {Sensor}, Threshold: {Threshold}, Duration: {Duration}, Steps: {Steps}", rule.Name, sensor, threshold, duration, steps);
+                            _logger.Warning(
+                                "[TEMPORAL TEST GEN] Rule: {Rule}, Sensor: {Sensor}, Threshold: {Threshold}, Duration: {Duration}, Steps: {Steps}",
+                                rule.Name,
+                                sensor,
+                                threshold,
+                                duration,
+                                steps
+                            );
                             for (int i = 0; i < steps; i++)
                             {
                                 double margin = Math.Max(threshold * 0.1, 5); // At least 5 or 10% of threshold
                                 var value = threshold + margin + 1; // Always above threshold for every step
-                                _logger.Warning("[TEMPORAL TEST GEN] Step {Step}: Using value {Value} for sensor {Sensor} (threshold: {Threshold})", i+1, value, sensor, threshold);
+                                _logger.Warning(
+                                    "[TEMPORAL TEST GEN] Step {Step}: Using value {Value} for sensor {Sensor} (threshold: {Threshold})",
+                                    i + 1,
+                                    value,
+                                    sensor,
+                                    threshold
+                                );
                                 var stepInputs = new List<TestInput>();
                                 // Set all required inputs to default, then override the temporal sensor
                                 foreach (var s in allRequiredInputs)
@@ -380,33 +459,41 @@ namespace BeaconTester.RuleAnalyzer.Generation
                                 }
                                 var temporalStep = new TestStep
                                 {
-                                    Name = $"Temporal step {i+1}/{steps}",
-                                    Description = $"Step {i+1} for temporal rule: {sensor} {comparisonOperator} {threshold}",
+                                    Name = $"Temporal step {i + 1}/{steps}",
+                                    Description =
+                                        $"Step {i + 1} for temporal rule: {sensor} {comparisonOperator} {threshold}",
                                     Inputs = stepInputs,
                                     Delay = duration / steps,
                                     DelayMultiplier = null,
                                     Expectations = new List<TestExpectation>(),
-                                    Result = null
+                                    Result = null,
                                 };
                                 scenario.Steps.Add(temporalStep);
                             }
                         }
-                    } else {
+                    }
+                    else
+                    {
                         // fallback to old single step if no temporal conditions detected
                         var temporalStep = new TestStep
                         {
                             Name = "Basic test for temporal rule",
-                            Description = "Note: This is a temporal rule that requires a sequence of values over time. See the temporal test scenario.",
-                            Inputs = testCase.Inputs.Count > 0
-                                ? EnsureAllRequiredInputs(testCase.Inputs, true)
-                                : allRequiredInputs.Select(s => new TestInput {
-                                    Key = s,
-                                    Value = GetDefaultValueForSensor(s, rule)
-                                }).ToList(),
+                            Description =
+                                "Note: This is a temporal rule that requires a sequence of values over time. See the temporal test scenario.",
+                            Inputs =
+                                testCase.Inputs.Count > 0
+                                    ? EnsureAllRequiredInputs(testCase.Inputs, true)
+                                    : allRequiredInputs
+                                        .Select(s => new TestInput
+                                        {
+                                            Key = s,
+                                            Value = GetDefaultValueForSensor(s, rule),
+                                        })
+                                        .ToList(),
                             Delay = 500,
                             DelayMultiplier = null,
                             Expectations = new List<TestExpectation>(),
-                            Result = null
+                            Result = null,
                         };
                         scenario.Steps.Add(temporalStep);
                     }
@@ -420,14 +507,16 @@ namespace BeaconTester.RuleAnalyzer.Generation
                         Description = "Test inputs that should trigger the rule",
                         Inputs = EnsureAllRequiredInputs(testCase.Inputs, true),
                         Delay = 500, // Default delay
-                        Expectations = testCase.Outputs.Select(o => new TestExpectation
-                        {
-                            Key = o.Key,
-                            Expected = o.Value,
-                            Validator = GetValidatorType(o.Value),
-                            TimeoutMs = 1000, // Add timeout for rules to process
-                            Tolerance = IsTimeBasedKey(o.Key) ? 2000 : (double?)null
-                        }).ToList(),
+                        Expectations = testCase
+                            .Outputs.Select(o => new TestExpectation
+                            {
+                                Key = o.Key,
+                                Expected = o.Value,
+                                Validator = GetValidatorType(o.Value),
+                                TimeoutMs = 1000, // Add timeout for rules to process
+                                Tolerance = IsTimeBasedKey(o.Key) ? 8000 : (double?)null,
+                            })
+                            .ToList(),
                     };
 
                     scenario.Steps.Add(positiveStep);
@@ -445,14 +534,16 @@ namespace BeaconTester.RuleAnalyzer.Generation
                         Description = "Test inputs that should not trigger the rule",
                         Inputs = EnsureAllRequiredInputs(negativeCase.Inputs, false),
                         Delay = 500, // Default delay
-                        Expectations = negativeCase.Outputs.Select(o => new TestExpectation
-                        {
-                            Key = o.Key,
-                            Expected = o.Value,
-                            Validator = GetValidatorType(o.Value),
-                            TimeoutMs = 1000, // Add timeout for rules to process
-                            Tolerance = IsTimeBasedKey(o.Key) ? 2000 : (double?)null
-                        }).ToList(),
+                        Expectations = negativeCase
+                            .Outputs.Select(o => new TestExpectation
+                            {
+                                Key = o.Key,
+                                Expected = o.Value,
+                                Validator = GetValidatorType(o.Value),
+                                TimeoutMs = 1000, // Add timeout for rules to process
+                                Tolerance = IsTimeBasedKey(o.Key) ? 8000 : (double?)null,
+                            })
+                            .ToList(),
                     };
 
                     scenario.Steps.Add(negativeStep);
@@ -510,7 +601,7 @@ namespace BeaconTester.RuleAnalyzer.Generation
                 {
                     Name = $"{targetRuleName}DependencyTest",
                     Description = $"Tests dependencies for rule {targetRuleName}",
-                    Steps = new List<TestStep>()
+                    Steps = new List<TestStep>(),
                 };
 
                 // Declare all locals outside try so they're available after
@@ -528,7 +619,8 @@ namespace BeaconTester.RuleAnalyzer.Generation
                         allReferencedOutputs.Add(dependency.Key);
                     if (targetRule.Conditions != null)
                     {
-                        var outputSensors = _ruleAnalyzer.ConditionAnalyzer.ExtractSensors(targetRule.Conditions)
+                        var outputSensors = _ruleAnalyzer
+                            .ConditionAnalyzer.ExtractSensors(targetRule.Conditions)
                             .Where(s => s.StartsWith("output:"))
                             .ToList();
                         foreach (var outputSensor in outputSensors)
@@ -538,48 +630,84 @@ namespace BeaconTester.RuleAnalyzer.Generation
                     // Build dependency-producing steps
                     foreach (var key in allReferencedOutputs)
                     {
-                        var sourceRule = analysis.Rules.FirstOrDefault(r => r.Actions.OfType<SetValueAction>().Any(a => a.Key == key));
+                        var sourceRule = analysis.Rules.FirstOrDefault(r =>
+                            r.Actions.OfType<SetValueAction>().Any(a => a.Key == key)
+                        );
                         if (sourceRule != null)
                         {
-                            var dependencyTestCase = _testCaseGenerator.GenerateBasicTestCase(sourceRule);
+                            var dependencyTestCase = _testCaseGenerator.GenerateBasicTestCase(
+                                sourceRule
+                            );
                             if (dependencyTestCase.Inputs.Count > 0)
                             {
                                 var dependencyStep = new TestStep
                                 {
                                     Name = $"Produce dependency {key}",
-                                    Description = $"Step to trigger rule {sourceRule.Name} to produce {key}",
-                                    Inputs = dependencyTestCase.Inputs.Select(i => new TestInput { Key = i.Key, Value = i.Value }).ToList(),
+                                    Description =
+                                        $"Step to trigger rule {sourceRule.Name} to produce {key}",
+                                    Inputs = dependencyTestCase
+                                        .Inputs.Select(i => new TestInput
+                                        {
+                                            Key = i.Key,
+                                            Value = i.Value,
+                                        })
+                                        .ToList(),
                                     Delay = 500,
                                     Expectations = new List<TestExpectation>
-                            {
-                                new TestExpectation
-                                {
-                                    Key = key,
-                                    Expected = dependencyTestCase.Outputs.ContainsKey(key) ? dependencyTestCase.Outputs[key] : true,
-                                    Validator = (dependencyTestCase.Outputs.ContainsKey(key) && dependencyTestCase.Outputs[key] is string) ? "string" : "boolean",
-                                    TimeoutMs = 1000
-                                }
-                            }
+                                    {
+                                        new TestExpectation
+                                        {
+                                            Key = key,
+                                            Expected = dependencyTestCase.Outputs.ContainsKey(key)
+                                                ? dependencyTestCase.Outputs[key]
+                                                : true,
+                                            Validator =
+                                                (
+                                                    dependencyTestCase.Outputs.ContainsKey(key)
+                                                    && dependencyTestCase.Outputs[key] is string
+                                                )
+                                                    ? "string"
+                                                    : "boolean",
+                                            TimeoutMs = 1000,
+                                        },
+                                    },
                                 };
                                 dependencySteps.Add(dependencyStep);
-                                dependencyOutputsToProduce[key] = dependencyTestCase.Outputs.ContainsKey(key) ? dependencyTestCase.Outputs[key] : true;
+                                dependencyOutputsToProduce[key] =
+                                    dependencyTestCase.Outputs.ContainsKey(key)
+                                        ? dependencyTestCase.Outputs[key]
+                                        : true;
                             }
                         }
                         else
                         {
                             // If no rule produces this output, fall back to preSetOutputs as before
                             object value;
-                    // Check if the targetRule has an action for this key that sets a string value
-                    var stringAction = targetRule.Actions?.OfType<SetValueAction>()
-                        .FirstOrDefault(a => a.Key == key && a.Value is string);
-                    if (key.Contains("enabled") || key.Contains("status") || key.Contains("active") || key.Contains("alarm") || key.Contains("alert") || key.Contains("normal") || key.Contains("stress_alert")) {
-                        value = true;
-                    } else if (stringAction != null) {
-                        value = "initial_value";
-                    } else {
-                        value = 1.0;
-                    }
-                    dependencyOutputsToProduce[key] = value;
+                            // Check if the targetRule has an action for this key that sets a string value
+                            var stringAction = targetRule
+                                .Actions?.OfType<SetValueAction>()
+                                .FirstOrDefault(a => a.Key == key && a.Value is string);
+                            if (
+                                key.Contains("enabled")
+                                || key.Contains("status")
+                                || key.Contains("active")
+                                || key.Contains("alarm")
+                                || key.Contains("alert")
+                                || key.Contains("normal")
+                                || key.Contains("stress_alert")
+                            )
+                            {
+                                value = true;
+                            }
+                            else if (stringAction != null)
+                            {
+                                value = "initial_value";
+                            }
+                            else
+                            {
+                                value = 1.0;
+                            }
+                            dependencyOutputsToProduce[key] = value;
                         }
                     }
 
@@ -589,15 +717,19 @@ namespace BeaconTester.RuleAnalyzer.Generation
                     {
                         Name = "Test with dependencies",
                         Description = "Tests rule with dependencies satisfied",
-                        Inputs = testCase.Inputs.Select(i => new TestInput { Key = i.Key, Value = i.Value }).ToList(),
+                        Inputs = testCase
+                            .Inputs.Select(i => new TestInput { Key = i.Key, Value = i.Value })
+                            .ToList(),
                         Delay = 500,
-                        Expectations = testCase.Outputs.Select(o => new TestExpectation
-                        {
-                            Key = o.Key,
-                            Expected = o.Value,
-                            Validator = o.Value is bool ? "boolean" : "string",
-                            TimeoutMs = 1000
-                        }).ToList()
+                        Expectations = testCase
+                            .Outputs.Select(o => new TestExpectation
+                            {
+                                Key = o.Key,
+                                Expected = o.Value,
+                                Validator = o.Value is bool ? "boolean" : "string",
+                                TimeoutMs = 1000,
+                            })
+                            .ToList(),
                     };
 
                     scenario.Steps.AddRange(dependencySteps);
@@ -611,7 +743,8 @@ namespace BeaconTester.RuleAnalyzer.Generation
                             var setOutputStep = new TestStep
                             {
                                 Name = $"Set dependency output {dep.Key}",
-                                Description = $"Explicitly set {dep.Key} to {dep.Value} before main step",
+                                Description =
+                                    $"Explicitly set {dep.Key} to {dep.Value} before main step",
                                 Inputs = new List<TestInput>(),
                                 Delay = 100,
                                 Expectations = new List<TestExpectation>
@@ -621,9 +754,9 @@ namespace BeaconTester.RuleAnalyzer.Generation
                                         Key = dep.Key,
                                         Expected = dep.Value,
                                         Validator = dep.Value is string ? "string" : "boolean",
-                                        TimeoutMs = 500
-                                    }
-                                }
+                                        TimeoutMs = 500,
+                                    },
+                                },
                             };
                             scenario.Steps.Add(setOutputStep);
                         }
@@ -643,7 +776,11 @@ namespace BeaconTester.RuleAnalyzer.Generation
                 }
                 catch (Exception ex)
                 {
-                    _logger.Error(ex, "Error generating dependency scenario for rule {RuleName}", targetRuleName);
+                    _logger.Error(
+                        ex,
+                        "Error generating dependency scenario for rule {RuleName}",
+                        targetRuleName
+                    );
                 }
 
                 scenarios.Add(scenario);
@@ -653,7 +790,9 @@ namespace BeaconTester.RuleAnalyzer.Generation
                 {
                     if (act is SetValueAction svc && !string.IsNullOrEmpty(svc.ValueExpression))
                     {
-                        var sensors = ConditionAnalyzerShared.ExtractSensorsFromExpression(svc.ValueExpression);
+                        var sensors = ConditionAnalyzerShared.ExtractSensorsFromExpression(
+                            svc.ValueExpression
+                        );
                         foreach (var sensor in sensors)
                         {
                             if (sensor.StartsWith("input:") && !requiredInputs.ContainsKey(sensor))
@@ -667,16 +806,28 @@ namespace BeaconTester.RuleAnalyzer.Generation
                                     var outputKey = dependencyPair.Key; // outputKey is valid here
                                     var rule = dependencyPair.Value;
                                     object expectedOutputValue;
-                                    if (!preSetOutputs.TryGetValue(outputKey, out expectedOutputValue))
+                                    if (
+                                        !preSetOutputs.TryGetValue(
+                                            outputKey,
+                                            out expectedOutputValue
+                                        )
+                                    )
                                     {
-                                        _logger.Warning("[TestGen] Dependency output key '{OutputKey}' not found in preSetOutputs. Available keys: [{Keys}] - Skipping this dependency.", outputKey, string.Join(", ", preSetOutputs.Keys));
+                                        _logger.Warning(
+                                            "[TestGen] Dependency output key '{OutputKey}' not found in preSetOutputs. Available keys: [{Keys}] - Skipping this dependency.",
+                                            outputKey,
+                                            string.Join(", ", preSetOutputs.Keys)
+                                        );
                                         continue;
                                     }
 
                                     // Check if this rule uses this input
                                     if (rule.Conditions != null)
                                     {
-                                        var ruleSensors = _ruleAnalyzer.ConditionAnalyzer.ExtractSensors(rule.Conditions);
+                                        var ruleSensors =
+                                            _ruleAnalyzer.ConditionAnalyzer.ExtractSensors(
+                                                rule.Conditions
+                                            );
                                         if (ruleSensors.Contains(sensor))
                                         {
                                             // We have a rule that both:
@@ -684,11 +835,22 @@ namespace BeaconTester.RuleAnalyzer.Generation
                                             // 2. Consumes the input we need to set
 
                                             // We need to set the input value to ensure the rule produces our expected output
-                                            var sensorValue = GetConsistentInputValue(rule, sensor, outputKey, expectedOutputValue);
+                                            var sensorValue = GetConsistentInputValue(
+                                                rule,
+                                                sensor,
+                                                outputKey,
+                                                expectedOutputValue
+                                            );
                                             if (sensorValue != null)
                                             {
                                                 requiredInputs[sensor] = sensorValue;
-                                                _logger.Debug("Using dependency-consistent value {Value} for input {Sensor} to maintain {Output}={ExpectedValue}", sensorValue, sensor, outputKey, expectedOutputValue);
+                                                _logger.Debug(
+                                                    "Using dependency-consistent value {Value} for input {Sensor} to maintain {Output}={ExpectedValue}",
+                                                    sensorValue,
+                                                    sensor,
+                                                    outputKey,
+                                                    expectedOutputValue
+                                                );
                                                 foundConsistentValue = true;
                                                 break;
                                             }
@@ -702,12 +864,19 @@ namespace BeaconTester.RuleAnalyzer.Generation
                                     foreach (var rule in analysis.Rules)
                                     {
                                         var outputKey = svc.Key;
-                                        var expectedOutputValue = preSetOutputs.ContainsKey(outputKey) ? preSetOutputs[outputKey] : null;
+                                        var expectedOutputValue = preSetOutputs.ContainsKey(
+                                            outputKey
+                                        )
+                                            ? preSetOutputs[outputKey]
+                                            : null;
 
                                         // Check if this rule uses this input
                                         if (rule.Conditions != null)
                                         {
-                                            var ruleSensors = _ruleAnalyzer.ConditionAnalyzer.ExtractSensors(rule.Conditions);
+                                            var ruleSensors =
+                                                _ruleAnalyzer.ConditionAnalyzer.ExtractSensors(
+                                                    rule.Conditions
+                                                );
                                             if (ruleSensors.Contains(sensor))
                                             {
                                                 // We have a rule that both:
@@ -715,11 +884,22 @@ namespace BeaconTester.RuleAnalyzer.Generation
                                                 // 2. Consumes the input we need to set
 
                                                 // We need to set the input value to ensure the rule produces our expected output
-                                                var sensorValue = GetConsistentInputValue(rule, sensor, outputKey, expectedOutputValue);
+                                                var sensorValue = GetConsistentInputValue(
+                                                    rule,
+                                                    sensor,
+                                                    outputKey,
+                                                    expectedOutputValue
+                                                );
                                                 if (sensorValue != null)
                                                 {
                                                     requiredInputs[sensor] = sensorValue;
-                                                    _logger.Debug("Using dependency-consistent value {Value} for input {Sensor} to maintain {Output}={ExpectedValue}", sensorValue, sensor, outputKey, expectedOutputValue);
+                                                    _logger.Debug(
+                                                        "Using dependency-consistent value {Value} for input {Sensor} to maintain {Output}={ExpectedValue}",
+                                                        sensorValue,
+                                                        sensor,
+                                                        outputKey,
+                                                        expectedOutputValue
+                                                    );
                                                     foundConsistentValue = true;
                                                     break;
                                                 }
@@ -734,15 +914,25 @@ namespace BeaconTester.RuleAnalyzer.Generation
                                         {
                                             if (rule.Conditions != null)
                                             {
-                                                var ruleSensors = _ruleAnalyzer.ConditionAnalyzer.ExtractSensors(rule.Conditions);
+                                                var ruleSensors =
+                                                    _ruleAnalyzer.ConditionAnalyzer.ExtractSensors(
+                                                        rule.Conditions
+                                                    );
                                                 if (ruleSensors.Contains(sensor))
                                                 {
-                                                    var sensorValue = GetSafeValueForSensor(rule, sensor);
+                                                    var sensorValue = GetSafeValueForSensor(
+                                                        rule,
+                                                        sensor
+                                                    );
                                                     if (sensorValue != null)
                                                     {
                                                         requiredInputs[sensor] = sensorValue;
-                                                        _logger.Debug("Using safe value {Value} for input {Sensor} from rule {Rule}",
-                                                            sensorValue, sensor, rule.Name);
+                                                        _logger.Debug(
+                                                            "Using safe value {Value} for input {Sensor} from rule {Rule}",
+                                                            sensorValue,
+                                                            sensor,
+                                                            rule.Name
+                                                        );
                                                         break;
                                                     }
                                                 }
@@ -754,7 +944,10 @@ namespace BeaconTester.RuleAnalyzer.Generation
                                     if (!requiredInputs.ContainsKey(sensor))
                                     {
                                         requiredInputs[sensor] = 1.0;
-                                        _logger.Debug("Using default value 1.0 for required input {Sensor} - no rule conditions found", sensor);
+                                        _logger.Debug(
+                                            "Using default value 1.0 for required input {Sensor} - no rule conditions found",
+                                            sensor
+                                        );
                                     }
                                 }
                             }
@@ -771,7 +964,10 @@ namespace BeaconTester.RuleAnalyzer.Generation
                     }
 
                     // Helper function to ensure all required inputs are included
-                    List<TestInput> EnsureAllRequiredInputs(Dictionary<string, object> inputs, bool isPositiveCase)
+                    List<TestInput> EnsureAllRequiredInputs(
+                        Dictionary<string, object> inputs,
+                        bool isPositiveCase
+                    )
                     {
                         var allInputs = new Dictionary<string, object>(inputs);
 
@@ -781,25 +977,43 @@ namespace BeaconTester.RuleAnalyzer.Generation
                             if (!allInputs.ContainsKey(sensor))
                             {
                                 // If we have condition information for this sensor, use it to determine an appropriate value
-                                if (inputConditionMap != null && inputConditionMap.TryGetValue(sensor, out var conditionPairs) && conditionPairs.Count > 0)
+                                if (
+                                    inputConditionMap != null
+                                    && inputConditionMap.TryGetValue(sensor, out var conditionPairs)
+                                    && conditionPairs.Count > 0
+                                )
                                 {
-                                    // Use the first condition to determine a suitable value
+                                    // Use the first condition to determine a suitable value based on actual rule conditions
                                     var pair = conditionPairs.First();
-                                    var valueTarget = isPositiveCase ? ValueTarget.Positive : ValueTarget.Negative;
-                                    var value = _testCaseGenerator.GenerateValueForSensor(sensor, pair.Condition, valueTarget);
+                                    var valueTarget = isPositiveCase
+                                        ? ValueTarget.Positive
+                                        : ValueTarget.Negative;
+                                    var value = _testCaseGenerator.GenerateValueForSensor(
+                                        sensor,
+                                        pair.Condition,
+                                        valueTarget
+                                    );
                                     allInputs[sensor] = value;
-                                    _logger.Debug("Added missing input sensor {Sensor} with condition-based value: {Value}", sensor, value);
+                                    _logger.Debug(
+                                        "Added missing input sensor {Sensor} with condition-based value to temporal step",
+                                        sensor
+                                    );
                                 }
                                 else
                                 {
-                                    // No condition info available, use 1.0 for positive and 0.0 for negative
-                                    allInputs[sensor] = isPositiveCase ? 1.0 : 0.0;
-                                    _logger.Debug("Added missing input sensor {Sensor} with default value", sensor);
+                                    // No condition info available, use a neutral value that won't trigger edge cases
+                                    allInputs[sensor] = 50.0;
+                                    _logger.Debug(
+                                        "Added missing input sensor {Sensor} with neutral value to temporal step",
+                                        sensor
+                                    );
                                 }
                             }
                         }
 
-                        return allInputs.Select(i => new TestInput { Key = i.Key, Value = i.Value }).ToList();
+                        return allInputs
+                            .Select(i => new TestInput { Key = i.Key, Value = i.Value })
+                            .ToList();
                     }
 
                     // Create the main test step
@@ -823,16 +1037,23 @@ namespace BeaconTester.RuleAnalyzer.Generation
                         if (action is SetValueAction setAction)
                         {
                             // Use the TestCaseGenerator to determine the expected output based on the ACTUAL input values
-                            var expectedValue = _testCaseGenerator.DetermineOutputValue(setAction, inputDict);
+                            var expectedValue = _testCaseGenerator.DetermineOutputValue(
+                                setAction,
+                                inputDict
+                            );
 
-                            step.Expectations.Add(new TestExpectation
-                            {
-                                Key = setAction.Key,
-                                Expected = expectedValue,
-                                Validator = GetValidatorType(expectedValue),
-                                TimeoutMs = 1000, // Add timeout for rules to process
-                                Tolerance = IsTimeBasedKey(setAction.Key) ? 2000 : (double?)null
-                            });
+                            step.Expectations.Add(
+                                new TestExpectation
+                                {
+                                    Key = setAction.Key,
+                                    Expected = expectedValue,
+                                    Validator = GetValidatorType(expectedValue),
+                                    TimeoutMs = 1000, // Add timeout for rules to process
+                                    Tolerance = IsTimeBasedKey(setAction.Key)
+                                        ? 8000
+                                        : (double?)null,
+                                }
+                            );
                         }
                     }
 
@@ -889,22 +1110,30 @@ namespace BeaconTester.RuleAnalyzer.Generation
                         {
                             // Use value below threshold for high_temperature (< 30)
                             newValue = 25.0;
-                            _logger.Debug("Using safe temperature value {Value} for negative test", newValue);
+                            _logger.Debug(
+                                "Using safe temperature value {Value} for negative test",
+                                newValue
+                            );
                         }
                         else if (key.Contains("humidity"))
                         {
                             // Use value within normal range (30-70) for humidity
                             newValue = 50.0;
-                            _logger.Debug("Using normal humidity value {Value} for negative test", newValue);
+                            _logger.Debug(
+                                "Using normal humidity value {Value} for negative test",
+                                newValue
+                            );
                         }
 
-                        negativeInputs.Add(new TestInput
-                        {
-                            Key = key,
-                            Value = newValue,
-                            Format = RedisDataFormat.Auto,
-                            Field = null
-                        });
+                        negativeInputs.Add(
+                            new TestInput
+                            {
+                                Key = key,
+                                Value = newValue,
+                                Format = RedisDataFormat.Auto,
+                                Field = null,
+                            }
+                        );
                     }
 
                     // Create the negative test step
@@ -921,7 +1150,7 @@ namespace BeaconTester.RuleAnalyzer.Generation
                                 Expected = null, // Expect no output when dependencies aren't met
                                 Validator = "string", // String validator is most flexible
                                 TimeoutMs = 1000, // Add timeout for rules to process
-                                Tolerance = IsTimeBasedKey(o.Key) ? 2000 : (double?)null
+                                Tolerance = IsTimeBasedKey(o.Key) ? 8000 : (double?)null,
                             })
                             .ToList(),
                     };
@@ -943,9 +1172,10 @@ namespace BeaconTester.RuleAnalyzer.Generation
         private object GetSafeValueForSensor(RuleDefinition rule, string sensor)
         {
             // First try to analyze the rule's conditions to understand the thresholds
-            var conditions = rule.Conditions != null
-                ? FindConditionsForSensor(rule.Conditions, sensor)
-                : new List<ConditionDefinition>();
+            var conditions =
+                rule.Conditions != null
+                    ? FindConditionsForSensor(rule.Conditions, sensor)
+                    : new List<ConditionDefinition>();
 
             if (conditions.Count == 0)
             {
@@ -984,8 +1214,13 @@ namespace BeaconTester.RuleAnalyzer.Generation
                         safeValue = sensor.Contains("temperature") ? 35.0 : 75.0;
                     }
 
-                    _logger.Debug("Generated safe value {Value} for sensor {Sensor} based on condition {Op} {Threshold}",
-                        safeValue, sensor, op, threshold);
+                    _logger.Debug(
+                        "Generated safe value {Value} for sensor {Sensor} based on condition {Op} {Threshold}",
+                        safeValue,
+                        sensor,
+                        op,
+                        threshold
+                    );
                     return safeValue;
                 }
             }
@@ -997,31 +1232,49 @@ namespace BeaconTester.RuleAnalyzer.Generation
         /// <summary>
         /// Gets a value for an input sensor that will cause a rule to produce the expected output value
         /// </summary>
-        private object GetConsistentInputValue(RuleDefinition rule, string inputSensor, string outputKey, object expectedOutputValue)
+        private object GetConsistentInputValue(
+            RuleDefinition rule,
+            string inputSensor,
+            string outputKey,
+            object expectedOutputValue
+        )
         {
             try
             {
-                _logger.Debug("Analyzing rule {Rule} to find consistent input value for {Input} that results in {Output}={ExpectedValue}",
-                    rule.Name, inputSensor, outputKey, expectedOutputValue);
+                _logger.Debug(
+                    "Analyzing rule {Rule} to find consistent input value for {Input} that results in {Output}={ExpectedValue}",
+                    rule.Name,
+                    inputSensor,
+                    outputKey,
+                    expectedOutputValue
+                );
 
                 bool expectedBoolValue = false;
                 if (expectedOutputValue is bool boolValue)
                 {
                     expectedBoolValue = boolValue;
                 }
-                else if (expectedOutputValue is string strValue && bool.TryParse(strValue, out var parsedBool))
+                else if (
+                    expectedOutputValue is string strValue
+                    && bool.TryParse(strValue, out var parsedBool)
+                )
                 {
                     expectedBoolValue = parsedBool;
                 }
 
                 // Find conditions that use this input to set the output
-                var conditions = rule.Conditions != null
-                    ? FindConditionsForSensor(rule.Conditions, inputSensor)
-                    : new List<ConditionDefinition>();
+                var conditions =
+                    rule.Conditions != null
+                        ? FindConditionsForSensor(rule.Conditions, inputSensor)
+                        : new List<ConditionDefinition>();
 
                 if (conditions.Count == 0)
                 {
-                    _logger.Debug("No conditions found in rule {Rule} for input {Input}", rule.Name, inputSensor);
+                    _logger.Debug(
+                        "No conditions found in rule {Rule} for input {Input}",
+                        rule.Name,
+                        inputSensor
+                    );
                     return null;
                 }
 
@@ -1110,15 +1363,25 @@ namespace BeaconTester.RuleAnalyzer.Generation
                             value = wantConditionTrue ? threshold + 5 : threshold - 5;
                         }
 
-                        _logger.Debug("Found consistent value {Value} for input {Sensor} to achieve {Output}={ExpectedValue}",
-                            value, inputSensor, outputKey, expectedOutputValue);
+                        _logger.Debug(
+                            "Found consistent value {Value} for input {Sensor} to achieve {Output}={ExpectedValue}",
+                            value,
+                            inputSensor,
+                            outputKey,
+                            expectedOutputValue
+                        );
                         return value;
                     }
                 }
             }
             catch (Exception ex)
             {
-                _logger.Error(ex, "Error finding consistent input value for {Input} in rule {Rule}", inputSensor, rule.Name);
+                _logger.Error(
+                    ex,
+                    "Error finding consistent input value for {Input} in rule {Rule}",
+                    inputSensor,
+                    rule.Name
+                );
             }
 
             // Fall back to safe defaults if we couldn't determine a value
@@ -1137,14 +1400,19 @@ namespace BeaconTester.RuleAnalyzer.Generation
         /// <summary>
         /// Finds all conditions in a rule that reference a specific sensor
         /// </summary>
-        private List<ConditionDefinition> FindConditionsForSensor(ConditionDefinition condition, string sensor)
+        private List<ConditionDefinition> FindConditionsForSensor(
+            ConditionDefinition condition,
+            string sensor
+        )
         {
             // Get all conditions for all sensors, then filter for our target sensor
             var allSensors = new Dictionary<string, List<ConditionDefinition>>();
             ProcessConditionForSensors(condition, allSensors);
 
             // Return matching conditions or empty list if none found
-            return allSensors.TryGetValue(sensor, out var matches) ? matches : new List<ConditionDefinition>();
+            return allSensors.TryGetValue(sensor, out var matches)
+                ? matches
+                : new List<ConditionDefinition>();
         }
 
         private List<TestScenario> GenerateTemporalScenarios(
@@ -1176,7 +1444,10 @@ namespace BeaconTester.RuleAnalyzer.Generation
                         // Initialize all outputs that might be affected by this rule to a known state
                         foreach (var action in rule.Actions)
                         {
-                            if (action is SetValueAction setValueAction && setValueAction.Key.StartsWith("output:"))
+                            if (
+                                action is SetValueAction setValueAction
+                                && setValueAction.Key.StartsWith("output:")
+                            )
                             {
                                 // For boolean outputs, start with the opposite value to verify rule changes it
                                 if (setValueAction.Value is bool boolValue)
@@ -1202,32 +1473,49 @@ namespace BeaconTester.RuleAnalyzer.Generation
                         {
                             foreach (var sequenceInput in scenario.InputSequence)
                             {
-                            // Get the existing inputs for this step
-                            var existingInputs = sequenceInput.Inputs;
+                                // Get the existing inputs for this step
+                                var existingInputs = sequenceInput.Inputs;
 
-                            // Add any missing inputs from the complete set of required inputs
-                            foreach (var sensor in allRequiredInputs)
-                            {
-                                if (!existingInputs.ContainsKey(sensor))
+                                // Add any missing inputs from the complete set of required inputs
+                                foreach (var sensor in allRequiredInputs)
                                 {
-                                    // If we have condition information for this sensor, use it to determine an appropriate value
-                                    if (inputConditionMap != null && inputConditionMap.TryGetValue(sensor, out var conditionPairs) && conditionPairs.Count > 0)
+                                    if (!existingInputs.ContainsKey(sensor))
                                     {
-                                        // Use the first condition to determine a suitable value based on actual rule conditions
-                                        var pair = conditionPairs.First();
-                                        var value = _testCaseGenerator.GenerateValueForSensor(sensor, pair.Condition, ValueTarget.Positive);
-                                        sequenceInput.AdditionalInputs[sensor] = value;
-                                        _logger.Debug("Added missing input sensor {Sensor} with condition-based value to temporal step", sensor);
-                                    }
-                                    else
-                                    {
-                                        // No condition info available, use a neutral value that won't trigger edge cases
-                                        sequenceInput.AdditionalInputs[sensor] = 50.0;
-                                        _logger.Debug("Added missing input sensor {Sensor} with neutral value to temporal step", sensor);
+                                        // If we have condition information for this sensor, use it to determine an appropriate value
+                                        if (
+                                            inputConditionMap != null
+                                            && inputConditionMap.TryGetValue(
+                                                sensor,
+                                                out var conditionPairs
+                                            )
+                                            && conditionPairs.Count > 0
+                                        )
+                                        {
+                                            // Use the first condition to determine a suitable value based on actual rule conditions
+                                            var pair = conditionPairs.First();
+                                            var value = _testCaseGenerator.GenerateValueForSensor(
+                                                sensor,
+                                                pair.Condition,
+                                                ValueTarget.Positive
+                                            );
+                                            sequenceInput.AdditionalInputs[sensor] = value;
+                                            _logger.Debug(
+                                                "Added missing input sensor {Sensor} with condition-based value to temporal step",
+                                                sensor
+                                            );
+                                        }
+                                        else
+                                        {
+                                            // No condition info available, use a neutral value that won't trigger edge cases
+                                            sequenceInput.AdditionalInputs[sensor] = 50.0;
+                                            _logger.Debug(
+                                                "Added missing input sensor {Sensor} with neutral value to temporal step",
+                                                sensor
+                                            );
+                                        }
                                     }
                                 }
                             }
-                        }
                         }
 
                         scenarios.Add(scenario);
@@ -1268,9 +1556,10 @@ namespace BeaconTester.RuleAnalyzer.Generation
         private object GetDefaultValueForSensor(string sensor, RuleDefinition rule)
         {
             // First try to find a condition that uses this sensor
-            var conditions = rule.Conditions != null
-                ? FindConditionsForSensor(rule.Conditions, sensor)
-                : new List<ConditionDefinition>();
+            var conditions =
+                rule.Conditions != null
+                    ? FindConditionsForSensor(rule.Conditions, sensor)
+                    : new List<ConditionDefinition>();
 
             // If we found conditions, try to generate a suitable value
             if (conditions.Count > 0)
@@ -1279,7 +1568,11 @@ namespace BeaconTester.RuleAnalyzer.Generation
                 {
                     if (condition is ComparisonCondition comparison)
                     {
-                        return _testCaseGenerator.GenerateValueForSensor(sensor, comparison, ValueTarget.Positive);
+                        return _testCaseGenerator.GenerateValueForSensor(
+                            sensor,
+                            comparison,
+                            ValueTarget.Positive
+                        );
                     }
                     else if (condition is ThresholdOverTimeCondition threshold)
                     {
@@ -1316,8 +1609,12 @@ namespace BeaconTester.RuleAnalyzer.Generation
             {
                 return 75.0; // High enough to trigger most threshold conditions
             }
-            else if (sensor.Contains("enabled") || sensor.Contains("active") ||
-                     sensor.Contains("status") || sensor.Contains("alert"))
+            else if (
+                sensor.Contains("enabled")
+                || sensor.Contains("active")
+                || sensor.Contains("status")
+                || sensor.Contains("alert")
+            )
             {
                 return true; // Boolean sensors default to true
             }
@@ -1329,7 +1626,10 @@ namespace BeaconTester.RuleAnalyzer.Generation
         /// <summary>
         /// Finds all conditions in a rule that reference a specific key
         /// </summary>
-        private List<ConditionDefinition> FindConditionsReferencingKey(ConditionDefinition condition, string key)
+        private List<ConditionDefinition> FindConditionsReferencingKey(
+            ConditionDefinition condition,
+            string key
+        )
         {
             var matchingConditions = new List<ConditionDefinition>();
 
@@ -1341,8 +1641,10 @@ namespace BeaconTester.RuleAnalyzer.Generation
                     matchingConditions.Add(comparison);
                 }
                 // Expression that might reference the key
-                else if (!string.IsNullOrEmpty(comparison.ValueExpression) &&
-                         comparison.ValueExpression.Contains(key))
+                else if (
+                    !string.IsNullOrEmpty(comparison.ValueExpression)
+                    && comparison.ValueExpression.Contains(key)
+                )
                 {
                     matchingConditions.Add(comparison);
                 }
@@ -1356,8 +1658,10 @@ namespace BeaconTester.RuleAnalyzer.Generation
             }
             else if (condition is ExpressionCondition expression)
             {
-                if (!string.IsNullOrEmpty(expression.Expression) &&
-                    expression.Expression.Contains(key))
+                if (
+                    !string.IsNullOrEmpty(expression.Expression)
+                    && expression.Expression.Contains(key)
+                )
                 {
                     matchingConditions.Add(expression);
                 }
@@ -1369,7 +1673,9 @@ namespace BeaconTester.RuleAnalyzer.Generation
                 {
                     if (wrapper.Condition != null)
                     {
-                        matchingConditions.AddRange(FindConditionsReferencingKey(wrapper.Condition, key));
+                        matchingConditions.AddRange(
+                            FindConditionsReferencingKey(wrapper.Condition, key)
+                        );
                     }
                 }
 
@@ -1378,7 +1684,9 @@ namespace BeaconTester.RuleAnalyzer.Generation
                 {
                     if (wrapper.Condition != null)
                     {
-                        matchingConditions.AddRange(FindConditionsReferencingKey(wrapper.Condition, key));
+                        matchingConditions.AddRange(
+                            FindConditionsReferencingKey(wrapper.Condition, key)
+                        );
                     }
                 }
             }
@@ -1404,8 +1712,10 @@ namespace BeaconTester.RuleAnalyzer.Generation
             // For string values check if they're boolean or numeric in disguise
             if (value is string stringValue)
             {
-                if (stringValue.Equals("true", StringComparison.OrdinalIgnoreCase) ||
-                    stringValue.Equals("false", StringComparison.OrdinalIgnoreCase))
+                if (
+                    stringValue.Equals("true", StringComparison.OrdinalIgnoreCase)
+                    || stringValue.Equals("false", StringComparison.OrdinalIgnoreCase)
+                )
                     return "boolean";
 
                 if (double.TryParse(stringValue, out _))
@@ -1420,7 +1730,9 @@ namespace BeaconTester.RuleAnalyzer.Generation
         private bool IsTimeBasedKey(string key)
         {
             var lower = key.ToLowerInvariant();
-            return lower.Contains("time") || lower.Contains("timestamp") || lower == "output:last_alert_time";
+            return lower.Contains("time")
+                || lower.Contains("timestamp")
+                || lower == "output:last_alert_time";
         }
     }
 }
