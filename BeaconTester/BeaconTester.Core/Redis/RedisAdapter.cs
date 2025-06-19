@@ -614,7 +614,7 @@ namespace BeaconTester.Core.Redis
 
                     case "string":
                     default:
-                        success = CompareStrings(expectation.Expected, actualValue);
+                        success = CompareStrings(expectation, actualValue);
                         _logger.Debug("String comparison result: {Success}", success);
                         break;
                 }
@@ -858,23 +858,43 @@ namespace BeaconTester.Core.Redis
         }
 
         /// <summary>
-        /// Compare string values
+        /// Compare string values, with special handling for time tolerance if specified in expectation
         /// </summary>
-        private bool CompareStrings(object? expected, object? actual)
+        private bool CompareStrings(TestExpectation expectation, object? actual)
         {
+            var expected = expectation.Expected;
+            var key = expectation.Key;
+            double? toleranceMs = expectation.Tolerance;
+
             // Special handling for null values
             if (expected == null && actual == null)
                 return true;
 
-            // Handle cases where only one is null - treat null as empty string for comparisons
             if (expected == null)
                 expected = string.Empty;
-
             if (actual == null)
                 actual = string.Empty;
 
+            // If expected is a DateTime, convert to ISO 8601 string
+            if (expected is DateTime dt)
+                expected = dt.ToString("o");
+            if (actual is DateTime dt2)
+                actual = dt2.ToString("o");
+
             string expectedString = expected.ToString() ?? string.Empty;
             string actualString = actual.ToString() ?? string.Empty;
+
+            // Special case: allow tolerance for last_alert_time (or similar keys)
+            if ((key ?? string.Empty).EndsWith("last_alert_time"))
+            {
+                if (DateTime.TryParse(expectedString, null, System.Globalization.DateTimeStyles.RoundtripKind, out var expectedDt) &&
+                    DateTime.TryParse(actualString, null, System.Globalization.DateTimeStyles.RoundtripKind, out var actualDt))
+                {
+                    var diff = Math.Abs((expectedDt - actualDt).TotalMilliseconds);
+                    double allowed = toleranceMs ?? 2000.0; // Use scenario tolerance if set, else 2s default
+                    return diff <= allowed;
+                }
+            }
 
             // Handle empty strings and whitespace - do this check early
             bool expectedEmpty = string.IsNullOrWhiteSpace(expectedString);

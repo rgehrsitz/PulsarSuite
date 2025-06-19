@@ -221,10 +221,26 @@ namespace BeaconTester.Runner.Commands
                 // Save results if output path is specified
                 if (!string.IsNullOrEmpty(outputPath))
                 {
+                    // Defensive: If outputPath is a directory or ends with a slash, append default filename
+                    if ((Directory.Exists(outputPath)) || outputPath.EndsWith("/") || outputPath.EndsWith("\\"))
+                    {
+                        outputPath = Path.Combine(outputPath.TrimEnd('/', '\\'), "test_results.json");
+                    }
+                    else if (File.Exists(outputPath) && (File.GetAttributes(outputPath) & FileAttributes.Directory) == FileAttributes.Directory)
+                    {
+                        outputPath = Path.Combine(outputPath, "test_results.json");
+                    }
+
                     var outputDir = Path.GetDirectoryName(outputPath);
                     if (!string.IsNullOrEmpty(outputDir) && !Directory.Exists(outputDir))
                     {
                         Directory.CreateDirectory(outputDir);
+                    }
+
+                    // If after all this, outputPath is still a directory, throw a clear error
+                    if (Directory.Exists(outputPath))
+                    {
+                        throw new ArgumentException($"Output path '{outputPath}' is a directory. Please specify a filename.");
                     }
 
                     var resultsWrapper = new { Results = results };

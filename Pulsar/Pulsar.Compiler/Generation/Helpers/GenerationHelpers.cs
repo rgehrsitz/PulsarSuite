@@ -16,7 +16,7 @@ namespace Pulsar.Compiler.Generation.Helpers
         private static string GenerateUniqueVarName(string baseName, Dictionary<string, int>? occurrenceCounter = null)
         {
             int counter = Interlocked.Increment(ref _varNameCounter);
-            
+
             // If we're tracking occurrences of the same variable within an expression
             if (occurrenceCounter != null)
             {
@@ -28,11 +28,11 @@ namespace Pulsar.Compiler.Generation.Helpers
                 {
                     occurrence++;
                 }
-                
+
                 occurrenceCounter[baseName] = occurrence;
                 return $"{baseName}_{counter}_{occurrence}";
             }
-            
+
             return $"{baseName}_{counter}_{Guid.NewGuid().ToString("N").Substring(0, 8)}";
         }
 
@@ -48,7 +48,7 @@ namespace Pulsar.Compiler.Generation.Helpers
             "Max",
             "Min",
         };
-        
+
         private static readonly Dictionary<string, string> _logicalOperators = new Dictionary<string, string>
         {
             {"and", "&&"},
@@ -165,7 +165,7 @@ namespace Pulsar.Compiler.Generation.Helpers
                     $"Unknown operator: {threshold.ComparisonOperator}"
                 ),
             };
-            
+
             return $"CheckThreshold(\"{threshold.Sensor}\", {threshold.Threshold}, {threshold.Duration}, \"{op}\")";
         }
 
@@ -195,17 +195,18 @@ namespace Pulsar.Compiler.Generation.Helpers
             {
                 return $"outputs[\"{setValue.Key}\"] = true;";
             }
-            
+
             if (setValue.ValueExpression == "false")
             {
                 return $"outputs[\"{setValue.Key}\"] = false;";
             }
-            
+
             if (setValue.ValueExpression == "now()")
             {
-                return $"outputs[\"{setValue.Key}\"] = DateTime.UtcNow;";
+                // Output as ISO 8601 string
+                return $"outputs[\"{setValue.Key}\"] = DateTime.UtcNow.ToString(\"o\");";
             }
-            
+
             // Handle direct object value if ValueExpression is null
             if (string.IsNullOrEmpty(setValue.ValueExpression) && setValue.Value != null)
             {
@@ -219,6 +220,11 @@ namespace Pulsar.Compiler.Generation.Helpers
                 {
                     // Handle boolean values
                     return $"outputs[\"{setValue.Key}\"] = {boolValue.ToString().ToLower()};";
+                }
+                else if (setValue.Value is DateTime)
+                {
+                    // Output DateTime as ISO 8601 string
+                    return $"outputs[\"{setValue.Key}\"] = ((DateTime){setValue.Value}).ToString(\"o\");";
                 }
                 else
                 {
@@ -238,14 +244,14 @@ namespace Pulsar.Compiler.Generation.Helpers
                 // Extract all input: prefixed variables
                 var matches = Regex.Matches(setValue.ValueExpression, @"input:[a-zA-Z0-9_]+");
                 string expr = setValue.ValueExpression;
-                
+
                 // Track occurrences of each input variable to ensure uniqueness
                 // even for multiple occurrences of the same variable in one expression
                 var occurrenceCounter = new Dictionary<string, int>();
-                
+
                 // For each match, generate a unique variable name that tracks occurrence count
                 var replacements = new Dictionary<string, List<Tuple<int, int, string>>>();
-                
+
                 // First, collect all occurrences with positions
                 foreach (Match match in matches)
                 {
@@ -254,37 +260,37 @@ namespace Pulsar.Compiler.Generation.Helpers
                     {
                         replacements[key] = new List<Tuple<int, int, string>>();
                     }
-                    
+
                     // Create a unique base name for this input variable
                     string baseName = $"inVal_{key.Replace(":", "_")}";
-                    
+
                     // Use helper method to generate a unique variable name with occurrence tracking
                     if (!occurrenceCounter.ContainsKey(baseName))
                     {
                         occurrenceCounter[baseName] = 0;
                     }
                     occurrenceCounter[baseName]++;
-                    
+
                     string varName = $"{baseName}_{_varNameCounter}_{occurrenceCounter[baseName]}";
-                    
+
                     // Store the position and replacement info
-                    replacements[key].Add(Tuple.Create(match.Index, match.Length, 
+                    replacements[key].Add(Tuple.Create(match.Index, match.Length,
                         $"Convert.ToDouble((inputs.TryGetValue(\"{key}\", out var {varName}) ? {varName} : 0))"));
                 }
-                
+
                 // Apply replacements from right to left to maintain correct positions
                 var allReplacements = replacements.Values.SelectMany(x => x)
                     .OrderByDescending(x => x.Item1)
                     .ToList();
-                
+
                 foreach (var r in allReplacements)
                 {
                     expr = expr.Substring(0, r.Item1) + r.Item3 + expr.Substring(r.Item1 + r.Item2);
                 }
-                
+
                 return $"outputs[\"{setValue.Key}\"] = {expr};";
             }
-            
+
             // If the value expression directly references a sensor with a colon
             if (
                 !string.IsNullOrEmpty(setValue.ValueExpression)
@@ -363,7 +369,7 @@ namespace Pulsar.Compiler.Generation.Helpers
             var doubleQuoteStringLiteralPattern = @"""([^""]*)""";
             var literalPlaceholders = new Dictionary<string, string>();
             int placeholderIndex = 0;
-            
+
             // Replace string literals with placeholders to prevent them from being processed
             expression = Regex.Replace(
                 expression,
@@ -401,7 +407,7 @@ namespace Pulsar.Compiler.Generation.Helpers
             var stringComparisonPattern = @"\b([a-zA-Z_][a-zA-Z0-9_]*)\s*(==|!=)\s*(__STRING_LITERAL_\d+__)";
             var stringComparisons = new Dictionary<string, string>();
             var stringMatchIndex = 0;
-            
+
             expression = Regex.Replace(
                 expression,
                 stringComparisonPattern,
@@ -409,20 +415,20 @@ namespace Pulsar.Compiler.Generation.Helpers
                     var sensor = match.Groups[1].Value;
                     var op = match.Groups[2].Value;
                     var literal = match.Groups[3].Value;
-                    
+
                     // Don't process known non-sensors
                     if (IsMathFunction(sensor) || IsNumeric(sensor) || _logicalOperators.ContainsKey(sensor.ToLower()))
                     {
                         return match.Value;
                     }
-                    
+
                     // Create a placeholder for the entire comparison
                     var placeholder = $"__STRING_COMPARISON_{stringMatchIndex}__";
                     stringMatchIndex++;
-                    
+
                     // Store the string comparison with proper string handling
                     stringComparisons[placeholder] = $"inputs[\"{sensor}\"]?.ToString() {op} {literalPlaceholders[literal]}";
-                    
+
                     return placeholder;
                 }
             );
@@ -441,19 +447,19 @@ namespace Pulsar.Compiler.Generation.Helpers
                     {
                         return sensor;
                     }
-                    
+
                     // If it's a placeholder, don't process it
                     if ((sensor.StartsWith("__STRING_LITERAL_") && sensor.EndsWith("__")) ||
                         (sensor.StartsWith("__STRING_COMPARISON_") && sensor.EndsWith("__")))
                     {
                         return sensor;
                     }
-                    
+
                     // Handle prefixed variable
                     return $"Convert.ToDouble(inputs[\"{sensor}\"])";
                 }
             );
-            
+
             // Then process standard variables
             var sensorPattern = @"\b([a-zA-Z_][a-zA-Z0-9_]*)\b";
             var fixedExpression = Regex.Replace(
@@ -467,14 +473,14 @@ namespace Pulsar.Compiler.Generation.Helpers
                     {
                         return sensor;
                     }
-                    
+
                     // If it's a placeholder, don't process it
                     if ((sensor.StartsWith("__STRING_LITERAL_") && sensor.EndsWith("__")) ||
                         (sensor.StartsWith("__STRING_COMPARISON_") && sensor.EndsWith("__")))
                     {
                         return sensor;
                     }
-                    
+
                     // Default to numeric conversion
                     return $"Convert.ToDouble(inputs[\"{sensor}\"])";
                 }
@@ -536,7 +542,7 @@ namespace Pulsar.Compiler.Generation.Helpers
                     break;
             }
         }
-        
+
         /// <summary>
         /// Extract all input sensors referenced in a rule action
         /// </summary>
@@ -558,7 +564,7 @@ namespace Pulsar.Compiler.Generation.Helpers
                     {
                         // Extract all potential sensor references from the expression
                         var expressionSensors = ExtractSensorsFromExpression(setValueAction.ValueExpression);
-                        
+
                         // Filter to only include input sensors, not other variables or functions
                         foreach (var sensor in expressionSensors)
                         {
@@ -569,7 +575,7 @@ namespace Pulsar.Compiler.Generation.Helpers
                         }
                     }
                     break;
-                    
+
                 case SendMessageAction sendMessageAction:
                     // Check if message content contains input references
                     if (!string.IsNullOrEmpty(sendMessageAction.Message))
@@ -602,7 +608,7 @@ namespace Pulsar.Compiler.Generation.Helpers
             foreach (Match match in matches)
             {
                 var potentialSensor = match.Value;
-                if (!IsMathFunction(potentialSensor) && !IsLogicalOperator(potentialSensor) && 
+                if (!IsMathFunction(potentialSensor) && !IsLogicalOperator(potentialSensor) &&
                     !IsNumeric(potentialSensor) && potentialSensor != "STRING_LITERAL")
                 {
                     sensors.Add(potentialSensor);
@@ -616,12 +622,12 @@ namespace Pulsar.Compiler.Generation.Helpers
         {
             return _mathFunctions.Contains(functionName);
         }
-        
+
         private static bool IsLogicalOperator(string term)
         {
             return _logicalOperators.ContainsKey(term.ToLower());
         }
-        
+
         /// <summary>
         /// Extracts all output sensors referenced in a condition group
         /// </summary>
@@ -630,7 +636,7 @@ namespace Pulsar.Compiler.Generation.Helpers
         public static HashSet<string> ExtractOutputReferencesFromConditions(ConditionGroup conditions)
         {
             var outputs = new HashSet<string>();
-            
+
             if (conditions.All != null)
             {
                 foreach (var condition in conditions.All)
@@ -638,7 +644,7 @@ namespace Pulsar.Compiler.Generation.Helpers
                     AddOutputReferencesFromCondition(condition, outputs);
                 }
             }
-            
+
             if (conditions.Any != null)
             {
                 foreach (var condition in conditions.Any)
@@ -646,10 +652,10 @@ namespace Pulsar.Compiler.Generation.Helpers
                     AddOutputReferencesFromCondition(condition, outputs);
                 }
             }
-            
+
             return outputs;
         }
-        
+
         /// <summary>
         /// Adds output references from a condition to a set
         /// </summary>

@@ -71,7 +71,7 @@ namespace Pulsar.Compiler.Config
                 Target = target,
                 ProjectName = "Beacon.Runtime",
                 AssemblyName = "Beacon.Runtime",
-                TargetFramework = "net9.0",
+                TargetFramework = "net8.0",
                 RulesPath = options.GetValueOrDefault("rules", "Rules"),
                 RuleDefinitions = rules,
                 SystemConfig = systemConfig,

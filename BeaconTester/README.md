@@ -83,3 +83,29 @@ dotnet test
 - Use the `--monitor` flag with the `run` command to monitor Redis activity
 - Check Beacon logs for rule execution details
 - Examine test results JSON for detailed failure information
+
+## Test Expectation Tolerance
+
+### What is Tolerance?
+- The `tolerance` field in a test expectation specifies the allowed difference between the expected and actual value for numeric or time-based outputs.
+- For **numeric outputs**, it defines the acceptable error margin (e.g., for floating-point comparisons).
+- For **time-based outputs** (such as timestamps), it defines the allowed time window (in milliseconds) for the test to pass.
+
+### Default Behavior
+- For outputs like `last_alert_time` or any key containing `time` or `timestamp`, the test generator automatically sets a default `tolerance` of **2000ms (2 seconds)**.
+- You can override this by specifying a different value in your test scenario JSON.
+
+### Example
+```json
+{
+  "key": "output:last_alert_time",
+  "expected": "2025-06-19T15:52:44.2663994Z",
+  "validator": "string",
+  "tolerance": 2000
+}
+```
+
+### Usage
+- The tolerance field is used by BeaconTester when comparing actual and expected values.
+- If the difference is within the specified tolerance, the test passes.
+- For time-based outputs, this prevents false negatives due to minor timing differences between the test runner and the Beacon runtime.

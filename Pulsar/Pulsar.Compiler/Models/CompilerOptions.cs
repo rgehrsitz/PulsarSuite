@@ -15,14 +15,14 @@ namespace Pulsar.Compiler.Models
                 OutputPath = "build",
                 Target = "library",
                 ProjectName = "PulsarRules",
-                TargetFramework = "net9.0",
+                TargetFramework = "net8.0",
                 RulesPath = "rules",
             };
         public List<string> ValidSensors { get; set; } = new();
         public bool StrictMode { get; set; }
         public bool AllowInvalidSensors { get; set; }
         public string OutputDirectory { get; set; } = "build";
-        public string TargetFramework { get; set; } = "net9.0";
+        public string TargetFramework { get; set; } = "net8.0";
         public string RuntimeIdentifier { get; set; } = "win-x64";
 
         public void Validate()

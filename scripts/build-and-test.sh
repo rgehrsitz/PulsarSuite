@@ -96,33 +96,73 @@ fi
 log "${BLUE}Using rule file: $FIRST_RULE_FILE${NC}" "Using rule file: $FIRST_RULE_FILE"
 log "${BLUE}Using config file: $CONFIG_FILE${NC}" "Using config file: $CONFIG_FILE"
 
-run_cmd "cd '$PROJECT_ROOT/Pulsar/Pulsar.Compiler' && dotnet run --project . -- beacon --rules '$FIRST_RULE_FILE' --config '$CONFIG_FILE' --output '$OUTPUT_PATH'" "Compile rules with Pulsar"
+run_cmd "cd '$PROJECT_ROOT/Pulsar/Pulsar.Compiler' && dotnet run --project . -- beacon --rules '$FIRST_RULE_FILE' --config '$CONFIG_FILE' --output '$OUTPUT_PATH' --target linux-x64" "Compile rules with Pulsar"
 
 # Step 4: Build Beacon runtime
 log "${BLUE}Step 4: Building Beacon runtime...${NC}" "Step 4: Building Beacon runtime"
 run_cmd "cd '$OUTPUT_PATH/Beacon' && dotnet build -c Release" "Build Beacon runtime"
 
-# Step 5: Run BeaconTester
-log "${BLUE}Step 5: Running BeaconTester...${NC}" "Step 5: Running BeaconTester"
+# Step 5: Generate test scenarios from rules
+log "${BLUE}Step 5: Generating test scenarios from rules...${NC}" "Step 5: Generating test scenarios from rules"
+GENERATED_TEST_FILE="$REPORTS_DIR/generated_test_scenarios.json"
+run_cmd "cd '$PROJECT_ROOT/BeaconTester/BeaconTester.Runner' && dotnet run --project . -- generate --rules '$FIRST_RULE_FILE' --output '$GENERATED_TEST_FILE'" "Generate test scenarios from rules"
 
-# Find the test scenarios file
-TEST_SCENARIOS="$PROJECT_ROOT/examples/Tests/DefaultProject/test_scenarios.json"
-if [ ! -f "$TEST_SCENARIOS" ]; then
-    log "${YELLOW}Warning: Test scenarios file not found: $TEST_SCENARIOS${NC}" "Warning: Test scenarios file not found"
-    log "${YELLOW}Skipping BeaconTester execution${NC}" "Skipping BeaconTester execution"
+# Step 6: Start Beacon runtime in background
+log "${BLUE}Step 6: Starting Beacon runtime...${NC}" "Step 6: Starting Beacon runtime"
+BEACON_PID=""
+
+# Find the actual Beacon runtime location
+BEACON_RUNTIME_PATH=""
+POSSIBLE_PATHS=(
+    "$OUTPUT_PATH/Beacon/Beacon.Runtime/bin/Release/net9.0/linux-x64/Beacon.Runtime.dll"
+    "$OUTPUT_PATH/Beacon/Beacon.Runtime/bin/Release/net8.0/linux-x64/Beacon.Runtime.dll"
+    "$OUTPUT_PATH/Beacon/Beacon.Runtime/bin/Debug/net9.0/linux-x64/Beacon.Runtime.dll"
+    "$OUTPUT_PATH/Beacon/Beacon.Runtime/bin/Debug/net8.0/linux-x64/Beacon.Runtime.dll"
+    "$OUTPUT_PATH/Beacon/Beacon.Runtime/bin/Release/net9.0/Beacon.Runtime.dll"
+    "$OUTPUT_PATH/Beacon/Beacon.Runtime/bin/Release/net8.0/Beacon.Runtime.dll"
+)
+
+for path in "${POSSIBLE_PATHS[@]}"; do
+    if [ -f "$path" ]; then
+        BEACON_RUNTIME_PATH="$path"
+        break
+    fi
+done
+
+if [ -n "$BEACON_RUNTIME_PATH" ]; then
+    log "${GREEN}Starting Beacon runtime from: $BEACON_RUNTIME_PATH${NC}" "Starting Beacon runtime"
+    cd "$(dirname "$BEACON_RUNTIME_PATH")"
+    dotnet "$(basename "$BEACON_RUNTIME_PATH")" &
+    BEACON_PID=$!
+    log "${GREEN}Beacon runtime started with PID: $BEACON_PID${NC}" "Beacon runtime started"
+    # Give Beacon time to start up
+    sleep 3
 else
-    run_cmd "cd '$PROJECT_ROOT/BeaconTester/BeaconTester.Runner' && dotnet run --project . -- run --scenarios '$TEST_SCENARIOS' --output '$REPORTS_DIR'" "Run BeaconTester"
+    log "${YELLOW}Warning: Beacon runtime not found in expected locations${NC}" "Warning: Beacon runtime not found"
+    log "${YELLOW}Available Beacon files:${NC}" "Available Beacon files"
+    find "$OUTPUT_PATH" -name "Beacon.Runtime.dll" -type f 2>/dev/null | head -10
 fi
 
-# Step 6: Generate report
-log "${BLUE}Step 6: Generating test report...${NC}" "Step 6: Generating test report"
-if [ -f "$TEST_SCENARIOS" ]; then
+# Step 7: Running BeaconTester with generated scenarios
+log "${BLUE}Step 7: Running BeaconTester with generated scenarios...${NC}" "Step 7: Running BeaconTester with generated scenarios"
+run_cmd "cd '$PROJECT_ROOT/BeaconTester/BeaconTester.Runner' && dotnet run --project . -- run --scenarios '$GENERATED_TEST_FILE' --output '$REPORTS_DIR'" "Run BeaconTester"
+
+# Step 8: Stop Beacon runtime if it was started
+if [ ! -z "$BEACON_PID" ]; then
+    log "${BLUE}Step 8: Stopping Beacon runtime (PID: $BEACON_PID)...${NC}" "Step 8: Stopping Beacon runtime"
+    kill $BEACON_PID 2>/dev/null || true
+    log "${GREEN}Beacon runtime stopped${NC}" "Beacon runtime stopped"
+fi
+
+# Step 9: Generate report
+log "${BLUE}Step 9: Generating test report...${NC}" "Step 9: Generating test report"
+if [ -f "$GENERATED_TEST_FILE" ]; then
     run_cmd "cd '$PROJECT_ROOT/BeaconTester/BeaconTester.Runner' && dotnet run --project . -- report --input '$REPORTS_DIR' --output '$REPORTS_DIR/report.html'" "Generate test report"
 fi
 
 log "${GREEN}=== Build and Test Complete ===${NC}" "Build and Test Complete"
 log "${GREEN}Output directory: $OUTPUT_DIR${NC}" "Output directory: $OUTPUT_DIR"
 log "${GREEN}Log file: $LOG_FILE${NC}" "Log file: $LOG_FILE"
-if [ -f "$TEST_SCENARIOS" ]; then
+if [ -f "$GENERATED_TEST_FILE" ]; then
     log "${GREEN}Test report: $REPORTS_DIR/report.html${NC}" "Test report: $REPORTS_DIR/report.html"
 fi

@@ -420,15 +420,14 @@ namespace BeaconTester.RuleAnalyzer.Generation
                         Description = "Test inputs that should trigger the rule",
                         Inputs = EnsureAllRequiredInputs(testCase.Inputs, true),
                         Delay = 500, // Default delay
-                        Expectations = testCase
-                            .Outputs.Select(o => new TestExpectation
-                            {
-                                Key = o.Key,
-                                Expected = o.Value,
-                                Validator = GetValidatorType(o.Value),
-                                TimeoutMs = 1000 // Add timeout for rules to process
-                            })
-                            .ToList(),
+                        Expectations = testCase.Outputs.Select(o => new TestExpectation
+                        {
+                            Key = o.Key,
+                            Expected = o.Value,
+                            Validator = GetValidatorType(o.Value),
+                            TimeoutMs = 1000, // Add timeout for rules to process
+                            Tolerance = IsTimeBasedKey(o.Key) ? 2000 : (double?)null
+                        }).ToList(),
                     };
 
                     scenario.Steps.Add(positiveStep);
@@ -446,14 +445,14 @@ namespace BeaconTester.RuleAnalyzer.Generation
                         Description = "Test inputs that should not trigger the rule",
                         Inputs = EnsureAllRequiredInputs(negativeCase.Inputs, false),
                         Delay = 500, // Default delay
-                        Expectations = negativeCase
-                            .Outputs.Select(o => new TestExpectation
-                            {
-                                Key = o.Key,
-                                Expected = o.Value,
-                                Validator = GetValidatorType(o.Value),
-                            })
-                            .ToList(),
+                        Expectations = negativeCase.Outputs.Select(o => new TestExpectation
+                        {
+                            Key = o.Key,
+                            Expected = o.Value,
+                            Validator = GetValidatorType(o.Value),
+                            TimeoutMs = 1000, // Add timeout for rules to process
+                            Tolerance = IsTimeBasedKey(o.Key) ? 2000 : (double?)null
+                        }).ToList(),
                     };
 
                     scenario.Steps.Add(negativeStep);
@@ -831,7 +830,8 @@ namespace BeaconTester.RuleAnalyzer.Generation
                                 Key = setAction.Key,
                                 Expected = expectedValue,
                                 Validator = GetValidatorType(expectedValue),
-                                TimeoutMs = 1000 // Add timeout for rules to process
+                                TimeoutMs = 1000, // Add timeout for rules to process
+                                Tolerance = IsTimeBasedKey(setAction.Key) ? 2000 : (double?)null
                             });
                         }
                     }
@@ -920,6 +920,8 @@ namespace BeaconTester.RuleAnalyzer.Generation
                                 Key = o.Key,
                                 Expected = null, // Expect no output when dependencies aren't met
                                 Validator = "string", // String validator is most flexible
+                                TimeoutMs = 1000, // Add timeout for rules to process
+                                Tolerance = IsTimeBasedKey(o.Key) ? 2000 : (double?)null
                             })
                             .ToList(),
                     };
@@ -1412,6 +1414,13 @@ namespace BeaconTester.RuleAnalyzer.Generation
 
             // Default to string for all other types
             return "string";
+        }
+
+        // Helper to determine if a key is a time-based output
+        private bool IsTimeBasedKey(string key)
+        {
+            var lower = key.ToLowerInvariant();
+            return lower.Contains("time") || lower.Contains("timestamp") || lower == "output:last_alert_time";
         }
     }
 }
