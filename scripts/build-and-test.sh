@@ -52,6 +52,58 @@ run_cmd() {
     fi
 }
 
+# Parse arguments for rules and config file
+RULES_FILE=""
+CONFIG_FILE=""
+
+while [[ $# -gt 0 ]]; do
+  case $1 in
+    --rules)
+      RULES_FILE="$2"
+      shift 2
+      ;;
+    --config)
+      CONFIG_FILE="$2"
+      shift 2
+      ;;
+    *)
+      echo "Unknown argument: $1"
+      exit 1
+      ;;
+  esac
+done
+
+# Set defaults if not provided
+RULES_DIR="$PROJECT_ROOT/rules"
+DEFAULT_RULES_FILE="$RULES_DIR/temperature_rules.yaml"
+DEFAULT_CONFIG_FILE="$PROJECT_ROOT/config/system_config.yaml"
+
+if [ -z "$RULES_FILE" ]; then
+  if [ -f "$DEFAULT_RULES_FILE" ]; then
+    RULES_FILE="$DEFAULT_RULES_FILE"
+  else
+    # Use first .yaml file in rules dir
+    RULES_FILE=$(find "$RULES_DIR" -name "*.yaml" | head -1)
+  fi
+fi
+
+if [ -z "$CONFIG_FILE" ]; then
+  CONFIG_FILE="$DEFAULT_CONFIG_FILE"
+fi
+
+if [ ! -f "$RULES_FILE" ]; then
+  log "${RED}Error: Rules file not found: $RULES_FILE${NC}" "Error: Rules file not found: $RULES_FILE"
+  exit 1
+fi
+
+if [ ! -f "$CONFIG_FILE" ]; then
+  log "${RED}Error: Config file not found: $CONFIG_FILE${NC}" "Error: Config file not found: $CONFIG_FILE"
+  exit 1
+fi
+
+log "${BLUE}Using rule file: $RULES_FILE${NC}" "Using rule file: $RULES_FILE"
+log "${BLUE}Using config file: $CONFIG_FILE${NC}" "Using config file: $CONFIG_FILE"
+
 # Step 1: Build Pulsar Compiler
 log "${BLUE}Step 1: Building Pulsar Compiler...${NC}" "Step 1: Building Pulsar Compiler"
 run_cmd "cd '$PROJECT_ROOT/Pulsar/Pulsar.Compiler' && dotnet build -c Release" "Build Pulsar Compiler"
@@ -63,40 +115,9 @@ run_cmd "cd '$PROJECT_ROOT/BeaconTester' && dotnet build -c Release" "Build Beac
 # Step 3: Compile rules using Pulsar
 log "${BLUE}Step 3: Compiling rules with Pulsar...${NC}" "Step 3: Compiling rules with Pulsar"
 
-# Use the new consolidated structure
-RULES_DIR="$PROJECT_ROOT/rules"
-CONFIG_FILE="$PROJECT_ROOT/config/system_config.yaml"
 OUTPUT_PATH="$OUTPUT_DIR/beacon"
 
-# Check if rules directory exists
-if [ ! -d "$RULES_DIR" ]; then
-    log "${RED}Error: Rules directory not found: $RULES_DIR${NC}" "Error: Rules directory not found: $RULES_DIR"
-    log "${YELLOW}Please run the consolidation script first: ./scripts/consolidate-rules.sh${NC}" "Please run the consolidation script first"
-    exit 1
-fi
-
-# Check if config file exists
-if [ ! -f "$CONFIG_FILE" ]; then
-    log "${RED}Error: Config file not found: $CONFIG_FILE${NC}" "Error: Config file not found: $CONFIG_FILE"
-    exit 1
-fi
-
-# Use the first rule file found (or all rule files)
-FIRST_RULE_FILE=$(find "$RULES_DIR" -name "*.yaml" | head -1)
-if [ -z "$FIRST_RULE_FILE" ]; then
-    log "${RED}Error: No rule files found in $RULES_DIR${NC}" "Error: No rule files found in $RULES_DIR"
-    exit 1
-fi
-
-# Prefer temperature_rules.yaml if it exists
-if [ -f "$RULES_DIR/temperature_rules.yaml" ]; then
-    FIRST_RULE_FILE="$RULES_DIR/temperature_rules.yaml"
-fi
-
-log "${BLUE}Using rule file: $FIRST_RULE_FILE${NC}" "Using rule file: $FIRST_RULE_FILE"
-log "${BLUE}Using config file: $CONFIG_FILE${NC}" "Using config file: $CONFIG_FILE"
-
-run_cmd "cd '$PROJECT_ROOT/Pulsar/Pulsar.Compiler' && dotnet run --project . -- beacon --rules '$FIRST_RULE_FILE' --config '$CONFIG_FILE' --output '$OUTPUT_PATH' --target linux-x64" "Compile rules with Pulsar"
+run_cmd "cd '$PROJECT_ROOT/Pulsar/Pulsar.Compiler' && dotnet run --project . -- beacon --rules '$RULES_FILE' --config '$CONFIG_FILE' --output '$OUTPUT_PATH' --target linux-x64" "Compile rules with Pulsar"
 
 # Step 4: Build Beacon runtime
 log "${BLUE}Step 4: Building Beacon runtime...${NC}" "Step 4: Building Beacon runtime"
@@ -105,7 +126,7 @@ run_cmd "cd '$OUTPUT_PATH/Beacon' && dotnet build -c Release" "Build Beacon runt
 # Step 5: Generate test scenarios from rules
 log "${BLUE}Step 5: Generating test scenarios from rules...${NC}" "Step 5: Generating test scenarios from rules"
 GENERATED_TEST_FILE="$REPORTS_DIR/generated_test_scenarios.json"
-run_cmd "cd '$PROJECT_ROOT/BeaconTester/BeaconTester.Runner' && dotnet run --project . -- generate --rules '$FIRST_RULE_FILE' --output '$GENERATED_TEST_FILE'" "Generate test scenarios from rules"
+run_cmd "cd '$PROJECT_ROOT/BeaconTester/BeaconTester.Runner' && dotnet run --project . -- generate --rules '$RULES_FILE' --output '$GENERATED_TEST_FILE'" "Generate test scenarios from rules"
 
 # Step 6: Start Beacon runtime in background
 log "${BLUE}Step 6: Starting Beacon runtime...${NC}" "Step 6: Starting Beacon runtime"
