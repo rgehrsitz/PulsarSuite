@@ -5,11 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-<<<<<<< HEAD
-using Beacon.Runtime.Interfaces;
-=======
 using Microsoft.Extensions.Logging;
->>>>>>> 8b7c346332a26f768b0c87b04a580da20b2811ca
 
 namespace Pulsar.Tests.Mocks
 {
@@ -205,9 +201,9 @@ namespace Pulsar.Tests.Mocks
     /// </summary>
     public class RedisService : IRedisService
     {
+        private readonly ILogger<RedisService> _logger;
         private readonly Dictionary<string, object> _values = new();
         private readonly Dictionary<string, List<Action<string, object>>> _subscribers = new();
-        private readonly ILogger _logger;
         private bool _disposed;
 
         // Redis key prefixes
@@ -230,15 +226,9 @@ namespace Pulsar.Tests.Mocks
         /// </summary>
         public RedisService(RedisConfiguration config, ILoggerFactory loggerFactory)
         {
-<<<<<<< HEAD
-            _logger = loggerFactory?.CreateLogger<RedisService>() ??
-                      Microsoft.Extensions.Logging.Abstractions.NullLogger<RedisService>.Instance;
-=======
             _logger =
                 loggerFactory?.CreateLogger<RedisService>()
                 ?? Microsoft.Extensions.Logging.Abstractions.NullLogger<RedisService>.Instance;
->>>>>>> 8b7c346332a26f768b0c87b04a580da20b2811ca
-
             // In a real implementation, this would connect to Redis
         }
 
@@ -357,14 +347,9 @@ namespace Pulsar.Tests.Mocks
         )
         {
             var result = new Dictionary<string, (double Value, DateTime Timestamp)>();
-
+            const string INPUT_PREFIX = "input:";
             foreach (var sensorKey in sensorKeys)
             {
-<<<<<<< HEAD
-                var redisKey = sensorKey.StartsWith(INPUT_PREFIX) ? sensorKey : $"{INPUT_PREFIX}{sensorKey}";
-                if (_values.TryGetValue(redisKey, out var value) &&
-                    (value is double doubleValue || double.TryParse(value.ToString(), out doubleValue)))
-=======
                 var redisKey = sensorKey.StartsWith(INPUT_PREFIX)
                     ? sensorKey
                     : $"{INPUT_PREFIX}{sensorKey}";
@@ -375,12 +360,10 @@ namespace Pulsar.Tests.Mocks
                         || double.TryParse(value.ToString(), out doubleValue)
                     )
                 )
->>>>>>> 8b7c346332a26f768b0c87b04a580da20b2811ca
                 {
                     result[sensorKey] = (doubleValue, DateTime.UtcNow);
                 }
             }
-
             return Task.FromResult(result);
         }
 
@@ -417,12 +400,8 @@ namespace Pulsar.Tests.Mocks
         public Task<(double Value, DateTime Timestamp)[]> GetValues(string sensor, int count)
         {
             var result = new List<(double Value, DateTime Timestamp)>();
-
+            const string INPUT_PREFIX = "input:";
             var sensorKey = sensor.StartsWith(INPUT_PREFIX) ? sensor : $"{INPUT_PREFIX}{sensor}";
-<<<<<<< HEAD
-            if (_values.TryGetValue(sensorKey, out var value) &&
-                (value is double doubleValue || double.TryParse(value.ToString(), out doubleValue)))
-=======
             if (
                 _values.TryGetValue(sensorKey, out var value)
                 && (
@@ -430,11 +409,9 @@ namespace Pulsar.Tests.Mocks
                     || double.TryParse(value.ToString(), out doubleValue)
                 )
             )
->>>>>>> 8b7c346332a26f768b0c87b04a580da20b2811ca
             {
                 result.Add((doubleValue, DateTime.UtcNow));
             }
-
             return Task.FromResult(result.ToArray());
         }
 

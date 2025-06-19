@@ -1,191 +1,149 @@
-# Build System Documentation
+# Build System Documentation (Experimental)
 
-This document describes the build system for PulsarSuite, which has been simplified to use a consolidated structure.
+**Note:** The MSBuild-based system described here was an experimental approach to streamline builds. While functional to some extent, the primary and currently recommended workflow relies on the direct `dotnet` CLI commands detailed in `README.md`. This document is retained for informational purposes regarding that experimental system.
 
-## Project Structure
+## Project Structure (for MSBuild Experiment)
 
-The current structure is clean and intuitive:
+The following structure was used for the MSBuild experiment:
 
-```
+```text
 PulsarSuite/
-├── rules/                    # All rule definitions
-│   ├── temperature_rules.yaml
-│   ├── advanced_rules.yaml
-│   └── ...
-├── config/                   # System configuration
-│   └── system_config.yaml    # Single config for all rules
-├── scripts/                  # Build and utility scripts
-│   ├── build-and-test.sh     # Main build script
-│   └── consolidate-rules.sh  # Rules consolidation script
-├── Pulsar/                   # Rules compiler
-├── BeaconTester/             # Testing framework
-├── output/                   # Build outputs
-└── examples/                 # Example test scenarios
+├── src/                 # Source code and input files
+│   ├── Rules/          # Rule definitions
+│   │   └── [ProjectName]/
+│   │       ├── rules/  # YAML rule files
+│   │       └── config/ # Configuration files
+│   ├── Tests/         # Generated test files
+│   └── Bin/           # Compiled binaries (Note: README.md uses output/Bin)
+├── build/              # Build configuration
+│   └── PulsarSuite.core.build  # Main build file for the experiment
+└── output/             # Build outputs (Consistent with README.md)
+    ├── dist/           # Distributable Beacon apps
+    └── reports/        # Test reports
 ```
 
-## Build Workflow
+## Using the Build System (Experimental)
 
-### Automated Build (Recommended)
+The build system uses .NET's built-in MSBuild capabilities, so all commands are run using `dotnet build` with appropriate parameters.
 
-Use the main build script for the complete workflow:
+### Basic Usage
 
 ```bash
-./scripts/build-and-test.sh
+# Full build process for a project
+dotnet build /p:ProjectName=MyProject /p:RulesFile=/path/to/rules.yaml
 ```
 
-This script:
-1. Builds Pulsar Compiler
-2. Builds BeaconTester
-3. Compiles rules using Pulsar
-4. Builds Beacon runtime
-5. Runs BeaconTester (if test scenarios exist)
-6. Generates test reports
+### Specifying Rules Files
 
-### Manual Build Steps
-
-If you prefer manual control:
+The build system can work with any valid rules file, regardless of its name or location:
 
 ```bash
-# 1. Build Pulsar Compiler
-cd Pulsar/Pulsar.Compiler && dotnet build -c Release
-
-# 2. Build BeaconTester
-cd ../../BeaconTester && dotnet build -c Release
-
-# 3. Compile rules
-cd ../Pulsar/Pulsar.Compiler
-dotnet run -- beacon --rules ../../rules/temperature_rules.yaml --config ../../config/system_config.yaml --output ../../output/beacon
-
-# 4. Build Beacon runtime
-cd ../../output/beacon && dotnet build -c Release
+# Specify a rules file explicitly
+dotnet build /t:ValidateRules /p:RulesFile=/home/user/PulsarSuite/src/Rules/MyProject/rules/custom_rules.yaml
 ```
 
-## Configuration
+If no rules file is specified, the system will look for a file named `temperature_rules.yaml` in the project's rules directory.
 
-### System Configuration
-
-The system uses a single configuration file: `config/system_config.yaml`
-
-```yaml
-version: 1
-cycleTime: 100                    # Rule evaluation interval (ms)
-redis:
-  endpoints: [localhost:6379]     # Redis connection
-  poolSize: 4
-  retryCount: 3
-bufferCapacity: 100               # Historical data buffer size
-# validSensors: []               # Optional - auto-populated from rules
-```
-
-**Key Features:**
-- **Single config**: One file for all rules
-- **Auto-sensor detection**: `validSensors` is automatically populated from your rules
-- **No duplication**: No need for separate config files per rule set
-
-### Rule Files
-
-All rule files go in the `rules/` directory:
-
-```yaml
-# rules/temperature_rules.yaml
-rules:
-  - name: HighTemperatureAlert
-    description: Alert when temperature exceeds threshold
-    conditions:
-      all:
-        - condition:
-            type: comparison
-            sensor: input:temperature
-            operator: '>'
-            value: 30
-    actions:
-      - set_value:
-          key: output:alert
-          value: true
-```
-
-## Build Scripts
-
-### Main Build Script (`scripts/build-and-test.sh`)
-
-The main script provides a complete end-to-end workflow:
+### Available Targets
 
 ```bash
-./scripts/build-and-test.sh
+# Validate rules only
+dotnet build /t:ValidateRules /p:ProjectName=MyProject /p:RulesFile=/path/to/rules.yaml
+
+# Compile rules to C#
+dotnet build /t:CompileRules /p:ProjectName=MyProject /p:RulesFile=/path/to/rules.yaml
+
+# Build Beacon application
+dotnet build /t:BuildBeacon /p:ProjectName=MyProject /p:RulesFile=/path/to/rules.yaml
+
+# Build Beacon solution (includes the fix for RedisService.cs template issues)
+dotnet build /t:BuildBeaconSolution /p:ProjectName=MyProject /p:RulesFile=/path/to/rules.yaml /p:Configuration=Release
+
+# Generate tests
+dotnet build /t:GenerateTests /p:ProjectName=MyProject /p:RulesFile=/path/to/rules.yaml /p:Configuration=Release
+
+# Run tests
+dotnet build /t:RunTests /p:ProjectName=MyProject /p:RulesFile=/path/to/rules.yaml /p:Configuration=Release
+
+# Full build process
+dotnet build /p:ProjectName=MyProject /p:RulesFile=/path/to/rules.yaml
 ```
 
-**Features:**
-- Comprehensive logging
-- Error handling
-- Automatic directory creation
-- Test execution
-- Report generation
+### Known Issues and Workarounds (for MSBuild Experiment)
 
-### Consolidation Script (`scripts/consolidate-rules.sh`)
+#### RedisService.cs Template Issue
 
-Use this script to migrate from the old scattered structure:
+The RedisService.cs template in Pulsar.Compiler can have issues with C# pattern matching syntax, causing compilation errors when generating a Beacon application. This is addressed directly in the MSBuild system using the following approach:
+
+1. The BuildBeacon target in full.e2e.build creates a Beacon application using the Pulsar compiler
+
+2. A fixed version of RedisService.cs is maintained in the build directory (`RedisService.cs.fixed`)
+
+3. The build system automatically replaces the problematic generated file:
+
+```xml
+<!-- Replace the generated RedisService.cs with our fixed version -->
+<PropertyGroup>
+  <RedisServicePath>$(BeaconOutputDir)/Beacon/Beacon.Runtime/Services/RedisService.cs</RedisServicePath>
+  <FixedRedisServicePath>$(MSBuildThisFileDirectory)/RedisService.cs.fixed</FixedRedisServicePath>
+</PropertyGroup>
+
+<!-- Use our rewritten RedisService.cs to avoid template processing issues -->
+<Copy SourceFiles="$(FixedRedisServicePath)" DestinationFiles="$(RedisServicePath)" OverwriteReadOnlyFiles="true" />
+```
+
+This MSBuild approach ensured that no manual intervention or shell scripts were required to fix the issue during the experiment.
+
+#### End-to-End Test Process (for MSBuild Experiment)
+
+The complete workflow for testing with the fixed RedisService.cs template:
 
 ```bash
-./scripts/consolidate-rules.sh
+# Clean environment
+dotnet msbuild build/full.e2e.build /t:Clean /p:Configuration=Release
+
+# Build Beacon application (includes automatic RedisService.cs fix)
+dotnet msbuild build/full.e2e.build /t:BuildBeacon /p:Configuration=Release \
+   /p:RulesFile=/path/to/your/rules.yaml \
+   /p:ConfigFile=/path/to/your/system_config.yaml
+
+# Compile Beacon solution
+dotnet msbuild build/full.e2e.build /t:BuildBeaconSolution /p:Configuration=Release
+
+# Generate tests
+dotnet msbuild build/full.e2e.build /t:GenerateTests /p:Configuration=Release
+
+# Run tests
+dotnet msbuild build/full.e2e.build /t:RunTests /p:Configuration=Release
 ```
 
-This script:
-- Moves all scattered rule files to `rules/`
-- Consolidates config files to `config/`
-- Creates documentation
-- Provides migration guide
+## Output Locations
 
-## Output Structure
+All build outputs are placed in consistent locations:
 
-Build outputs are organized in the `output/` directory:
+- Compiled rules: `src/Bin/[ProjectName]/`
+- Generated tests: `src/Tests/[ProjectName]/`
+- Distributable Beacon: `output/dist/[ProjectName]/`
+- Test reports: `output/reports/[ProjectName]/`
 
-```
-output/
-├── beacon/                    # Generated Beacon solution
-├── logs/                      # Build and execution logs
-└── reports/                   # Test reports and results
-```
+## Build Process
 
-## Migration from Old Structure
+The build process follows these steps:
 
-If you have existing rules in scattered locations:
+1. **ValidateRules**: Validates the rule files using the Pulsar compiler
+2. **CompileRules**: Compiles the rules into C# code
+3. **BuildBeacon**: Builds a distributable Beacon application
 
-1. **Run consolidation script**:
-   ```bash
-   ./scripts/consolidate-rules.sh
-   ```
+Each step depends on the previous steps, so running `BuildBeacon` will automatically run `ValidateRules` and `CompileRules` first.
 
-2. **Update references**:
-   - Old: `Pulsar/Examples/BasicRules/temperature_rules.yaml`
-   - New: `rules/temperature_rules.yaml`
+## Advantages Over Shell Scripts
 
-3. **Use single config**:
-   - Old: Multiple config files per rule set
-   - New: Single `config/system_config.yaml`
+- **Standardization**: Consistent build process across all projects
+- **Simplicity**: Clear targets for each build step
+- **Flexibility**: Works with any valid rules file
+- **Maintainability**: Easy to extend and customize
+- **Integration**: Works well with existing tools and IDEs
 
-## Troubleshooting
+## Extending the Build System
 
-### Common Issues
-
-- **Rules not found**: Ensure rules are in `rules/` directory
-- **Config not found**: Check `config/system_config.yaml` exists
-- **Build failures**: Check .NET 8.0 SDK is installed
-- **Redis connection**: Verify Redis server is running
-
-### Debugging
-
-- **Build logs**: Check `output/logs/` directory
-- **Test reports**: Check `output/reports/` directory
-- **Beacon logs**: Check console output during execution
-
-## Benefits of New Structure
-
-1. **Simplicity**: Clear, intuitive organization
-2. **Maintainability**: No scattered files or duplicate configs
-3. **Scalability**: Easy to add new rules without config changes
-4. **Automation**: Auto-sensor detection reduces manual work
-5. **Consistency**: Single workflow for all rule types
-
-## Historical Note
-
-The previous build system used scattered files and multiple configs per rule set. This was replaced with the current consolidated approach for better maintainability and user experience.
+The build system is designed to be extensible. You can add custom targets, modify properties, or add new project types by editing the `build/PulsarSuite.core.build` file.

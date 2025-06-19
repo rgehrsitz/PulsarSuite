@@ -1,225 +1,133 @@
-# PulsarSuite
+# Pulsar/Beacon Development Environment
 
-A comprehensive rules engine system consisting of **Pulsar** (rules compiler), **Beacon** (runtime), and **BeaconTester** (testing framework).
-
-## Quick Start
-
-### Prerequisites
-- .NET 8.0 SDK
-- Redis server (for data persistence and testing)
-
-### Simple Workflow
-
-1. **Write your rules** in `rules/` directory:
-   ```yaml
-   # rules/temperature_rules.yaml
-   rules:
-     - name: HighTemperatureAlert
-       description: Alert when temperature exceeds threshold
-       conditions:
-         all:
-           - condition:
-               type: comparison
-               sensor: input:temperature
-               operator: '>'
-               value: 30
-       actions:
-         - set_value:
-             key: output:alert
-             value: true
-   ```
-
-2. **Configure your system** in `config/system_config.yaml`:
-   ```yaml
-   version: 1
-   cycleTime: 100  # milliseconds
-   redis:
-     endpoints:
-       - localhost:6379
-   bufferCapacity: 100
-   # Note: validSensors is optional - will be auto-populated from rules
-   ```
-
-3. **Build and test** everything:
-   ```bash
-   ./scripts/build-and-test.sh
-   ```
+This repository provides a development environment for Pulsar/Beacon rule-based applications. While an MSBuild-based system (`build/PulsarSuite.build`) was explored for streamlining builds, the primary and currently recommended workflow relies on direct `dotnet` CLI commands.
 
 ## Project Structure
 
-```
+```bash
 PulsarSuite/
-├── rules/                    # All rule definitions
-│   ├── temperature_rules.yaml
-│   ├── advanced_rules.yaml
-│   └── ...
-├── config/                   # System configuration
-│   └── system_config.yaml    # Single config for all rules
-├── scripts/                  # Build and utility scripts
-│   ├── build-and-test.sh     # Main build script
-│   └── consolidate-rules.sh  # Rules consolidation script
-├── Pulsar/                   # Rules compiler
-├── BeaconTester/             # Testing framework
-├── output/                   # Build outputs
-└── examples/                 # Example test scenarios
+├── src/                 # Source code and input files
+│   ├── Rules/          # Rule definitions
+│   │   └── [ProjectName]/
+│   │       ├── rules/  # YAML rule files
+│   │       └── config/ # Configuration files
+│   ├── Tests/         # Generated test files
+│   └── Bin/           # Compiled binaries
+├── build/              # Build configuration
+│   └── PulsarSuite.build  # Main build file
+├── output/             # Build outputs
+│   ├── dist/           # Distributable Beacon apps
+│   └── reports/        # Test reports
+├── Pulsar/             # Pulsar compiler source
+└── BeaconTester/       # BeaconTester source
 ```
 
-## Key Features
+## Getting Started
 
-### Simplified Configuration
-- **Single config file**: One `config/system_config.yaml` for all rules
-- **Auto-sensor detection**: `validSensors` is automatically populated from your rules
-- **No duplication**: No need for separate config files per rule set
+### Prerequisites
 
-### Modern Workflow
-- **Consolidated rules**: All rules in one `rules/` directory
-- **Simple build**: One script handles everything
-- **Clear structure**: Intuitive directory organization
+- .NET SDK 9.0 or higher (install from <https://dotnet.microsoft.com/download>)
+- Redis server (required by Beacon runtime)
+  - You can run Redis locally or via Docker
 
-### Advanced Capabilities
-- **AOT compilation**: Native performance with .NET AOT
-- **Redis integration**: Persistent data storage
-- **Comprehensive testing**: Automated test generation and execution
-- **Temporal rules**: Support for time-based conditions
+---
 
-## Usage Examples
+## Full Workflow
 
-### Basic Temperature Monitoring
+Comprehensive build, test, and deployment steps are now consolidated in the [End-to-End Guide](Pulsar/docs/End-to-End-Guide.md).
+
+---
+
+### Output Locations
+
+- Compiled rules: `output/Bin/ThresholdOverTimeExample/`
+- Distributable Beacon: `output/dist/ThresholdOverTimeExample/`
+- Published Beacon runtime: `output/dist/ThresholdOverTimeExample/Beacon/Beacon.Runtime/bin/Release/net9.0/linux-x64/publish/Beacon.Runtime`
+- Manifest file: `output/dist/ThresholdOverTimeExample/Beacon/Beacon.Runtime/Generated/rules.manifest.json`
+- Test results (Beacon unit tests): `output/dist/ThresholdOverTimeExample/Beacon/Beacon.Tests/TestResults/`
+- Test results (BeaconTester): `output/dist/ThresholdOverTimeExample/test_results.json`
+
+---
+
+### Troubleshooting
+
+- If you see errors about missing files or directories, ensure you have run all previous steps in order.
+- If you change your rules or config, re-run the relevant steps above.
+- For cross-platform builds, adjust the `--target` and `-r` arguments as needed (e.g., `win-x64`, `osx-x64`).
+
+---
+
+## Example: Full Workflow for ThresholdOverTimeExample
+
+he current, validated workflow for building, testing, and running an example project.The following series of `dotnet` commands represents t
+
+```sh
+# 1. Validate rules
+dotnet run --project Pulsar/Pulsar.Compiler/Pulsar.Compiler.csproj validate \
+    --rules=src/Rules/ThresholdOverTimeExample/rules/threshold_over_time_rules.yaml \
+    --config=src/Rules/ThresholdOverTimeExample/config/system_config.yaml
+
+# 2. Compile rules
+dotnet run --project Pulsar/Pulsar.Compiler/Pulsar.Compiler.csproj compile \
+    --rules=src/Rules/ThresholdOverTimeExample/rules/threshold_over_time_rules.yaml \
+    --config=src/Rules/ThresholdOverTimeExample/config/system_config.yaml \
+    --output=output/Bin/ThresholdOverTimeExample
+
+# 3. Generate Beacon solution
+dotnet run --project Pulsar/Pulsar.Compiler/Pulsar.Compiler.csproj beacon \
+    --rules=src/Rules/ThresholdOverTimeExample/rules/threshold_over_time_rules.yaml \
+    --compiled-rules-dir=output/Bin/ThresholdOverTimeExample \
+    --output=output/dist/ThresholdOverTimeExample \
+    --config=src/Rules/ThresholdOverTimeExample/config/system_config.yaml \
+    --target=linux-x64
+
+# 4. Build Beacon runtime
+dotnet publish output/dist/ThresholdOverTimeExample/Beacon/Beacon.Runtime/Beacon.Runtime.csproj \
+    -c Release -r linux-x64 --self-contained true /p:PublishSingleFile=true
+
+# 5. Run Beacon unit tests
+dotnet test output/dist/ThresholdOverTimeExample/Beacon/Beacon.Tests/Beacon.Tests.csproj
+
+# 6. **Start the Beacon runtime**
+# IMPORTANT: You must start the Beacon runtime before running BeaconTester scenarios. Leave this process running in a separate terminal.
+# NOTE: The published runtime is located at:
+# output/dist/ThresholdOverTimeExample/Beacon/Beacon.Runtime/bin/Release/net9.0/linux-x64/publish/Beacon.Runtime
+./output/dist/ThresholdOverTimeExample/Beacon/Beacon.Runtime/bin/Debug/net9.0/linux-x64/Beacon.Runtime
+
+# 7. Generate & Run BeaconTester Scenarios
+dotnet run --project BeaconTester/BeaconTester.Runner/BeaconTester.Runner.csproj generate --rules=src/Rules/ThresholdOverTimeExample/rules/threshold_over_time_rules.yaml --output=output/dist/ThresholdOverTimeExample/test_scenarios.json
+
+dotnet run --project BeaconTester/BeaconTester.Runner/BeaconTester.Runner.csproj run --scenarios=output/dist/ThresholdOverTimeExample/test_scenarios.json --output=output/dist/ThresholdOverTimeExample/test_results.json
+```
+
+---
+
+<!-- ## Project Structure (unchanged) -->
+<!-- Commenting out this section as it might be redundant / confusing -->
+<!--
 ```bash
-# Write rules in rules/temperature_rules.yaml
-# Configure system in config/system_config.yaml
-# Build and test
-./scripts/build-and-test.sh
+PulsarSuite/
+├── src/                 # Source code and input files
+│   ├── Rules/          # Rule definitions
+│   │   └── [ProjectName]/
+│   │       ├── rules/  # YAML rule files
+│   │       └── config/ # Configuration files
+├── Pulsar/             # Pulsar compiler source
+├── output/             # Build outputs
+│   └── dist/           # Distributable Beacon apps
+└── ...
 ```
+-->
 
-### Advanced Rules
-```bash
-# Use complex rules with dependencies
-# Rules automatically extract all required sensors
-# Single config handles all rule types
-```
+---
 
-### Custom Rule Sets
-```bash
-# Add new rule files to rules/
-# They'll automatically be included in builds
-# No config changes needed
-```
+## Notes
 
-## Development
+- The `dotnet` CLI commands detailed in the example workflow are the recommended way to build and test.
+- All outputs are placed in the `output/` directory.
+- For custom projects, substitute your own `[ProjectName]` and file paths.
 
-### Building Individual Components
-```bash
-# Build Pulsar compiler
-cd Pulsar/Pulsar.Compiler && dotnet build
+## Related Projects
 
-# Build BeaconTester
-cd BeaconTester && dotnet build
-
-# Compile specific rules
-cd Pulsar/Pulsar.Compiler
-dotnet run -- beacon --rules ../../rules/temperature_rules.yaml --config ../../config/system_config.yaml
-```
-
-### Testing
-```bash
-# Run full test suite
-./scripts/build-and-test.sh
-
-# Run specific tests
-cd BeaconTester/BeaconTester.Runner
-dotnet run -- run --scenarios ../../examples/Tests/DefaultProject/test_scenarios.json
-```
-
-## Configuration
-
-### System Configuration (`config/system_config.yaml`)
-```yaml
-version: 1
-cycleTime: 100                    # Rule evaluation interval (ms)
-redis:
-  endpoints: [localhost:6379]     # Redis connection
-  poolSize: 4
-  retryCount: 3
-bufferCapacity: 100               # Historical data buffer size
-# validSensors: []               # Optional - auto-populated from rules
-```
-
-### Rule Definition Format
-```yaml
-rules:
-  - name: RuleName
-    description: Rule description
-    conditions:
-      all:                        # or 'any'
-        - condition:
-            type: comparison      # or 'threshold_over_time', 'expression'
-            sensor: input:sensor_name
-            operator: '>'         # or '<', '>=', '<=', '==', '!='
-            value: 30
-    actions:
-      - set_value:
-          key: output:result
-          value: true             # or value_expression: "input:a + input:b"
-```
-
-## Architecture
-
-### Pulsar (Compiler)
-- Parses YAML rule definitions
-- Generates optimized C# code
-- Creates AOT-compatible Beacon applications
-- Auto-extracts sensor requirements
-
-### Beacon (Runtime)
-- Executes compiled rules
-- Interfaces with Redis for data persistence
-- Supports real-time rule evaluation
-- AOT-compiled for native performance
-
-### BeaconTester (Testing)
-- Generates test scenarios from rules
-- Validates rule behavior
-- Provides comprehensive test reports
-- Supports automated testing workflows
-
-## Migration from Old Structure
-
-If you have existing rules in scattered locations:
-
-1. **Consolidate rules**:
-   ```bash
-   ./scripts/consolidate-rules.sh
-   ```
-
-2. **Update references**:
-   - Old: `Pulsar/Examples/BasicRules/temperature_rules.yaml`
-   - New: `rules/temperature_rules.yaml`
-
-3. **Use single config**:
-   - Old: Multiple config files per rule set
-   - New: Single `config/system_config.yaml`
-
-## Troubleshooting
-
-### Common Issues
-- **Rules not found**: Ensure rules are in `rules/` directory
-- **Config not found**: Check `config/system_config.yaml` exists
-- **Redis connection**: Verify Redis server is running
-- **Build failures**: Check .NET 8.0 SDK is installed
-
-### Logs and Debugging
-- Build logs: `output/logs/`
-- Test reports: `output/reports/`
-- Beacon logs: Check console output during execution
-
-## Contributing
-
-1. Follow the consolidated structure
-2. Add rules to `rules/` directory
-3. Update single config if needed
-4. Test with `./scripts/build-and-test.sh`
-
-## License
-
-[Add your license information here]
+- [Pulsar](https://github.com/example/pulsar) - Rule compiler and code generator
+- [BeaconTester](https://github.com/example/beacontester) - Automated testing framework
