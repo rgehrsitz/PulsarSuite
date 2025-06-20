@@ -318,8 +318,27 @@ namespace BeaconTester.Core
 
             foreach (var scenario in scenarios)
             {
-                var result = await RunTestAsync(scenario);
-                results.Add(result);
+                try
+                {
+                    _logger.Information("--- Starting scenario: {TestName} ---", scenario.Name);
+                    var result = await RunTestAsync(scenario);
+                    results.Add(result);
+                    _logger.Information("--- Finished scenario: {TestName} (Success: {Success}) ---", scenario.Name, result.Success);
+                }
+                catch (Exception ex)
+                {
+                    _logger.Error(ex, "Unhandled exception during scenario '{TestName}'", scenario.Name);
+                    results.Add(new TestResult
+                    {
+                        Name = scenario.Name,
+                        StartTime = DateTime.UtcNow,
+                        EndTime = DateTime.UtcNow,
+                        Duration = TimeSpan.Zero,
+                        Success = false,
+                        ErrorMessage = $"Unhandled exception: {ex.Message}",
+                        Scenario = scenario
+                    });
+                }
             }
 
             var successCount = results.Count(r => r.Success);

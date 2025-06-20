@@ -50,7 +50,6 @@ namespace Pulsar.Compiler.Core
 
                 var rules = LoadRulesFromPaths(
                     rulesPath,
-                    options.ValidSensors,
                     options.AllowInvalidSensors
                 );
                 _logger.Information("Loaded {Count} rules from {Path}", rules.Count, rulesPath);
@@ -70,7 +69,7 @@ namespace Pulsar.Compiler.Core
                 }
 
                 return result;
-            }, 
+            },
             new CompilationResult
             {
                 Success = false,
@@ -133,43 +132,16 @@ namespace Pulsar.Compiler.Core
         /// Loads rules from a file or directory path
         /// </summary>
         /// <param name="rulesPath">The path to load rules from</param>
-        /// <param name="validSensors">List of valid sensors</param>
         /// <param name="allowInvalidSensors">Whether to allow invalid sensors</param>
         /// <returns>List of rule definitions</returns>
         private List<RuleDefinition> LoadRulesFromPaths(
             string rulesPath,
-            List<string> validSensors,
             bool allowInvalidSensors
         )
         {
             var rules = new List<RuleDefinition>();
-            
             try
             {
-                // Ensure validSensors is not null
-                validSensors ??= new List<string>();
-                
-                _logger.Information(
-                    "Loading rules with {Count} valid sensors: {Sensors}",
-                    validSensors.Count,
-                    string.Join(", ", validSensors)
-                );
-
-                // Manually add required sensors if not already in the list
-                var requiredSensors = new List<string>
-                {
-                    "temperature_f",
-                    "temperature_c",
-                    "humidity",
-                    "pressure",
-                };
-                
-                foreach (var sensor in requiredSensors.Where(s => !validSensors.Contains(s)))
-                {
-                    validSensors.Add(sensor);
-                    _logger.Information("Added required sensor: {Sensor}", sensor);
-                }
-
                 if (Directory.Exists(rulesPath))
                 {
                     _logger.Debug("Loading rules from directory: {Path}", rulesPath);
@@ -178,7 +150,6 @@ namespace Pulsar.Compiler.Core
                         "*.yaml",
                         SearchOption.AllDirectories
                     );
-                    
                     foreach (var file in files)
                     {
                         try
@@ -186,13 +157,10 @@ namespace Pulsar.Compiler.Core
                             var content = File.ReadAllText(file);
                             var parsedRules = _parser.ParseRules(
                                 content,
-                                validSensors,
                                 Path.GetFileName(file),
                                 allowInvalidSensors
                             );
-                            
                             rules.AddRange(parsedRules);
-                            
                             foreach (var rule in parsedRules)
                             {
                                 _logger.Debug(
@@ -206,7 +174,6 @@ namespace Pulsar.Compiler.Core
                         }
                         catch (ValidationException)
                         {
-                            // We want to let ValidationExceptions bubble up
                             throw;
                         }
                         catch (Exception ex)
@@ -221,13 +188,10 @@ namespace Pulsar.Compiler.Core
                     var content = File.ReadAllText(rulesPath);
                     var parsedRules = _parser.ParseRules(
                         content,
-                        validSensors,
                         Path.GetFileName(rulesPath),
                         allowInvalidSensors
                     );
-                    
                     rules.AddRange(parsedRules);
-                    
                     foreach (var rule in parsedRules)
                     {
                         _logger.Debug(
@@ -249,15 +213,12 @@ namespace Pulsar.Compiler.Core
             }
             catch (ValidationException)
             {
-                // Let ValidationExceptions bubble up
                 throw;
             }
             catch (Exception ex)
             {
                 _logger.Error(ex, "Error loading rules from {Path}", rulesPath);
-                // Return empty list on error
             }
-            
             return rules;
         }
     }

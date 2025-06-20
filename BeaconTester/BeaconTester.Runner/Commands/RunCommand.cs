@@ -134,7 +134,7 @@ namespace BeaconTester.Runner.Commands
 
             try
             {
-                logger.Information("Running test scenarios from {ScenariosPath}", scenariosPath);
+                logger.Information("Loading test scenarios from {ScenariosPath}", scenariosPath);
 
                 // Check if scenarios file exists
                 if (!File.Exists(scenariosPath))
@@ -215,8 +215,10 @@ namespace BeaconTester.Runner.Commands
                 }
 
                 // Run tests
+                logger.Information("Starting test batch execution");
                 using var testRunner = new TestRunner(redisConfig, logger, testConfig, monitor);
                 var results = await testRunner.RunTestBatchAsync(scenariosDocument.Scenarios);
+                logger.Information("Test batch execution complete");
 
                 // Save results if output path is specified
                 if (!string.IsNullOrEmpty(outputPath))

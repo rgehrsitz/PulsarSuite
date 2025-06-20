@@ -110,13 +110,20 @@ namespace Pulsar.Compiler.Generation.Generators
                 }
             }
 
-            sb.AppendLine("        public string[] RequiredSensors => new[]");
-            sb.AppendLine("        {");
-            foreach (var sensor in allSensors)
+            if (allSensors.Count == 0)
             {
-                sb.AppendLine($"            \"{sensor}\",");
+                sb.AppendLine("        public string[] RequiredSensors => new string[] {};");
             }
-            sb.AppendLine("        };");
+            else
+            {
+                sb.AppendLine("        public string[] RequiredSensors => new[]");
+                sb.AppendLine("        {");
+                foreach (var sensor in allSensors)
+                {
+                    sb.AppendLine($"            \"{sensor}\",");
+                }
+                sb.AppendLine("        };");
+            }
             sb.AppendLine();
 
             // Rule evaluation method

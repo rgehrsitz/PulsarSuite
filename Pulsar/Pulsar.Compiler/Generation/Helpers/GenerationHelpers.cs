@@ -355,18 +355,11 @@ namespace Pulsar.Compiler.Generation.Helpers
                 return "null";
             }
 
-            // Special case for humidity_status == 'high' in our rules.yaml
-            if (expression.Contains("humidity_status") && expression.Contains("'high'"))
-            {
-                // For this specific case, use proper string comparison
-                return expression
-                    .Replace("humidity_status", "inputs[\"humidity_status\"]?.ToString()")
-                    .Replace("'high'", "\"high\"")
-                    .Replace("and", "&&");
-            }
+            // Remove special-case block for humidity_status == 'high'
+            // All expressions should be processed by the general logic below
 
             // First, handle string literals enclosed in double quotes (already proper C# format)
-            var doubleQuoteStringLiteralPattern = @"""([^""]*)""";
+            var doubleQuoteStringLiteralPattern = "\"([^\"]*)\"";
             var literalPlaceholders = new Dictionary<string, string>();
             int placeholderIndex = 0;
 
@@ -374,7 +367,8 @@ namespace Pulsar.Compiler.Generation.Helpers
             expression = Regex.Replace(
                 expression,
                 doubleQuoteStringLiteralPattern,
-                match => {
+                match =>
+                {
                     var placeholder = $"__STRING_LITERAL_{placeholderIndex}__";
                     literalPlaceholders[placeholder] = $"\"{match.Groups[1].Value}\"";
                     placeholderIndex++;
@@ -387,7 +381,8 @@ namespace Pulsar.Compiler.Generation.Helpers
             expression = Regex.Replace(
                 expression,
                 singleQuoteStringLiteralPattern,
-                match => {
+                match =>
+                {
                     var placeholder = $"__STRING_LITERAL_{placeholderIndex}__";
                     literalPlaceholders[placeholder] = $"\"{match.Groups[1].Value}\"";
                     placeholderIndex++;
@@ -411,7 +406,8 @@ namespace Pulsar.Compiler.Generation.Helpers
             expression = Regex.Replace(
                 expression,
                 stringComparisonPattern,
-                match => {
+                match =>
+                {
                     var sensor = match.Groups[1].Value;
                     var op = match.Groups[2].Value;
                     var literal = match.Groups[3].Value;
@@ -481,7 +477,7 @@ namespace Pulsar.Compiler.Generation.Helpers
                         return sensor;
                     }
 
-                    // Default to numeric conversion
+                    // Always treat as input lookup with numeric conversion
                     return $"Convert.ToDouble(inputs[\"{sensor}\"])";
                 }
             );

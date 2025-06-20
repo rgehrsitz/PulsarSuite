@@ -52,6 +52,18 @@ run_cmd() {
     fi
 }
 
+# PID of Beacon runtime (global for trap)
+BEACON_PID=""
+
+# Cleanup function to kill Beacon runtime if running
+cleanup() {
+    if [ ! -z "$BEACON_PID" ] && kill -0 "$BEACON_PID" 2>/dev/null; then
+        echo -e "${BLUE}Cleaning up Beacon runtime (PID: $BEACON_PID)...${NC}"
+        kill "$BEACON_PID" 2>/dev/null || true
+    fi
+}
+trap cleanup EXIT
+
 # Parse arguments for rules and config file
 RULES_FILE=""
 CONFIG_FILE=""
@@ -99,6 +111,14 @@ fi
 if [ ! -f "$CONFIG_FILE" ]; then
   log "${RED}Error: Config file not found: $CONFIG_FILE${NC}" "Error: Config file not found: $CONFIG_FILE"
   exit 1
+fi
+
+# Ensure RULES_FILE and CONFIG_FILE are absolute paths
+if [[ "$RULES_FILE" != /* ]]; then
+  RULES_FILE="$PROJECT_ROOT/$RULES_FILE"
+fi
+if [[ "$CONFIG_FILE" != /* ]]; then
+  CONFIG_FILE="$PROJECT_ROOT/$CONFIG_FILE"
 fi
 
 log "${BLUE}Using rule file: $RULES_FILE${NC}" "Using rule file: $RULES_FILE"

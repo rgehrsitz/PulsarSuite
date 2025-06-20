@@ -84,7 +84,6 @@ namespace Pulsar.Compiler.Parsers
 
         public List<RuleDefinition> ParseRules(
             string yamlContent,
-            List<string> validSensors,
             string fileName = "",
             bool allowInvalidSensors = false
         )
@@ -127,8 +126,13 @@ namespace Pulsar.Compiler.Parsers
                 {
                     Debug.WriteLine($"\nProcessing rule: {rule.Name}");
 
-                    // Validate sensors and keys
-                    ValidateRule(rule, validSensors, allowInvalidSensors);
+                    // Only check for rule structure, not against a sensor list
+                    if (string.IsNullOrEmpty(rule.Name))
+                        throw new ValidationException("Rule name is required");
+                    if (rule.Conditions == null || (rule.Conditions.All == null && rule.Conditions.Any == null))
+                        throw new ValidationException($"Rule '{rule.Name}' must have at least one condition");
+                    if (rule.Actions == null || !rule.Actions.Any())
+                        throw new ValidationException($"Rule '{rule.Name}' must have at least one action");
 
                     // Show actions debug info
                     if (rule.Actions != null)

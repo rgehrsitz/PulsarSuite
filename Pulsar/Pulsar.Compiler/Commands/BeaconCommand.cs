@@ -28,7 +28,7 @@ namespace Pulsar.Compiler.Commands
         {
             _logger.Information("[DIAGNOSTIC] Entered beacon command handler");
             _logger.Information("Generating AOT-compatible Beacon solution...");
-            
+
             try
             {
                 var rulesPath = options.GetValueOrDefault("rules", null);
@@ -113,7 +113,6 @@ namespace Pulsar.Compiler.Commands
                     var content = await File.ReadAllTextAsync(rulesPath);
                     var parsedRules = parser.ParseRules(
                         content,
-                        systemConfig.ValidSensors,
                         Path.GetFileName(rulesPath),
                         true
                     );
@@ -128,7 +127,6 @@ namespace Pulsar.Compiler.Commands
                         var content = await File.ReadAllTextAsync(file);
                         var parsedRules = parser.ParseRules(
                             content,
-                            systemConfig.ValidSensors,
                             Path.GetFileName(file),
                             true
                         );

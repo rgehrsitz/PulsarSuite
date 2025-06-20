@@ -38,11 +38,31 @@ namespace BeaconTester.RuleAnalyzer.Generation
                 // Analyze rules first to understand structure
                 var analysis = _ruleAnalyzer.AnalyzeRules(rules);
 
-                // Store the complete set of required input sensors for all rules
-                var allRequiredInputs = analysis.InputSensors;
+                // Build a superset of all sensors referenced in any rule condition or action
+                var allReferencedSensors = new HashSet<string>(analysis.InputSensors);
+                foreach (var rule in rules)
+                {
+                    // Add sensors from conditions
+                    if (rule.Conditions != null)
+                    {
+                        var sensors = _ruleAnalyzer.ConditionAnalyzer.ExtractSensors(rule.Conditions);
+                        foreach (var s in sensors)
+                        {
+                            allReferencedSensors.Add(s);
+                        }
+                    }
+                    // Add sensors from actions (for SetValueAction, etc.)
+                    foreach (var action in rule.Actions)
+                    {
+                        if (action is SetValueAction setValueAction)
+                        {
+                            allReferencedSensors.Add(setValueAction.Key);
+                        }
+                    }
+                }
                 _logger.Information(
-                    "Found {InputCount} total input sensors required by all rules",
-                    allRequiredInputs.Count
+                    "Found {InputCount} total input sensors required by all rules (including referenced)",
+                    allReferencedSensors.Count
                 );
 
                 // Build a map of input sensors to the conditions that reference them
@@ -53,7 +73,7 @@ namespace BeaconTester.RuleAnalyzer.Generation
                 {
                     var scenario = GenerateBasicScenario(
                         rule,
-                        allRequiredInputs,
+                        allReferencedSensors,
                         rules,
                         inputConditionMap
                     );
@@ -72,7 +92,7 @@ namespace BeaconTester.RuleAnalyzer.Generation
                 {
                     var temporalTests = GenerateTemporalScenarios(
                         analysis.TemporalRules,
-                        allRequiredInputs,
+                        allReferencedSensors,
                         inputConditionMap
                     );
                     scenarios.AddRange(temporalTests);
@@ -358,6 +378,43 @@ namespace BeaconTester.RuleAnalyzer.Generation
                 bool isTemporalRule = _ruleAnalyzer.ConditionAnalyzer.HasTemporalCondition(
                     rule.Conditions
                 );
+
+                // --- Dependency-producing steps for required non-input: sensors ---
+                var dependencySteps = new List<TestStep>();
+                foreach (var required in allRequiredInputs)
+                {
+                    if (!required.StartsWith("input:") && !required.StartsWith("buffer:"))
+                    {
+                        // Find the rule that produces this dependency
+                        var depRule = allRules.FirstOrDefault(r =>
+                            r.Actions.OfType<SetValueAction>().Any(a => a.Key == required)
+                        );
+                        if (depRule != null)
+                        {
+                            var depTestCase = _testCaseGenerator.GenerateBasicTestCase(depRule);
+                            var depStep = new TestStep
+                            {
+                                Name = $"Produce dependency {required}",
+                                Description = $"Step to trigger rule {depRule.Name} to produce {required} (with required inputs)",
+                                Inputs = EnsureAllRequiredInputs(depTestCase.Inputs, true),
+                                Delay = 500,
+                                Expectations = new List<TestExpectation>
+                                {
+                                    new TestExpectation
+                                    {
+                                        Key = required,
+                                        Expected = depTestCase.Outputs.ContainsKey(required) ? depTestCase.Outputs[required] : true,
+                                        Validator = (depTestCase.Outputs.ContainsKey(required) && depTestCase.Outputs[required] is string) ? "string" : "boolean",
+                                        TimeoutMs = 1000,
+                                    },
+                                },
+                            };
+                            dependencySteps.Add(depStep);
+                        }
+                    }
+                }
+                scenario.Steps = scenario.Steps ?? new List<TestStep>();
+                scenario.Steps.AddRange(dependencySteps);
 
                 // For rules with output dependencies, add a step to trigger the dependency rule first
                 var outputDependencies =

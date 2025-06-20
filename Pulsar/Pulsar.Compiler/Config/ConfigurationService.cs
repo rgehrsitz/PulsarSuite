@@ -152,7 +152,7 @@ namespace Pulsar.Compiler.Config
                         try
                         {
                             var ruleYaml = File.ReadAllText(ruleFile);
-                            var rules = parser.ParseRules(ruleYaml, new List<string>(), Path.GetFileName(ruleFile), true);
+                            var rules = parser.ParseRules(ruleYaml, Path.GetFileName(ruleFile), true);
                             foreach (var rule in rules)
                             {
                                 if (rule.InputSensors != null)
@@ -165,7 +165,7 @@ namespace Pulsar.Compiler.Config
                         }
                         catch (Exception ex)
                         {
-                            _logger.Warning(ex, $"Failed to parse rule file {ruleFile} for sensor extraction");
+                            _logger.Error(ex, "Error parsing rule file: {File}", ruleFile);
                         }
                     }
                     config.ValidSensors = allSensors.ToList();

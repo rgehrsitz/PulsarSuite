@@ -26,9 +26,9 @@ namespace Pulsar.Compiler.Commands
         /// Creates a new validate command
         /// </summary>
         /// <param name="logger">The logger to use</param>
-        public ValidateCommand(ILogger logger) 
+        public ValidateCommand(ILogger logger)
         {
-            _logger = logger?.ForContext<ValidateCommand>() 
+            _logger = logger?.ForContext<ValidateCommand>()
                 ?? throw new ArgumentNullException(nameof(logger));
             _configService = new ConfigurationService(_logger);
         }
@@ -66,7 +66,7 @@ namespace Pulsar.Compiler.Commands
 
                 _logger.Information("Successfully validated {RuleCount} rules", rules.Count);
                 return 0;
-            }, 
+            },
             1, // Return error code 1 on failure
             new Dictionary<string, object>
             {
@@ -102,7 +102,7 @@ namespace Pulsar.Compiler.Commands
                 foreach (var file in ruleFiles)
                 {
                     var content = await File.ReadAllTextAsync(file);
-                    var fileRules = parser.ParseRules(content, validSensors, file);
+                    var fileRules = parser.ParseRules(content, file);
 
                     // Apply validation based on level
                     switch (validationLevel.ToLower())
@@ -189,8 +189,8 @@ namespace Pulsar.Compiler.Commands
                 ErrorHandling.Validate(
                     rule.Actions.Count <= 5,
                     $"Rule '{rule.Name}' has too many actions (max 5 in strict mode, found {rule.Actions.Count})",
-                    new Dictionary<string, object> 
-                    { 
+                    new Dictionary<string, object>
+                    {
                         ["RuleName"] = rule.Name,
                         ["ActionCount"] = rule.Actions.Count
                     }
