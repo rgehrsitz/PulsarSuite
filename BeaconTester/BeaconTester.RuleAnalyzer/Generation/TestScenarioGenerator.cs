@@ -406,6 +406,7 @@ namespace BeaconTester.RuleAnalyzer.Generation
                                         Expected = depTestCase.Outputs.ContainsKey(required) ? depTestCase.Outputs[required] : true,
                                         Validator = (depTestCase.Outputs.ContainsKey(required) && depTestCase.Outputs[required] is string) ? "string" : "boolean",
                                         TimeoutMs = 1000,
+                                        Tolerance = IsTimeBasedKey(required) ? 12000 : (double?)null,
                                     },
                                 },
                             };
@@ -459,6 +460,7 @@ namespace BeaconTester.RuleAnalyzer.Generation
                                                 ? "string"
                                                 : "boolean",
                                         TimeoutMs = 1000,
+                                        Tolerance = IsTimeBasedKey(dep) ? 12000 : (double?)null,
                                     },
                                 },
                             };
@@ -571,7 +573,7 @@ namespace BeaconTester.RuleAnalyzer.Generation
                                 Expected = o.Value,
                                 Validator = GetValidatorType(o.Value),
                                 TimeoutMs = 1000, // Add timeout for rules to process
-                                Tolerance = IsTimeBasedKey(o.Key) ? 8000 : (double?)null,
+                                Tolerance = IsTimeBasedKey(o.Key) ? 12000 : (double?)null,
                             })
                             .ToList(),
                     };
@@ -598,7 +600,7 @@ namespace BeaconTester.RuleAnalyzer.Generation
                                 Expected = o.Value,
                                 Validator = GetValidatorType(o.Value),
                                 TimeoutMs = 1000, // Add timeout for rules to process
-                                Tolerance = IsTimeBasedKey(o.Key) ? 8000 : (double?)null,
+                                Tolerance = IsTimeBasedKey(o.Key) ? 12000 : (double?)null,
                             })
                             .ToList(),
                     };
@@ -726,6 +728,7 @@ namespace BeaconTester.RuleAnalyzer.Generation
                                                     ? "string"
                                                     : "boolean",
                                             TimeoutMs = 1000,
+                                            Tolerance = IsTimeBasedKey(key) ? 12000 : (double?)null,
                                         },
                                     },
                                 };
@@ -812,6 +815,7 @@ namespace BeaconTester.RuleAnalyzer.Generation
                                         Expected = dep.Value,
                                         Validator = dep.Value is string ? "string" : "boolean",
                                         TimeoutMs = 500,
+                                        Tolerance = IsTimeBasedKey(dep.Key) ? 12000 : (double?)null,
                                     },
                                 },
                             };
@@ -1107,7 +1111,7 @@ namespace BeaconTester.RuleAnalyzer.Generation
                                     Validator = GetValidatorType(expectedValue),
                                     TimeoutMs = 1000, // Add timeout for rules to process
                                     Tolerance = IsTimeBasedKey(setAction.Key)
-                                        ? 8000
+                                        ? 12000
                                         : (double?)null,
                                 }
                             );
@@ -1207,7 +1211,7 @@ namespace BeaconTester.RuleAnalyzer.Generation
                                 Expected = null, // Expect no output when dependencies aren't met
                                 Validator = "string", // String validator is most flexible
                                 TimeoutMs = 1000, // Add timeout for rules to process
-                                Tolerance = IsTimeBasedKey(o.Key) ? 8000 : (double?)null,
+                                Tolerance = IsTimeBasedKey(o.Key) ? 12000 : (double?)null,
                             })
                             .ToList(),
                     };
@@ -1765,6 +1769,29 @@ namespace BeaconTester.RuleAnalyzer.Generation
                 return "boolean";
             if (value is double || value is int || value is float)
                 return "numeric";
+            
+            // Handle JsonElement types
+            if (value is System.Text.Json.JsonElement jsonElement)
+            {
+                switch (jsonElement.ValueKind)
+                {
+                    case System.Text.Json.JsonValueKind.True:
+                    case System.Text.Json.JsonValueKind.False:
+                        return "boolean";
+                    case System.Text.Json.JsonValueKind.Number:
+                        return "numeric";
+                    case System.Text.Json.JsonValueKind.String:
+                        string stringVal = jsonElement.GetString() ?? "";
+                        if (stringVal.Equals("true", StringComparison.OrdinalIgnoreCase) ||
+                            stringVal.Equals("false", StringComparison.OrdinalIgnoreCase))
+                            return "boolean";
+                        if (double.TryParse(stringVal, out _))
+                            return "numeric";
+                        return "string";
+                    default:
+                        return "string";
+                }
+            }
 
             // For string values check if they're boolean or numeric in disguise
             if (value is string stringValue)

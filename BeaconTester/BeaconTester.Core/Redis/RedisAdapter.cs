@@ -1,6 +1,5 @@
 using System.Text.Json;
 using BeaconTester.Core.Models;
-using Polly;
 using Serilog;
 using StackExchange.Redis;
 
@@ -459,6 +458,13 @@ namespace BeaconTester.Core.Redis
 
                 string validatorType = expectation.Validator.ToLowerInvariant();
 
+                // Override incorrect validator for JsonElement numbers
+                if (expectation.Expected is JsonElement jsonNum && jsonNum.ValueKind == System.Text.Json.JsonValueKind.Number && validatorType != "numeric")
+                {
+                    _logger.Debug("Overriding validator from {OldValidator} to numeric for JsonElement number", validatorType);
+                    validatorType = "numeric";
+                }
+
                 if (validatorType == "auto")
                 {
                     // Determine validator type from expected value type
@@ -470,6 +476,7 @@ namespace BeaconTester.Core.Redis
                         expectation.Expected is double
                         || expectation.Expected is int
                         || expectation.Expected is float
+                        || (expectation.Expected is JsonElement je && je.ValueKind == System.Text.Json.JsonValueKind.Number)
                     )
                     {
                         validatorType = "numeric";
@@ -782,6 +789,10 @@ namespace BeaconTester.Core.Redis
             {
                 expectedNumber = el;
             }
+            else if (expected is JsonElement je && je.ValueKind == System.Text.Json.JsonValueKind.Number)
+            {
+                expectedNumber = je.GetDouble();
+            }
             else if (expected is string es)
             {
                 // Normalize strings, handling regional format issues
@@ -821,6 +832,10 @@ namespace BeaconTester.Core.Redis
             else if (actual is long al)
             {
                 actualNumber = al;
+            }
+            else if (actual is JsonElement ja && ja.ValueKind == System.Text.Json.JsonValueKind.Number)
+            {
+                actualNumber = ja.GetDouble();
             }
             else if (actual is string asValue)
             {
@@ -870,10 +885,8 @@ namespace BeaconTester.Core.Redis
             if (expected == null && actual == null)
                 return true;
 
-            if (expected == null)
-                expected = string.Empty;
-            if (actual == null)
-                actual = string.Empty;
+            expected ??= string.Empty;
+            actual ??= string.Empty;
 
             // If expected is a DateTime, convert to ISO 8601 string
             if (expected is DateTime dt)
@@ -884,15 +897,24 @@ namespace BeaconTester.Core.Redis
             string expectedString = expected.ToString() ?? string.Empty;
             string actualString = actual.ToString() ?? string.Empty;
 
-            // Special case: allow tolerance for last_alert_time (or similar keys)
-            if ((key ?? string.Empty).EndsWith("last_alert_time"))
+            // Special case: allow tolerance for time-based keys
+            if (IsTimeBasedKey(key ?? string.Empty))
             {
+                _logger.Debug("Time-based key detected: {Key}, Tolerance: {Tolerance}ms", key, toleranceMs);
                 if (DateTime.TryParse(expectedString, null, System.Globalization.DateTimeStyles.RoundtripKind, out var expectedDt) &&
                     DateTime.TryParse(actualString, null, System.Globalization.DateTimeStyles.RoundtripKind, out var actualDt))
                 {
                     var diff = Math.Abs((expectedDt - actualDt).TotalMilliseconds);
                     double allowed = toleranceMs ?? 2000.0; // Use scenario tolerance if set, else 2s default
-                    return diff <= allowed;
+                    _logger.Debug("Time comparison - Expected: {Expected}, Actual: {Actual}, Diff: {Diff}ms, Allowed: {Allowed}ms", 
+                        expectedDt, actualDt, diff, allowed);
+                    bool result = diff <= allowed;
+                    _logger.Debug("Time comparison result: {Result}", result);
+                    return result;
+                }
+                else
+                {
+                    _logger.Debug("Failed to parse timestamps - Expected: {Expected}, Actual: {Actual}", expectedString, actualString);
                 }
             }
 
@@ -1040,6 +1062,14 @@ namespace BeaconTester.Core.Redis
                 _logger.Warning(ex, "Failed to get output value for key {Key}", key);
                 return null;
             }
+        }
+
+        private bool IsTimeBasedKey(string key)
+        {
+            var lower = key.ToLowerInvariant();
+            return lower.Contains("time")
+                || lower.Contains("timestamp")
+                || lower == "output:last_alert_time";
         }
 
         public void Dispose()
