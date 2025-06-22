@@ -332,43 +332,46 @@ namespace BeaconTester.Core.Redis
                                     actualValue = doubleVal;
                                 }
                             }
-                            // Always attempt to convert string values that look like booleans to actual booleans
-                            // This helps handle inconsistencies between test expectations and actual results
-                            string stringBoolValue = stringValue.ToString() ?? string.Empty;
-                            string normalizedBoolValue = stringBoolValue.Trim().ToLowerInvariant();
+                            // Only attempt to convert string values to booleans if the validator is boolean
+                            // or if we haven't already parsed it as a numeric value
+                            if (expectation.Validator == "boolean" && actualValue is string)
+                            {
+                                string stringBoolValue = stringValue.ToString() ?? string.Empty;
+                                string normalizedBoolValue = stringBoolValue.Trim().ToLowerInvariant();
 
-                            if (
-                                normalizedBoolValue == "true"
-                                || normalizedBoolValue == "1"
-                                || normalizedBoolValue == "yes"
-                            )
-                            {
-                                _logger.Debug(
-                                    "Converting string '{RawValue}' to boolean: true",
-                                    stringBoolValue
-                                );
-                                actualValue = true;
-                            }
-                            else if (
-                                normalizedBoolValue == "false"
-                                || normalizedBoolValue == "0"
-                                || normalizedBoolValue == "no"
-                            )
-                            {
-                                _logger.Debug(
-                                    "Converting string '{RawValue}' to boolean: false",
-                                    stringBoolValue
-                                );
-                                actualValue = false;
-                            }
-                            else if (bool.TryParse(stringBoolValue, out var boolVal))
-                            {
-                                _logger.Debug(
-                                    "Parsed '{RawValue}' as boolean: {BoolVal}",
-                                    stringBoolValue,
-                                    boolVal
-                                );
-                                actualValue = boolVal;
+                                if (
+                                    normalizedBoolValue == "true"
+                                    || normalizedBoolValue == "1"
+                                    || normalizedBoolValue == "yes"
+                                )
+                                {
+                                    _logger.Debug(
+                                        "Converting string '{RawValue}' to boolean: true",
+                                        stringBoolValue
+                                    );
+                                    actualValue = true;
+                                }
+                                else if (
+                                    normalizedBoolValue == "false"
+                                    || normalizedBoolValue == "0"
+                                    || normalizedBoolValue == "no"
+                                )
+                                {
+                                    _logger.Debug(
+                                        "Converting string '{RawValue}' to boolean: false",
+                                        stringBoolValue
+                                    );
+                                    actualValue = false;
+                                }
+                                else if (bool.TryParse(stringBoolValue, out var boolVal))
+                                {
+                                    _logger.Debug(
+                                        "Parsed '{RawValue}' as boolean: {BoolVal}",
+                                        stringBoolValue,
+                                        boolVal
+                                    );
+                                    actualValue = boolVal;
+                                }
                             }
                         }
                         break;

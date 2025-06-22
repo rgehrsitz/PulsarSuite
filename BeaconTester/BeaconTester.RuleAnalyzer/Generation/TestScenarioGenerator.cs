@@ -404,7 +404,7 @@ namespace BeaconTester.RuleAnalyzer.Generation
                                     {
                                         Key = required,
                                         Expected = depTestCase.Outputs.ContainsKey(required) ? depTestCase.Outputs[required] : true,
-                                        Validator = (depTestCase.Outputs.ContainsKey(required) && depTestCase.Outputs[required] is string) ? "string" : "boolean",
+                                        Validator = GetValidatorType(depTestCase.Outputs.ContainsKey(required) ? depTestCase.Outputs[required] : true),
                                         TimeoutMs = 1000,
                                         Tolerance = IsTimeBasedKey(required) ? 12000 : (double?)null,
                                     },
@@ -452,13 +452,7 @@ namespace BeaconTester.RuleAnalyzer.Generation
                                         Expected = depTestCase.Outputs.ContainsKey(dep)
                                             ? depTestCase.Outputs[dep]
                                             : true,
-                                        Validator =
-                                            (
-                                                depTestCase.Outputs.ContainsKey(dep)
-                                                && depTestCase.Outputs[dep] is string
-                                            )
-                                                ? "string"
-                                                : "boolean",
+                                        Validator = GetValidatorType(depTestCase.Outputs.ContainsKey(dep) ? depTestCase.Outputs[dep] : true),
                                         TimeoutMs = 1000,
                                         Tolerance = IsTimeBasedKey(dep) ? 12000 : (double?)null,
                                     },
@@ -720,13 +714,7 @@ namespace BeaconTester.RuleAnalyzer.Generation
                                             Expected = dependencyTestCase.Outputs.ContainsKey(key)
                                                 ? dependencyTestCase.Outputs[key]
                                                 : true,
-                                            Validator =
-                                                (
-                                                    dependencyTestCase.Outputs.ContainsKey(key)
-                                                    && dependencyTestCase.Outputs[key] is string
-                                                )
-                                                    ? "string"
-                                                    : "boolean",
+                                            Validator = GetValidatorType(dependencyTestCase.Outputs.ContainsKey(key) ? dependencyTestCase.Outputs[key] : true),
                                             TimeoutMs = 1000,
                                             Tolerance = IsTimeBasedKey(key) ? 12000 : (double?)null,
                                         },
