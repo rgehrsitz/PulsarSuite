@@ -1,0 +1,17 @@
+version: 3
+
+rules:
+  - name: DoorOpenFlag
+    conditions:
+      all:
+        - type: comparison
+          sensor: DoorSwitch
+          operator: "=="
+          value: true
+    actions:
+      - set: { key: door_open, value_expression: true }
+      - log: { log: "🚪 Door opened", emit: on_change }
+    else:
+      actions:
+        - set: { key: door_open, value_expression: false }
+        - log: { log: "🔒 Door closed", emit: on_change }

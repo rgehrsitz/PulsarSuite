@@ -1,40 +1,74 @@
-# Pulsar/Beacon Development Environment
+# PulsarSuite - Rule-Based Data Processing Platform
 
-This repository provides a development environment for Pulsar/Beacon rule-based applications. While an MSBuild-based system (`build/PulsarSuite.build`) was explored for streamlining builds, the primary and currently recommended workflow relies on direct `dotnet` CLI commands.
+PulsarSuite is a comprehensive rule-based data processing platform featuring advanced temporal monitoring, three-valued logic, and automated code generation. The system consists of three main components working together to provide rule compilation, runtime execution, and automated testing.
+
+## Key Features (v3)
+
+- **Temporal Rules**: `threshold_over_time` conditions for sustained monitoring
+- **Three-Valued Logic**: Handles uncertain data with True/False/Indeterminate evaluation
+- **Advanced Emit Controls**: `on_change`, `on_enter`, `always` emission patterns
+- **Comprehensive Validation**: JSON schema validation and compiler linting
+- **Automated Testing**: Complete test scenario generation and execution
+
+## Components
+
+- **Pulsar**: Rules compiler that generates complete C# applications with AOT support
+- **Beacon**: Generated runtime applications that execute rules in real-time with Redis integration
+- **BeaconTester**: Automated testing framework with scenario generation and validation
 
 ## Project Structure
 
 ```bash
 PulsarSuite/
-├── src/                 # Source code and input files
-│   ├── Rules/          # Rule definitions
-│   │   └── [ProjectName]/
-│   │       ├── rules/  # YAML rule files
-│   │       └── config/ # Configuration files
-│   ├── Tests/         # Generated test files
-│   └── Bin/           # Compiled binaries
-├── build/              # Build configuration
-│   └── PulsarSuite.build  # Main build file
-├── output/             # Build outputs
-│   ├── dist/           # Distributable Beacon apps
-│   └── reports/        # Test reports
-├── Pulsar/             # Pulsar compiler source
-└── BeaconTester/       # BeaconTester source
+├── rules/               # Rule definitions (YAML files)
+├── config/              # System configuration
+├── output/              # Generated applications and reports
+├── Pulsar/              # Pulsar compiler source
+├── BeaconTester/        # BeaconTester source
+└── scripts/             # Build automation
 ```
 
-## Getting Started
+## Documentation
 
-### Prerequisites
+- **[Rules Authoring Guide v3](Pulsar/docs/Rules-Authoring-Guide-v3.md)** - Complete guide for writing rules
+- **[Rules Cheat Sheet v3](Pulsar/docs/Rules-Cheat-Sheet-v3.md)** - Quick reference for rule syntax
+- **[Compiler Linting Rules](Pulsar/docs/Compiler-Linting-Rules.md)** - Validation and best practices
+- **[Runtime Evaluation Semantics](Pulsar/docs/Runtime-Evaluation-Semantics.md)** - How rules are evaluated
+- **[End-to-End Guide](Pulsar/docs/End-to-End-Guide.md)** - Complete workflow documentation
 
-- .NET SDK 9.0 or higher (install from <https://dotnet.microsoft.com/download>)
+## Quick Start
+
+1. **Write Rules**: Create YAML rule files in `/rules/` directory
+   ```yaml
+   version: 3
+   rules:
+     - name: HighTempAlert
+       conditions:
+         all:
+           - type: threshold_over_time
+             sensor: Temperature
+             operator: ">"
+             threshold: 75
+             duration: 10s
+       actions:
+         - set: { key: sustained_high, value_expression: true }
+   ```
+
+2. **Run Build Script**: Execute the automated workflow
+   ```bash
+   ./scripts/build-and-test.sh [rules_file] [config_file]
+   ```
+
+3. **Generated Output**: Complete Beacon application appears in `/output/beacon/`
+
+## Prerequisites
+
+- .NET SDK 8.0+ (install from <https://dotnet.microsoft.com/download>)
 - Redis server (required by Beacon runtime)
-  - You can run Redis locally or via Docker
-
----
 
 ## Full Workflow
 
-Comprehensive build, test, and deployment steps are now consolidated in the [End-to-End Guide](Pulsar/docs/End-to-End-Guide.md).
+Comprehensive build, test, and deployment steps are in the [End-to-End Guide](Pulsar/docs/End-to-End-Guide.md).
 
 ---
 

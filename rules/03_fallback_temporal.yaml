@@ -1,0 +1,24 @@
+version: 3
+
+rules:
+  - name: FanOverrideController
+    inputs:
+      - id: Temperature
+        required: false
+        fallback: { strategy: use_last_known, max_age: 5m }
+      - id: LastFanStartTime
+    conditions:
+      all:
+        - type: comparison
+          sensor: Temperature
+          operator: ">"
+          value: 30
+        - type: expression
+          expression: "now() - LastFanStartTime >= 600"
+    actions:
+      - set: { key: fan_override, value_expression: true }
+      - log: { log: "🔥 Fan override ENABLED", emit: on_change }
+    else:
+      actions:
+        - set: { key: fan_override, value_expression: false }
+        - log: { log: "✅ Fan override CLEARED", emit: on_change }

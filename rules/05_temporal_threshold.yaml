@@ -1,0 +1,17 @@
+version: 3
+
+rules:
+  - name: SustainedHighTemp
+    conditions:
+      all:
+        - type: threshold_over_time
+          sensor: Temperature
+          operator: ">"
+          threshold: 75
+          duration: 10s
+    actions:
+      - set: { key: sustained_high, value_expression: true }
+      - log: { log: "🔥 Temp > 75 °C for 10 s", emit: on_enter }
+    else:
+      actions:
+        - set: { key: sustained_high, value_expression: false }

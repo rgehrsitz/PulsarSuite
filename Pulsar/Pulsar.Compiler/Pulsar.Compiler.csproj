@@ -43,7 +43,11 @@
   <!-- Include template files both as embedded resources and content -->
   <ItemGroup>
     <EmbeddedResource Include="Config\Templates\**\*" />
+    <EmbeddedResource Include="Config\pulsar_rules_v3.schema.json" />
     <Content Include="Config\Templates\**\*">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Config\pulsar_rules_v3.schema.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
   </ItemGroup>

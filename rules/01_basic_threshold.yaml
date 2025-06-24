@@ -1,0 +1,15 @@
+version: 3
+
+rules:
+  - name: HighTempAlert
+    conditions:
+      all:
+        - type: comparison
+          sensor: Temperature
+          operator: ">"
+          value: 30
+    actions:
+      - set: { key: high_temp, value_expression: true }
+    else:
+      actions:
+        - set: { key: high_temp, value_expression: false }

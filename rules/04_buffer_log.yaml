@@ -1,0 +1,19 @@
+version: 3
+
+rules:
+  - name: TempHistoryBuffer
+    conditions:
+      all:
+        - type: comparison
+          sensor: Temperature
+          operator: ">"
+          value: -273    # always true (cheap unconditional rule)
+    actions:
+      - buffer:
+          key: temp_history
+          value_expression: Temperature
+          max_items: 100
+          emit: on_change
+      - log:
+          log: "🌡️ Temp recorded: ${Temperature}"
+          emit: on_enter        # only first time buffer receives new value
