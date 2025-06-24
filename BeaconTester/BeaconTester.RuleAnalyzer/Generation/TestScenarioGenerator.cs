@@ -90,12 +90,21 @@ namespace BeaconTester.RuleAnalyzer.Generation
                 // Generate temporal tests
                 if (analysis.TemporalRules.Count > 0)
                 {
-                    var temporalTests = GenerateTemporalScenarios(
+                    // Generate basic temporal tests (existing)
+                    var basicTemporalTests = GenerateTemporalScenarios(
                         analysis.TemporalRules,
                         allReferencedSensors,
                         inputConditionMap
                     );
-                    scenarios.AddRange(temporalTests);
+                    scenarios.AddRange(basicTemporalTests);
+                    
+                    // Generate comprehensive v3 temporal tests (NEW)
+                    var temporalGenerator = new TemporalTestScenarioGenerator(_logger);
+                    foreach (var temporalRule in analysis.TemporalRules)
+                    {
+                        var comprehensiveTests = temporalGenerator.GenerateTemporalScenarios(temporalRule);
+                        scenarios.AddRange(comprehensiveTests);
+                    }
                 }
 
                 _logger.Information("Generated {ScenarioCount} test scenarios", scenarios.Count);

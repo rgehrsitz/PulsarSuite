@@ -63,7 +63,7 @@ namespace Pulsar.Compiler.Generation.Helpers
         {
             if (conditions == null)
             {
-                return "true";
+                return "EvalResult.True";
             }
 
             var parts = new List<string>();
@@ -71,16 +71,21 @@ namespace Pulsar.Compiler.Generation.Helpers
             if (conditions.All?.Any() == true)
             {
                 var allConditions = conditions.All.Select(GenerateConditionExpression);
-                parts.Add($"({string.Join(" && ", allConditions)})");
+                var combinedAll = allConditions.Aggregate((a, b) => $"EvalOps.And({a}, {b})");
+                parts.Add($"({combinedAll})");
             }
 
             if (conditions.Any?.Any() == true)
             {
                 var anyConditions = conditions.Any.Select(GenerateConditionExpression);
-                parts.Add($"({string.Join(" || ", anyConditions)})");
+                var combinedAny = anyConditions.Aggregate((a, b) => $"EvalOps.Or({a}, {b})");
+                parts.Add($"({combinedAny})");
             }
 
-            return parts.Count > 0 ? string.Join(" && ", parts) : "true";
+            if (parts.Count == 0)
+                return "EvalResult.True";
+            
+            return parts.Count == 1 ? parts[0] : parts.Aggregate((a, b) => $"EvalOps.And({a}, {b})");
         }
 
         public static string GenerateConditionExpression(ConditionDefinition condition)
@@ -116,7 +121,6 @@ namespace Pulsar.Compiler.Generation.Helpers
             if (comparison.Sensor.StartsWith("output:"))
             {
                 // For output sensors, try getting from outputs first, then inputs
-                // Use unique variable names for TryGetValue to avoid conflicts
                 string varName = GenerateUniqueVarName($"outVal_{comparison.Sensor.Replace(":", "_")}");
                 sensorAccess = $"(outputs.TryGetValue(\"{comparison.Sensor}\", out var {varName}) ? {varName} : " +
                               $"(inputs.ContainsKey(\"{comparison.Sensor}\") ? inputs[\"{comparison.Sensor}\"] : null))";
@@ -124,35 +128,76 @@ namespace Pulsar.Compiler.Generation.Helpers
             else
             {
                 // Regular input sensor - add safety check to prevent KeyNotFoundException
-                // Use a hash code in the variable name to make it unique within nested expressions
-                // Use helper method to generate a unique variable name
                 string varName = GenerateUniqueVarName($"inVal_{comparison.Sensor.Replace(":", "_")}");
                 sensorAccess = $"(inputs.TryGetValue(\"{comparison.Sensor}\", out var {varName}) ? {varName} : null)";
-
             }
 
-            // Special handling for boolean values
-            if (comparison.Value is bool boolValue)
+            // Generate three-valued logic comparison
+            return $"CompareValue({sensorAccess}, {FormatValue(comparison.Value)}, \"{op}\")";
+        }
+
+        private static string FormatValue(object? value)
+        {
+            return value switch
             {
-                // Use C# boolean literal (lowercase true/false)
-                return $"Convert.ToBoolean({sensorAccess}) {op} {boolValue.ToString().ToLower()}";
-            }
-            // Special handling for string values
-            else if (comparison.Value is string stringValue)
+                bool b => b.ToString().ToLower(),
+                string s => $"\"{s}\"",
+                _ => value?.ToString() ?? "null"
+            };
+        }
+
+        public static string GenerateHelperMethods()
+        {
+            return @"
+        private EvalResult CompareValue(object? sensorValue, object? expectedValue, string op)
+        {
+            if (sensorValue == null)
+                return EvalResult.Indeterminate;
+
+            try
             {
-                // Use string comparison with proper quotes
-                return $"{sensorAccess}?.ToString() {op} \"{stringValue}\"";
+                return op switch
+                {
+                    "">"" => Convert.ToDouble(sensorValue) > Convert.ToDouble(expectedValue) ? EvalResult.True : EvalResult.False,
+                    "">="" => Convert.ToDouble(sensorValue) >= Convert.ToDouble(expectedValue) ? EvalResult.True : EvalResult.False,
+                    ""<"" => Convert.ToDouble(sensorValue) < Convert.ToDouble(expectedValue) ? EvalResult.True : EvalResult.False,
+                    ""<="" => Convert.ToDouble(sensorValue) <= Convert.ToDouble(expectedValue) ? EvalResult.True : EvalResult.False,
+                    ""=="" => Equals(sensorValue, expectedValue) ? EvalResult.True : EvalResult.False,
+                    ""!="" => !Equals(sensorValue, expectedValue) ? EvalResult.True : EvalResult.False,
+                    _ => EvalResult.Indeterminate
+                };
             }
-            // Default to numeric comparison
-            else
+            catch
             {
-                return $"Convert.ToDouble({sensorAccess}) {op} {comparison.Value}";
+                return EvalResult.Indeterminate;
             }
+        }
+
+        private WindowTracker GetOrCreateWindowTracker(string sensor, double threshold, string op, TimeSpan duration)
+        {
+            var key = $""{sensor}_{threshold}_{op}_{duration.TotalMilliseconds}"";
+            return _windowTrackers.GetOrAdd(key, _ => new WindowTracker(threshold, op, duration));
+        }
+
+        private double? GetSensorValue(string sensor, Dictionary<string, object> inputs)
+        {
+            if (!inputs.TryGetValue(sensor, out var value) || value == null)
+                return null;
+                
+            try
+            {
+                return Convert.ToDouble(value);
+            }
+            catch
+            {
+                return null;
+            }
+        }";
         }
 
         public static string GenerateThresholdCondition(ThresholdOverTimeCondition threshold)
         {
-            // Convert the ComparisonOperator enum to the string operator format expected by CheckThreshold
+            // Convert the ComparisonOperator enum to the string operator format
             var op = threshold.ComparisonOperator switch
             {
                 ComparisonOperator.GreaterThan => ">",
@@ -166,7 +211,10 @@ namespace Pulsar.Compiler.Generation.Helpers
                 ),
             };
 
-            return $"CheckThreshold(\"{threshold.Sensor}\", {threshold.Threshold}, {threshold.Duration}, \"{op}\")";
+            // Use new WindowTracker-based approach with three-valued logic
+            return $"GetOrCreateWindowTracker(\"{threshold.Sensor}\", {threshold.Threshold}, \"{op}\", " +
+                   $"TimeSpan.FromMilliseconds({threshold.Duration})).Evaluate(" +
+                   $"GetSensorValue(\"{threshold.Sensor}\", inputs), DateTime.UtcNow)";
         }
 
         public static string GenerateAction(ActionDefinition action)

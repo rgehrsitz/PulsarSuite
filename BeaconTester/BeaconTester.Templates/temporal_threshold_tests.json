@@ -1,0 +1,132 @@
+{
+  "name": "TemporalThresholdTestTemplate",
+  "description": "Template for testing threshold_over_time conditions with WindowTracker behavior",
+  "clearOutputs": true,
+  "steps": [
+    {
+      "name": "Initial state - below threshold",
+      "description": "Start with sensor value below threshold, window should not be established",
+      "inputs": [
+        {
+          "key": "input:temperature",
+          "value": 70
+        }
+      ],
+      "delay": 500,
+      "expectations": [
+        {
+          "key": "output:sustained_high",
+          "expected": "False",
+          "validator": "evalresult",
+          "description": "No window established yet"
+        }
+      ]
+    },
+    {
+      "name": "Above threshold - window starts",
+      "description": "Sensor crosses threshold, window tracking begins but duration not met",
+      "inputs": [
+        {
+          "key": "input:temperature", 
+          "value": 80
+        }
+      ],
+      "delay": 2000,
+      "expectations": [
+        {
+          "key": "output:sustained_high",
+          "expected": "False", 
+          "validator": "evalresult",
+          "description": "Window started but duration not completed"
+        }
+      ]
+    },
+    {
+      "name": "Sustained above threshold - window completes",
+      "description": "Continue above threshold until duration is met",
+      "inputs": [
+        {
+          "key": "input:temperature",
+          "value": 80
+        }
+      ],
+      "delay": 9000,
+      "expectations": [
+        {
+          "key": "output:sustained_high",
+          "expected": "True",
+          "validator": "evalresult", 
+          "description": "Duration completed, condition should be True"
+        }
+      ]
+    },
+    {
+      "name": "Drop below threshold - window resets",
+      "description": "Sensor drops below threshold, window should reset immediately",
+      "inputs": [
+        {
+          "key": "input:temperature",
+          "value": 70
+        }
+      ],
+      "delay": 500,
+      "expectations": [
+        {
+          "key": "output:sustained_high",
+          "expected": "False",
+          "validator": "evalresult",
+          "description": "Window reset, condition becomes False"
+        }
+      ]
+    },
+    {
+      "name": "Sensor unavailable - indeterminate state",
+      "description": "Remove sensor data to test three-valued logic",
+      "inputs": [],
+      "delay": 1000,
+      "expectations": [
+        {
+          "key": "output:sustained_high",
+          "expected": "Indeterminate",
+          "validator": "evalresult",
+          "description": "Missing sensor data should result in Indeterminate"
+        }
+      ]
+    },
+    {
+      "name": "Sensor restored - restart tracking",
+      "description": "Restore sensor data and verify window tracking restarts",
+      "inputs": [
+        {
+          "key": "input:temperature",
+          "value": 80
+        }
+      ],
+      "delay": 12000,
+      "expectations": [
+        {
+          "key": "output:sustained_high",
+          "expected": "True",
+          "validator": "evalresult",
+          "description": "New window established and completed after sensor restoration"
+        }
+      ]
+    }
+  ],
+  "metadata": {
+    "ruleType": "temporal_threshold",
+    "testCategories": [
+      "window_establishment",
+      "window_interruption", 
+      "duration_boundary",
+      "sensor_unavailability",
+      "three_valued_logic"
+    ],
+    "validationPoints": [
+      "WindowTracker state transitions",
+      "Duration timing accuracy",
+      "EvalResult three-valued logic",
+      "Sensor unavailability handling"
+    ]
+  }
+}

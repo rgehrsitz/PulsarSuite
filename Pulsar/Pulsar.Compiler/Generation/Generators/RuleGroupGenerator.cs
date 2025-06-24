@@ -28,6 +28,7 @@ namespace Pulsar.Compiler.Generation.Generators
 
             sb.AppendLine("using System;");
             sb.AppendLine("using System.Collections.Generic;");
+            sb.AppendLine("using System.Collections.Concurrent;");
             sb.AppendLine("using System.Linq; // Required for Any() and All() extension methods");
             sb.AppendLine("using System.Threading.Tasks;");
             sb.AppendLine("using Serilog;");
@@ -37,6 +38,7 @@ namespace Pulsar.Compiler.Generation.Generators
             sb.AppendLine("using Beacon.Runtime.Rules;");
             sb.AppendLine("using Beacon.Runtime.Interfaces;");
             sb.AppendLine("using Beacon.Runtime.Services;");
+            sb.AppendLine("using Pulsar.Runtime.Helpers;");
             sb.AppendLine("using ILogger = Serilog.ILogger;");
             sb.AppendLine();
 
@@ -52,6 +54,12 @@ namespace Pulsar.Compiler.Generation.Generators
             sb.AppendLine("        public IRedisService Redis { get; }");
             sb.AppendLine("        public ILogger Logger { get; }");
             sb.AppendLine("        public RingBufferManager BufferManager { get; }");
+            sb.AppendLine();
+            
+            // v3 Infrastructure
+            sb.AppendLine("        // v3 Infrastructure for temporal conditions and emit controls");
+            sb.AppendLine("        private readonly ConcurrentDictionary<string, WindowTracker> _windowTrackers = new();");
+            sb.AppendLine("        private readonly Dictionary<string, EmitGuard> _emitGuards = new();");
             sb.AppendLine();
 
             // Constructor
@@ -140,15 +148,19 @@ namespace Pulsar.Compiler.Generation.Generators
                 sb.AppendLine($"            // Source: {rule.SourceFile}:{rule.LineNumber}");
                 sb.AppendLine();
 
-                // Generate condition check
+                // Generate v3 three-valued logic condition evaluation
                 if (rule.Conditions != null)
                 {
                     sb.AppendLine(
-                        $"            if ({GenerationHelpers.GenerateCondition(rule.Conditions)})"
+                        $"            var conditionResult_{rule.Name.Replace(" ", "_")} = {GenerationHelpers.GenerateCondition(rule.Conditions)};"
                     );
+                    sb.AppendLine();
+                    
+                    // Primary branch (True condition)
+                    sb.AppendLine($"            if (conditionResult_{rule.Name.Replace(" ", "_")} == EvalResult.True)");
                     sb.AppendLine("            {");
 
-                    // Generate actions
+                    // Generate primary actions
                     if (rule.Actions != null)
                     {
                         foreach (var action in rule.Actions)
@@ -160,10 +172,26 @@ namespace Pulsar.Compiler.Generation.Generators
                     }
 
                     sb.AppendLine("            }");
+                    
+                    // Else branch (False or Indeterminate condition)
+                    if (rule.ElseActions != null && rule.ElseActions.Any())
+                    {
+                        sb.AppendLine($"            else if (conditionResult_{rule.Name.Replace(" ", "_")} == EvalResult.False || conditionResult_{rule.Name.Replace(" ", "_")} == EvalResult.Indeterminate)");
+                        sb.AppendLine("            {");
+                        
+                        foreach (var action in rule.ElseActions)
+                        {
+                            sb.AppendLine(
+                                $"                {GenerationHelpers.GenerateAction(action)}"
+                            );
+                        }
+                        
+                        sb.AppendLine("            }");
+                    }
                 }
                 else
                 {
-                    // If no conditions, always execute actions
+                    // If no conditions, always execute actions (EvalResult.True)
                     if (rule.Actions != null)
                     {
                         foreach (var action in rule.Actions)
@@ -181,17 +209,9 @@ namespace Pulsar.Compiler.Generation.Generators
             sb.AppendLine("            await Task.CompletedTask;");
             sb.AppendLine("        }");
 
-            // Add helper methods for threshold checking
+            // Add v3 helper methods
             sb.AppendLine();
-            sb.AppendLine(
-                "        private bool CheckThreshold(string sensor, double threshold, int duration, string comparisonOperator)"
-            );
-            sb.AppendLine("        {");
-            sb.AppendLine(
-                "            var values = BufferManager.GetValues(sensor, TimeSpan.FromMilliseconds(duration)).Select(v => v.Value);"
-            );
-            sb.AppendLine("            return ThresholdHelper.CheckThreshold(values, threshold, comparisonOperator);");
-            sb.AppendLine("        }");
+            sb.AppendLine(GenerationHelpers.GenerateHelperMethods());
             sb.AppendLine();
 
             // Add SendMessage method for rules that publish messages
