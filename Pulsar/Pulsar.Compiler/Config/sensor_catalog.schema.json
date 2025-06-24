@@ -1,0 +1,102 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Pulsar Sensor & Output Catalog (v1)",
+  "type": "object",
+  "additionalProperties": false,
+
+  "properties": {
+    "version": {
+      "type": "integer",
+      "const": 1,
+      "description": "Schema version – must be 1."
+    },
+
+    "sensors": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/sensor" },
+      "description": "All physical sensors, virtual outputs, and internal buffers."
+    }
+  },
+
+  "required": [ "version", "sensors" ],
+
+  "$defs": {
+    "identifier": {
+      "type": "string",
+      "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
+    },
+
+    "duration": {
+      "type": "string",
+      "pattern": "^(\\d+)(ms|s|m|h|d)$",
+      "description": "Timespan such as 500ms, 30s, 5m, 2h, 1d"
+    },
+
+    "numeric_range": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "min": { "type": "number" },
+        "max": { "type": "number" }
+      },
+      "required": [ "min", "max" ]
+    },
+
+    "sensor": {
+      "type": "object",
+      "additionalProperties": false,
+
+      "properties": {
+        "id":         { "$ref": "#/$defs/identifier" },
+        "type": {
+          "type": "string",
+          "enum": [ "float", "int", "bool", "string" ]
+        },
+
+        "unit":        { "type": "string" },
+        "description": { "type": "string" },
+        "tags": {
+          "type": "array",
+          "items": { "type": "string" },
+          "uniqueItems": true
+        },
+
+        "retain_last": {
+          "$ref": "#/$defs/duration",
+          "description": "Cache the last value for this duration (0 disables)."
+        },
+        "quality": {
+          "type": "string",
+          "enum": [ "raw", "filtered", "derived" ],
+          "default": "raw"
+        },
+
+        "range": { "$ref": "#/$defs/numeric_range" },
+
+        "export": {
+          "type": "boolean",
+          "default": false,
+          "description": "Expose in Beacon UI & metrics if true."
+        },
+
+        "source": {
+          "type": "string",
+          "enum": [ "physical", "virtual", "buffer" ],
+          "default": "physical"
+        }
+      },
+
+      "required": [ "id", "type" ],
+
+      "allOf": [
+        {
+          "if": { "properties": { "type": { "enum": [ "float", "int" ] } } },
+          "then": { "else": true },
+          "else": { "not": { "required": [ "range" ] } }
+        }
+      ]
+    }
+  }
+}

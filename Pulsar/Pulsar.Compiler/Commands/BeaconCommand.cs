@@ -2,6 +2,7 @@
 
 using Pulsar.Compiler.Config;
 using Pulsar.Compiler.Core;
+using Pulsar.Compiler.Generation.Generators;
 using Pulsar.Compiler.Models;
 using Pulsar.Compiler.Parsers;
 using Serilog;
@@ -185,6 +186,32 @@ namespace Pulsar.Compiler.Commands
                 if (buildResult.Success)
                 {
                     _logger.Information("Beacon solution generated successfully");
+
+                    // Generate interface metadata for UI components
+                    try
+                    {
+                        var metadataGenerator = new InterfaceMetadataGenerator(_logger);
+                        var metadataOutputPath = Path.Combine(outputPath, "Beacon", "Beacon.Runtime", "Generated");
+                        
+                        // Generate interface outputs metadata
+                        metadataGenerator.GenerateInterfaceOutputsMetadata(rules, metadataOutputPath);
+                        
+                        // Generate sensor catalog metadata if available
+                        var catalogPath = options.GetValueOrDefault("catalog", null);
+                        if (!string.IsNullOrEmpty(catalogPath))
+                        {
+                            metadataGenerator.GenerateSensorCatalogMetadata(catalogPath, metadataOutputPath);
+                        }
+                        
+                        // Generate unified data dictionary
+                        metadataGenerator.GenerateDataDictionary(rules, catalogPath, metadataOutputPath);
+                        
+                        _logger.Information("Interface metadata generated successfully");
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.Warning(ex, "Failed to generate interface metadata, but beacon generation was successful");
+                    }
 
                     // Use the GeneratedFiles from the BuildResult
                     if (buildResult.GeneratedFiles != null && buildResult.GeneratedFiles.Length > 0)

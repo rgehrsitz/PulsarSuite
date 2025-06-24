@@ -1,0 +1,242 @@
+version: 3
+
+# Comprehensive v3 example demonstrating all new features:
+# - Temporal threshold_over_time conditions
+# - Three-valued logic handling
+# - Advanced emit controls (on_change, on_enter, always)
+# - Complex rule dependencies
+# - Fallback strategies
+
+rules:
+  # Example 1: Basic temporal threshold with window tracking
+  - name: SustainedHighTemperature
+    inputs:
+      - id: Temperature
+        required: true
+    conditions:
+      all:
+        - type: threshold_over_time
+          sensor: Temperature
+          operator: ">"
+          threshold: 75
+          duration: 10s
+    actions:
+      - set: 
+          key: sustained_high_temp
+          value_expression: true
+          emit: on_enter  # Only log when entering high state
+      - log:
+          log: "🔥 ALERT: Temperature sustained above 75°C for 10 seconds"
+          emit: on_enter
+    else:
+      actions:
+        - set:
+            key: sustained_high_temp
+            value_expression: false
+
+  # Example 2: Complex temporal condition with fallback handling
+  - name: PressureStabilityMonitor
+    inputs:
+      - id: Pressure
+        required: false
+        fallback:
+          strategy: use_last_known
+          max_age: 30s
+      - id: SystemMode
+    conditions:
+      all:
+        - type: threshold_over_time
+          sensor: Pressure
+          operator: "<"
+          threshold: 50
+          duration: 5s
+        - type: comparison
+          sensor: SystemMode
+          operator: "=="
+          value: "operational"
+    actions:
+      - set:
+          key: pressure_stable
+          value_expression: false
+          emit: on_change
+      - log:
+          log: "⚠️ WARNING: Pressure below 50 PSI for 5+ seconds"
+          emit: on_change
+    else:
+      actions:
+        - set:
+            key: pressure_stable
+            value_expression: true
+
+  # Example 3: Multi-condition temporal rule with dependencies
+  - name: CriticalSystemAlert
+    inputs:
+      - id: Temperature
+      - id: Pressure
+    conditions:
+      all:
+        - type: comparison
+          sensor: sustained_high_temp
+          operator: "=="
+          value: true
+        - type: comparison
+          sensor: pressure_stable
+          operator: "=="
+          value: false
+    actions:
+      - set:
+          key: critical_alert
+          value_expression: true
+          emit: on_enter
+      - log:
+          log: "🚨 CRITICAL: High temperature AND unstable pressure detected!"
+          emit: on_enter
+    else:
+      actions:
+        - set:
+            key: critical_alert
+            value_expression: false
+
+  # Example 4: Expression-based rule with sensor unavailability handling
+  - name: EfficiencyCalculator
+    inputs:
+      - id: FlowRate
+        required: false
+        fallback:
+          strategy: use_default
+          default_value: 0
+      - id: Pressure
+        required: false
+        fallback:
+          strategy: propagate_unavailable
+    conditions:
+      all:
+        - type: expression
+          expression: "FlowRate > 0 and Pressure > 0"
+    actions:
+      - set:
+          key: system_efficiency
+          value_expression: "(FlowRate * Pressure) / 100"
+          emit: on_change
+    else:
+      actions:
+        - set:
+            key: system_efficiency
+            value_expression: 0
+
+  # Example 5: Buffer action with temporal data collection
+  - name: TemperatureHistoryCollector
+    inputs:
+      - id: Temperature
+    conditions:
+      all:
+        - type: comparison
+          sensor: Temperature
+          operator: ">"
+          value: -273  # Always true condition for continuous collection
+    actions:
+      - buffer:
+          key: temp_history
+          value_expression: Temperature
+          max_items: 100
+          emit: always
+      - set:
+          key: last_temp_reading
+          value_expression: Temperature
+          emit: on_change
+
+  # Example 6: Advanced temporal boundary testing
+  - name: RapidTemperatureChange
+    inputs:
+      - id: Temperature
+    conditions:
+      all:
+        - type: threshold_over_time
+          sensor: Temperature
+          operator: ">"
+          threshold: 80
+          duration: 2s
+    actions:
+      - set:
+          key: rapid_temp_rise
+          value_expression: true
+          emit: on_enter
+      - log:
+          log: "⚡ RAPID: Temperature rose above 80°C in less than 2 seconds"
+          emit: on_enter
+    else:
+      actions:
+        - set:
+            key: rapid_temp_rise
+            value_expression: false
+
+  # Example 7: Safety shutdown logic with multiple temporal conditions
+  - name: EmergencyShutdownLogic
+    inputs:
+      - id: Temperature
+      - id: Pressure
+      - id: EmergencyButton
+        required: false
+        fallback:
+          strategy: use_default
+          default_value: false
+    conditions:
+      any:
+        - type: comparison
+          sensor: critical_alert
+          operator: "=="
+          value: true
+        - type: comparison
+          sensor: EmergencyButton
+          operator: "=="
+          value: true
+        - type: threshold_over_time
+          sensor: Temperature
+          operator: ">"
+          threshold: 95
+          duration: 1s
+    actions:
+      - set:
+          key: emergency_shutdown
+          value_expression: true
+          emit: on_enter
+      - log:
+          log: "🛑 EMERGENCY SHUTDOWN TRIGGERED"
+          emit: on_enter
+    else:
+      actions:
+        - set:
+            key: emergency_shutdown
+            value_expression: false
+
+  # Example 8: Complex expression with multiple sensors
+  - name: SystemHealthScore
+    inputs:
+      - id: Temperature
+        required: false
+        fallback:
+          strategy: use_last_known
+          max_age: 1m
+      - id: Pressure
+        required: false
+        fallback:
+          strategy: use_last_known
+          max_age: 1m
+      - id: FlowRate
+        required: false
+        fallback:
+          strategy: use_default
+          default_value: 50
+    conditions:
+      all:
+        - type: expression
+          expression: "Temperature > 0 and Pressure > 0"
+    actions:
+      - set:
+          key: health_score
+          value_expression: "((100 - Temperature) + Pressure + FlowRate) / 3"
+          emit: on_change
+      - set:
+          key: system_status
+          value_expression: "health_score > 60 ? 'good' : 'poor'"
+          emit: on_change

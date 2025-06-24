@@ -1,0 +1,160 @@
+{
+  "version": 1,
+  "sensors": [
+    {
+      "id": "Temperature",
+      "type": "float",
+      "unit": "°C",
+      "description": "Primary temperature sensor for system monitoring",
+      "retain_last": "5m",
+      "range": {
+        "min": -40,
+        "max": 150
+      },
+      "quality": "filtered",
+      "export": true,
+      "source": "physical",
+      "tags": ["critical", "temperature", "hvac"]
+    },
+    {
+      "id": "Pressure",
+      "type": "float", 
+      "unit": "PSI",
+      "description": "System pressure monitoring sensor",
+      "retain_last": "2m",
+      "range": {
+        "min": 0,
+        "max": 200
+      },
+      "quality": "raw",
+      "export": true,
+      "source": "physical",
+      "tags": ["critical", "pressure"]
+    },
+    {
+      "id": "FlowRate",
+      "type": "float",
+      "unit": "L/min",
+      "description": "Fluid flow rate measurement",
+      "retain_last": "1m",
+      "range": {
+        "min": 0,
+        "max": 1000
+      },
+      "quality": "derived",
+      "export": true,
+      "source": "physical",
+      "tags": ["flow", "efficiency"]
+    },
+    {
+      "id": "SystemMode",
+      "type": "string",
+      "description": "Current system operational mode",
+      "retain_last": "10m",
+      "export": true,
+      "source": "physical",
+      "tags": ["status", "mode"]
+    },
+    {
+      "id": "EmergencyButton",
+      "type": "bool",
+      "description": "Emergency stop button state",
+      "retain_last": "1h",
+      "export": true,
+      "source": "physical",
+      "tags": ["safety", "emergency"]
+    },
+    {
+      "id": "sustained_high_temp",
+      "type": "bool",
+      "description": "Indicates sustained high temperature condition",
+      "export": true,
+      "source": "virtual",
+      "tags": ["alert", "derived"]
+    },
+    {
+      "id": "pressure_stable",
+      "type": "bool", 
+      "description": "Indicates pressure stability status",
+      "export": true,
+      "source": "virtual",
+      "tags": ["status", "derived"]
+    },
+    {
+      "id": "critical_alert",
+      "type": "bool",
+      "description": "Critical system alert status",
+      "export": true,
+      "source": "virtual",
+      "tags": ["critical", "alert"]
+    },
+    {
+      "id": "system_efficiency",
+      "type": "float",
+      "unit": "%",
+      "description": "Calculated system efficiency percentage",
+      "range": {
+        "min": 0,
+        "max": 100
+      },
+      "export": true,
+      "source": "virtual",
+      "tags": ["efficiency", "calculated"]
+    },
+    {
+      "id": "temp_history",
+      "type": "float",
+      "unit": "°C",
+      "description": "Temperature history buffer for trend analysis",
+      "export": false,
+      "source": "buffer",
+      "tags": ["history", "buffer"]
+    },
+    {
+      "id": "last_temp_reading",
+      "type": "float",
+      "unit": "°C", 
+      "description": "Most recent temperature reading",
+      "export": true,
+      "source": "virtual",
+      "tags": ["current", "temperature"]
+    },
+    {
+      "id": "rapid_temp_rise",
+      "type": "bool",
+      "description": "Indicates rapid temperature increase",
+      "export": true,
+      "source": "virtual",
+      "tags": ["alert", "temperature"]
+    },
+    {
+      "id": "emergency_shutdown",
+      "type": "bool",
+      "description": "Emergency shutdown status",
+      "export": true,
+      "source": "virtual",
+      "tags": ["critical", "safety", "shutdown"]
+    },
+    {
+      "id": "health_score",
+      "type": "float",
+      "unit": "score",
+      "description": "Overall system health score",
+      "range": {
+        "min": 0,
+        "max": 100
+      },
+      "export": true,
+      "source": "virtual",
+      "tags": ["health", "score"]
+    },
+    {
+      "id": "system_status",
+      "type": "string",
+      "description": "Overall system status indicator",
+      "export": true,
+      "source": "virtual",
+      "tags": ["status", "health"]
+    }
+  ]
+}

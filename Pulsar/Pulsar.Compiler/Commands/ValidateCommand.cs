@@ -5,6 +5,7 @@ using Pulsar.Compiler.Config;
 using Pulsar.Compiler.Exceptions;
 using Pulsar.Compiler.Models;
 using Pulsar.Compiler.Parsers;
+using Pulsar.Compiler.Validation;
 using Serilog;
 using System;
 using System.Collections.Generic;
@@ -63,6 +64,12 @@ namespace Pulsar.Compiler.Commands
                     parser,
                     validationLevel
                 );
+
+                // Enhanced v3 validation: Sensor catalog validation
+                if (options.ContainsKey("catalog"))
+                {
+                    await ValidateSensorCatalog(options["catalog"], rules);
+                }
 
                 _logger.Information("Successfully validated {RuleCount} rules", rules.Count);
                 return 0;
@@ -130,6 +137,59 @@ namespace Pulsar.Compiler.Commands
                 ["ValidationLevel"] = validationLevel,
                 ["ValidSensorCount"] = validSensors?.Count ?? 0
             });
+        }
+
+        /// <summary>
+        /// Validates sensor catalog and cross-references with rules
+        /// </summary>
+        /// <param name="catalogPath">Path to the sensor catalog file</param>
+        /// <param name="rules">Rules to validate against catalog</param>
+        private async Task ValidateSensorCatalog(string catalogPath, List<RuleDefinition> rules)
+        {
+            _logger.Information("Validating sensor catalog: {CatalogPath}", catalogPath);
+            
+            var validator = new SensorCatalogValidator(_logger);
+            
+            // Validate catalog schema and business rules
+            var catalogResult = await validator.ValidateAsync(catalogPath);
+            if (!catalogResult.IsValid)
+            {
+                throw new ValidationException(
+                    "Sensor catalog validation failed",
+                    new Dictionary<string, object>
+                    {
+                        ["CatalogPath"] = catalogPath,
+                        ["Errors"] = catalogResult.Errors
+                    }
+                );
+            }
+
+            // Load catalog and validate rule references
+            var catalogContent = await File.ReadAllTextAsync(catalogPath);
+            var catalog = System.Text.Json.JsonSerializer.Deserialize<SensorCatalog>(catalogContent, new System.Text.Json.JsonSerializerOptions
+            {
+                PropertyNameCaseInsensitive = true,
+                AllowTrailingCommas = true
+            });
+
+            if (catalog != null)
+            {
+                var referenceResult = validator.ValidateRuleSensorReferences(rules, catalog);
+                if (!referenceResult.IsValid)
+                {
+                    throw new ValidationException(
+                        "Rule sensor reference validation failed",
+                        new Dictionary<string, object>
+                        {
+                            ["CatalogPath"] = catalogPath,
+                            ["RuleCount"] = rules.Count,
+                            ["Errors"] = referenceResult.Errors
+                        }
+                    );
+                }
+            }
+
+            _logger.Information("Sensor catalog validation completed successfully");
         }
 
         /// <summary>

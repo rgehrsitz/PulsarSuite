@@ -38,16 +38,26 @@
     <PackageReference Include="Microsoft.Extensions.Hosting" Version="8.0.0" />
     <PackageReference Include="Microsoft.Extensions.Logging" Version="8.0.0" />
     <PackageReference Include="Serilog.Extensions.Logging" Version="8.0.0" />
+    <PackageReference Include="NJsonSchema" Version="11.0.0" />
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
   </ItemGroup>
 
   <!-- Include template files both as embedded resources and content -->
   <ItemGroup>
     <EmbeddedResource Include="Config\Templates\**\*" />
     <EmbeddedResource Include="Config\pulsar_rules_v3.schema.json" />
+    <EmbeddedResource Include="Config\sensor_catalog.schema.json" />
+    <EmbeddedResource Include="Config\interface_outputs.schema.json" />
     <Content Include="Config\Templates\**\*">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
     <Content Include="Config\pulsar_rules_v3.schema.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Config\sensor_catalog.schema.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Config\interface_outputs.schema.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
   </ItemGroup>

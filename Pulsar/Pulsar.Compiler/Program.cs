@@ -75,21 +75,47 @@ namespace Pulsar.Compiler
 
         private static void PrintUsage(ILogger logger)
         {
+            logger.Information("Pulsar Compiler v3.0 - Rules-based Data Processing Platform");
+            logger.Information("");
             logger.Information("Usage: Pulsar.Compiler <command> [options]");
+            logger.Information("");
             logger.Information("Commands:");
             logger.Information("  compile  - Compile rules into a deployable project");
-            logger.Information("  validate - Validate rules without generating code");
+            logger.Information("  validate - Validate rules and sensor catalogs");
             logger.Information("  test     - Test Pulsar rules and configuration files");
             logger.Information("  init     - Initialize a new project");
             logger.Information("  generate - Generate a buildable project");
             logger.Information("  beacon   - Generate an AOT-compatible Beacon solution");
-            logger.Information("Options:");
-            logger.Information("  --output=<path>  Output directory (required for compile/generate)");
-            logger.Information("  --config=<path>  System configuration file (optional)");
-            logger.Information(
-                "  --target=<id>    Target runtime identifier for AOT (e.g., win-x64, linux-x64)"
-            );
-            logger.Information("  --verbose        Enable verbose logging");
+            logger.Information("");
+            logger.Information("Global Options:");
+            logger.Information("  --rules=<path>      YAML rule file or directory (required for most commands)");
+            logger.Information("  --config=<path>     System configuration file (default: system_config.yaml)");
+            logger.Information("  --catalog=<path>    Sensor catalog JSON file for validation");
+            logger.Information("  --output=<path>     Output directory (required for compile/generate/beacon)");
+            logger.Information("  --target=<id>       Target runtime identifier (win-x64, linux-x64, osx-x64)");
+            logger.Information("");
+            logger.Information("Validation Options:");
+            logger.Information("  --validation-level=<level>  Validation strictness (strict, normal, relaxed)");
+            logger.Information("  --lint                      Enable compiler linting");
+            logger.Information("  --fail-on-warnings          Treat warnings as errors");
+            logger.Information("  --lint-level=<level>        Linting level (info, warn, error)");
+            logger.Information("");
+            logger.Information("Output Options:");
+            logger.Information("  --generate-metadata         Generate UI metadata files");
+            logger.Information("  --emit-sourcemap           Include source maps in output");
+            logger.Information("  --verbose                   Enable verbose logging");
+            logger.Information("  --debug                     Include debug information");
+            logger.Information("");
+            logger.Information("Examples:");
+            logger.Information("  # Validate rules with sensor catalog");
+            logger.Information("  Pulsar.Compiler validate --rules=rules.yaml --catalog=sensors.json");
+            logger.Information("");
+            logger.Information("  # Generate Beacon with strict validation");
+            logger.Information("  Pulsar.Compiler beacon --rules=rules.yaml --catalog=sensors.json \\");
+            logger.Information("    --output=./output --validation-level=strict --generate-metadata");
+            logger.Information("");
+            logger.Information("  # Compile with linting");
+            logger.Information("  Pulsar.Compiler compile --rules=rules.yaml --lint --fail-on-warnings");
         }
 
         private static Dictionary<string, string> ParseArguments(string[] args)
@@ -161,7 +187,8 @@ namespace Pulsar.Compiler
         {
             return option switch
             {
-                "aot" or "debug" or "parallel" or "emit-sourcemap" or "verbose" or "clean" => true,
+                "aot" or "debug" or "parallel" or "emit-sourcemap" or "verbose" or "clean" or
+                "lint" or "fail-on-warnings" or "generate-metadata" => true,
                 _ => false,
             };
         }
@@ -234,6 +261,24 @@ namespace Pulsar.Compiler
                 }
             }
 
+            // Validate lint level if specified
+            if (options.TryGetValue("lint-level", out var lintLevel))
+            {
+                if (!IsValidLintLevel(lintLevel))
+                {
+                    throw new ArgumentException($"Invalid lint level: {lintLevel}. Valid options: info, warn, error");
+                }
+            }
+
+            // Validate catalog file exists if specified
+            if (options.TryGetValue("catalog", out var catalogPath))
+            {
+                if (!File.Exists(catalogPath))
+                {
+                    throw new ArgumentException($"Sensor catalog file not found: {catalogPath}");
+                }
+            }
+
             // Validate numeric options
             if (options.TryGetValue("max-rules", out var maxRules))
             {
@@ -254,31 +299,50 @@ namespace Pulsar.Compiler
             return new[] { "strict", "normal", "relaxed" }.Contains(level);
         }
 
+        private static bool IsValidLintLevel(string level)
+        {
+            return new[] { "info", "warn", "error" }.Contains(level);
+        }
+
         private static void PrintBeaconUsage(ILogger logger)
         {
-            logger.Information(
-                "Usage: dotnet run --project Pulsar.Compiler.csproj beacon --rules <rules-path> --config <config-path> --output <output-path> [--target <runtime-id>] [--verbose]"
-            );
+            logger.Information("Beacon Command - Generate AOT-compatible Beacon solution with v3 features");
             logger.Information("");
-            logger.Information("Options:");
-            logger.Information(
-                "  --rules <path>      Path to YAML rule file or directory containing rule files (required)"
-            );
-            logger.Information(
-                "  --config <path>     Path to system configuration YAML file (default: system_config.yaml)"
-            );
-            logger.Information(
-                "  --output <path>     Output directory for the Beacon solution (default: current directory)"
-            );
-            logger.Information(
-                "  --target <runtime>  Target runtime identifier for AOT compilation (default: win-x64)"
-            );
-            logger.Information("  --verbose          Enable verbose logging");
+            logger.Information("Usage:");
+            logger.Information("  Pulsar.Compiler beacon --rules <path> --output <path> [options]");
             logger.Information("");
-            logger.Information("Example:");
-            logger.Information(
-                "  dotnet run --project Pulsar.Compiler.csproj beacon --rules ./rules.yaml --config ./system_config.yaml --output ./output --target win-x64"
-            );
+            logger.Information("Required Options:");
+            logger.Information("  --rules <path>      Path to YAML rule file or directory containing rule files");
+            logger.Information("  --output <path>     Output directory for the Beacon solution");
+            logger.Information("");
+            logger.Information("Optional Configuration:");
+            logger.Information("  --config <path>     Path to system configuration YAML file (default: system_config.yaml)");
+            logger.Information("  --catalog <path>    Path to sensor catalog JSON file for validation");
+            logger.Information("  --target <runtime>  Target runtime identifier for AOT compilation (default: win-x64)");
+            logger.Information("");
+            logger.Information("Validation Options:");
+            logger.Information("  --validation-level <level>  Validation strictness: strict, normal, relaxed (default: normal)");
+            logger.Information("  --lint                      Enable compiler linting for best practices");
+            logger.Information("  --fail-on-warnings          Treat warnings as errors");
+            logger.Information("  --lint-level <level>        Linting level: info, warn, error (default: warn)");
+            logger.Information("");
+            logger.Information("Output Options:");
+            logger.Information("  --generate-metadata         Generate UI metadata files (interface_outputs.json, data_dictionary.json)");
+            logger.Information("  --emit-sourcemap           Include source maps in generated code");
+            logger.Information("  --verbose                   Enable verbose logging");
+            logger.Information("  --debug                     Include debug information in generated code");
+            logger.Information("");
+            logger.Information("Examples:");
+            logger.Information("  # Basic Beacon generation");
+            logger.Information("  Pulsar.Compiler beacon --rules ./rules.yaml --output ./output");
+            logger.Information("");
+            logger.Information("  # Full v3 features with validation and metadata");
+            logger.Information("  Pulsar.Compiler beacon --rules ./rules.yaml --catalog ./sensors.json \\");
+            logger.Information("    --output ./output --validation-level strict --lint --generate-metadata");
+            logger.Information("");
+            logger.Information("  # Cross-platform AOT compilation");
+            logger.Information("  Pulsar.Compiler beacon --rules ./rules.yaml --output ./output \\");
+            logger.Information("    --target linux-x64 --verbose");
         }
     }
 }

@@ -1,0 +1,113 @@
+{
+  "version": 1,
+  "outputs": [
+    {
+      "id": "sustained_high_temp",
+      "display_name": "Sustained High Temperature",
+      "description": "Alert for temperature sustained above threshold",
+      "widget": "boolean",
+      "group": "Temperature Alerts",
+      "order": 1,
+      "export": true,
+      "default_visibility": true
+    },
+    {
+      "id": "pressure_stable",
+      "display_name": "Pressure Stability",
+      "description": "Indicates if system pressure is stable",
+      "widget": "boolean", 
+      "group": "Pressure Status",
+      "order": 2,
+      "export": true,
+      "default_visibility": true
+    },
+    {
+      "id": "critical_alert",
+      "display_name": "Critical System Alert",
+      "description": "High priority system alert requiring immediate attention",
+      "widget": "boolean",
+      "group": "Critical Alerts",
+      "order": 1,
+      "export": true,
+      "default_visibility": true
+    },
+    {
+      "id": "system_efficiency",
+      "display_name": "System Efficiency",
+      "description": "Real-time system efficiency percentage",
+      "widget": "gauge",
+      "unit": "%",
+      "decimals": 1,
+      "group": "Performance",
+      "order": 1,
+      "export": true,
+      "default_visibility": true
+    },
+    {
+      "id": "last_temp_reading",
+      "display_name": "Current Temperature",
+      "description": "Most recent temperature measurement",
+      "widget": "gauge",
+      "unit": "°C",
+      "decimals": 1,
+      "group": "Temperature",
+      "order": 1,
+      "export": true,
+      "default_visibility": true
+    },
+    {
+      "id": "rapid_temp_rise", 
+      "display_name": "Rapid Temperature Rise",
+      "description": "Alert for rapid temperature increases",
+      "widget": "boolean",
+      "group": "Temperature Alerts",
+      "order": 2,
+      "export": true,
+      "default_visibility": true
+    },
+    {
+      "id": "emergency_shutdown",
+      "display_name": "Emergency Shutdown",
+      "description": "Emergency shutdown status - critical safety indicator",
+      "widget": "boolean",
+      "group": "Safety Systems",
+      "order": 1,
+      "export": true,
+      "default_visibility": true
+    },
+    {
+      "id": "health_score",
+      "display_name": "System Health Score", 
+      "description": "Overall system health rating from 0-100",
+      "widget": "gauge",
+      "unit": "points",
+      "decimals": 0,
+      "group": "System Health",
+      "order": 1,
+      "export": true,
+      "default_visibility": true
+    },
+    {
+      "id": "system_status",
+      "display_name": "System Status",
+      "description": "Current operational status of the system",
+      "widget": "custom",
+      "group": "System Health",
+      "order": 2,
+      "export": true,
+      "default_visibility": true
+    },
+    {
+      "id": "temp_history",
+      "display_name": "Temperature History",
+      "description": "Historical temperature trend data",
+      "widget": "timeseries",
+      "unit": "°C",
+      "decimals": 1,
+      "group": "Historical Data",
+      "order": 1,
+      "export": false,
+      "default_visibility": false
+    }
+  ]
+}
