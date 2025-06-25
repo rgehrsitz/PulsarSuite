@@ -75,6 +75,22 @@ namespace BeaconTester.RuleAnalyzer.Parsing
                         LineNumber = rule.LineNumber
                     };
 
+                    // Map inputs (NEW)
+                    if (rule.Inputs != null)
+                    {
+                        foreach (var input in rule.Inputs)
+                        {
+                            ruleDef.Inputs.Add(new InputDefinition
+                            {
+                                Id = input.Id,
+                                Required = input.Required ?? false,
+                                FallbackStrategy = input.Fallback?.Strategy,
+                                DefaultValue = input.Fallback?.DefaultValue,
+                                MaxAge = input.Fallback?.MaxAge
+                            });
+                        }
+                    }
+
                     // Convert conditions
                     if (rule.Conditions != null)
                     {
@@ -182,8 +198,18 @@ namespace BeaconTester.RuleAnalyzer.Parsing
         /// </summary>
         private ConditionDefinition ConvertCondition(ConditionDetails condition)
         {
-            var type = condition.Type.ToLowerInvariant();
-            
+            if (condition == null)
+            {
+                _logger.Warning("Null condition encountered during parsing. Returning default always-true expression condition.");
+                return new ExpressionCondition
+                {
+                    Type = "expression",
+                    Expression = "true"
+                };
+            }
+
+            var type = (condition.Type ?? "").ToLowerInvariant();
+
             switch (type)
             {
                 case "comparison":
@@ -192,42 +218,42 @@ namespace BeaconTester.RuleAnalyzer.Parsing
                         Type = "comparison",
                         Sensor = condition.Sensor ?? string.Empty,
                         Operator = condition.Operator ?? ">",
-                        Value = condition.Value  // We keep the original object value type for comparison conditions
+                        Value = condition.Value
                     };
-                    
+
                 case "expression":
                     return new ExpressionCondition
                     {
                         Type = "expression",
                         Expression = condition.Expression ?? string.Empty
                     };
-                    
+
                 case "threshold_over_time":
-    // Prefer the 'threshold' field if present, otherwise fall back to 'value'
-    double threshold = 0;
-    object? thresholdObj = condition.Threshold ?? condition.Value;
-    if (thresholdObj != null)
-    {
-        if (thresholdObj is double d)
-            threshold = d;
-        else if (thresholdObj is int i)
-            threshold = i;
-        else if (thresholdObj is string s && double.TryParse(s, out double parsed))
-            threshold = parsed;
-        else
-            _logger.Warning("Unsupported value type for threshold_over_time condition: {ValueType}", thresholdObj.GetType());
-    }
-    return new ThresholdOverTimeCondition
-    {
-        Type = "threshold_over_time",
-        Sensor = condition.Sensor ?? string.Empty,
-        Threshold = threshold,
-        Duration = condition.Duration ?? 0
-    };
-                    
+                    // Prefer the 'threshold' field if present, otherwise fall back to 'value'
+                    double threshold = 0;
+                    object? thresholdObj = condition.Threshold ?? condition.Value;
+                    if (thresholdObj != null)
+                    {
+                        if (thresholdObj is double d)
+                            threshold = d;
+                        else if (thresholdObj is int i)
+                            threshold = i;
+                        else if (thresholdObj is string s && double.TryParse(s, out double parsed))
+                            threshold = parsed;
+                        else
+                            _logger.Warning("Unsupported value type for threshold_over_time condition: {ValueType}", thresholdObj.GetType());
+                    }
+                    return new ThresholdOverTimeCondition
+                    {
+                        Type = "threshold_over_time",
+                        Sensor = condition.Sensor ?? string.Empty,
+                        Threshold = threshold,
+                        Duration = condition.Duration ?? 0
+                    };
+
                 default:
-                    _logger.Warning("Unknown condition type: {Type}", type);
-                    return new ComparisonCondition { Type = type };
+                    _logger.Warning("Unknown or missing condition type: {Type}. Returning always-true expression condition.", type);
+                    return new ExpressionCondition { Type = "expression", Expression = "true" };
             }
         }
 

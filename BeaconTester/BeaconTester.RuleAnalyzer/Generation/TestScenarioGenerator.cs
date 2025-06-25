@@ -107,6 +107,41 @@ namespace BeaconTester.RuleAnalyzer.Generation
                     }
                 }
 
+                // After all scenarios are generated, ensure every step has all required inputs
+                foreach (var scenario in scenarios)
+                {
+                    if (scenario.Steps != null)
+                    {
+                        foreach (var step in scenario.Steps)
+                        {
+                            var presentInputs = step.Inputs?.Select(i => i.Key).ToHashSet() ?? new HashSet<string>();
+                            foreach (var sensor in allReferencedSensors)
+                            {
+                                if (!presentInputs.Contains(sensor))
+                                {
+                                    // Try to find a fallback/default from any rule that defines it
+                                    object? defaultValue = null;
+                                    foreach (var rule in rules)
+                                    {
+                                        var inputDef = rule.Inputs?.FirstOrDefault(i => i.Id == sensor);
+                                        if (inputDef != null && inputDef.DefaultValue != null)
+                                        {
+                                            defaultValue = inputDef.DefaultValue;
+                                            break;
+                                        }
+                                    }
+                                    if (defaultValue == null)
+                                    {
+                                        defaultValue = 0.0; // Safe fallback
+                                    }
+                                    step.Inputs.Add(new TestInput { Key = sensor, Value = defaultValue });
+                                    _logger.Debug("[FinalPass] Injected missing input {Sensor} with value {Value} into step {StepName}", sensor, defaultValue, step.Name);
+                                }
+                            }
+                        }
+                    }
+                }
+
                 _logger.Information("Generated {ScenarioCount} test scenarios", scenarios.Count);
                 return scenarios;
             }
@@ -330,6 +365,7 @@ namespace BeaconTester.RuleAnalyzer.Generation
 
                 // Helper function to ensure all required inputs are included
                 List<TestInput> EnsureAllRequiredInputs(
+                    RuleDefinition rule,
                     Dictionary<string, object> inputs,
                     bool isPositiveCase
                 )
@@ -341,8 +377,18 @@ namespace BeaconTester.RuleAnalyzer.Generation
                     {
                         if (!allInputs.ContainsKey(sensor))
                         {
-                            // If we have condition information for this sensor, use it to determine an appropriate value
-                            if (
+                            // Check for fallback/default in rule.Inputs
+                            var inputDef = rule.Inputs?.FirstOrDefault(i => i.Id == sensor);
+                            if (inputDef != null && inputDef.DefaultValue != null)
+                            {
+                                allInputs[sensor] = inputDef.DefaultValue;
+                                _logger.Debug(
+                                    "Added missing input sensor {Sensor} with fallback/default value: {Value}",
+                                    sensor,
+                                    inputDef.DefaultValue
+                                );
+                            }
+                            else if (
                                 inputConditionMap != null
                                 && inputConditionMap.TryGetValue(sensor, out var conditionPairs)
                                 && conditionPairs.Count > 0
@@ -405,7 +451,7 @@ namespace BeaconTester.RuleAnalyzer.Generation
                             {
                                 Name = $"Produce dependency {required}",
                                 Description = $"Step to trigger rule {depRule.Name} to produce {required} (with required inputs)",
-                                Inputs = EnsureAllRequiredInputs(depTestCase.Inputs, true),
+                                Inputs = EnsureAllRequiredInputs(rule, depTestCase.Inputs, true),
                                 Delay = 500,
                                 Expectations = new List<TestExpectation>
                                 {
@@ -451,7 +497,7 @@ namespace BeaconTester.RuleAnalyzer.Generation
                                 Description =
                                     $"Step to trigger rule {depRule.Name} to produce {dep} (with required inputs)",
                                 // Ensure all required inputs for the dependency rule are included
-                                Inputs = EnsureAllRequiredInputs(depTestCase.Inputs, true),
+                                Inputs = EnsureAllRequiredInputs(rule, depTestCase.Inputs, true),
                                 Delay = 500,
                                 Expectations = new List<TestExpectation>
                                 {
@@ -544,7 +590,7 @@ namespace BeaconTester.RuleAnalyzer.Generation
                                 "Note: This is a temporal rule that requires a sequence of values over time. See the temporal test scenario.",
                             Inputs =
                                 testCase.Inputs.Count > 0
-                                    ? EnsureAllRequiredInputs(testCase.Inputs, true)
+                                    ? EnsureAllRequiredInputs(rule, testCase.Inputs, true)
                                     : allRequiredInputs
                                         .Select(s => new TestInput
                                         {
@@ -567,7 +613,7 @@ namespace BeaconTester.RuleAnalyzer.Generation
                     {
                         Name = "Positive test case",
                         Description = "Test inputs that should trigger the rule",
-                        Inputs = EnsureAllRequiredInputs(testCase.Inputs, true),
+                        Inputs = EnsureAllRequiredInputs(rule, testCase.Inputs, true),
                         Delay = 500, // Default delay
                         Expectations = testCase
                             .Outputs.Select(o => new TestExpectation
@@ -594,7 +640,7 @@ namespace BeaconTester.RuleAnalyzer.Generation
                     {
                         Name = "Negative test case",
                         Description = "Test inputs that should not trigger the rule",
-                        Inputs = EnsureAllRequiredInputs(negativeCase.Inputs, false),
+                        Inputs = EnsureAllRequiredInputs(rule, negativeCase.Inputs, false),
                         Delay = 500, // Default delay
                         Expectations = negativeCase
                             .Outputs.Select(o => new TestExpectation
@@ -1023,6 +1069,7 @@ namespace BeaconTester.RuleAnalyzer.Generation
 
                     // Helper function to ensure all required inputs are included
                     List<TestInput> EnsureAllRequiredInputs(
+                        RuleDefinition rule,
                         Dictionary<string, object> inputs,
                         bool isPositiveCase
                     )
@@ -1034,14 +1081,24 @@ namespace BeaconTester.RuleAnalyzer.Generation
                         {
                             if (!allInputs.ContainsKey(sensor))
                             {
-                                // If we have condition information for this sensor, use it to determine an appropriate value
-                                if (
+                                // Check for fallback/default in rule.Inputs
+                                var inputDef = rule.Inputs?.FirstOrDefault(i => i.Id == sensor);
+                                if (inputDef != null && inputDef.DefaultValue != null)
+                                {
+                                    allInputs[sensor] = inputDef.DefaultValue;
+                                    _logger.Debug(
+                                        "Added missing input sensor {Sensor} with fallback/default value: {Value}",
+                                        sensor,
+                                        inputDef.DefaultValue
+                                    );
+                                }
+                                else if (
                                     inputConditionMap != null
                                     && inputConditionMap.TryGetValue(sensor, out var conditionPairs)
                                     && conditionPairs.Count > 0
                                 )
                                 {
-                                    // Use the first condition to determine a suitable value based on actual rule conditions
+                                    // Use the first condition to determine a suitable value
                                     var pair = conditionPairs.First();
                                     var valueTarget = isPositiveCase
                                         ? ValueTarget.Positive
@@ -1053,16 +1110,18 @@ namespace BeaconTester.RuleAnalyzer.Generation
                                     );
                                     allInputs[sensor] = value;
                                     _logger.Debug(
-                                        "Added missing input sensor {Sensor} with condition-based value to temporal step",
-                                        sensor
+                                        "Added missing input sensor {Sensor} with condition-based value: {Value}",
+                                        sensor,
+                                        value
                                     );
                                 }
                                 else
                                 {
-                                    // No condition info available, use a neutral value that won't trigger edge cases
-                                    allInputs[sensor] = 50.0;
+                                    // No condition info available, use a neutral value
+                                    // Use different values for positive and negative tests to avoid accidental triggers
+                                    allInputs[sensor] = isPositiveCase ? 50.0 : 0.0;
                                     _logger.Debug(
-                                        "Added missing input sensor {Sensor} with neutral value to temporal step",
+                                        "Added missing input sensor {Sensor} with neutral value",
                                         sensor
                                     );
                                 }
@@ -1080,7 +1139,7 @@ namespace BeaconTester.RuleAnalyzer.Generation
                         Name = "Test with dependencies",
                         Description = "Tests rule with dependencies satisfied",
                         // Ensure all required inputs are included
-                        Inputs = EnsureAllRequiredInputs(testCase.Inputs, true),
+                        Inputs = EnsureAllRequiredInputs(targetRule, testCase.Inputs, true),
                         Delay = 500,
                         // We need to set expectations based on actual input values
                         Expectations = new List<TestExpectation>(),
@@ -1613,6 +1672,13 @@ namespace BeaconTester.RuleAnalyzer.Generation
         /// </summary>
         private object GetDefaultValueForSensor(string sensor, RuleDefinition rule)
         {
+            // Prefer fallback/default value from rule.Inputs if available
+            var inputDef = rule.Inputs?.FirstOrDefault(i => i.Id == sensor);
+            if (inputDef != null && inputDef.DefaultValue != null)
+            {
+                return inputDef.DefaultValue;
+            }
+
             // First try to find a condition that uses this sensor
             var conditions =
                 rule.Conditions != null

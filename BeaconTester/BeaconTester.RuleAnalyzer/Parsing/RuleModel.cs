@@ -39,6 +39,11 @@ namespace BeaconTester.RuleAnalyzer.Parsing
         /// </summary>
         [YamlIgnore]
         public int LineNumber { get; set; }
+
+        /// <summary>
+        /// Inputs for this rule, including fallback/default info
+        /// </summary>
+        public List<InputDefinition> Inputs { get; set; } = new List<InputDefinition>();
     }
 
     /// <summary>
@@ -218,4 +223,15 @@ namespace BeaconTester.RuleAnalyzer.Parsing
         public string? MessageExpression { get; set; }
     }
 
+    /// <summary>
+    /// Represents an input for a rule, including fallback/default info
+    /// </summary>
+    public class InputDefinition
+    {
+        public string Id { get; set; } = string.Empty;
+        public bool Required { get; set; } = false;
+        public string? FallbackStrategy { get; set; }
+        public object? DefaultValue { get; set; }
+        public string? MaxAge { get; set; }
+    }
 }

@@ -61,6 +61,11 @@ namespace Pulsar.Compiler.Generation.Helpers
 
         public static string GenerateCondition(ConditionGroup? conditions)
         {
+            return GenerateCondition(conditions, null);
+        }
+
+        public static string GenerateCondition(ConditionGroup? conditions, Dictionary<string, FallbackStrategy>? fallbackStrategies)
+        {
             if (conditions == null)
             {
                 return "EvalResult.True";
@@ -70,14 +75,14 @@ namespace Pulsar.Compiler.Generation.Helpers
 
             if (conditions.All?.Any() == true)
             {
-                var allConditions = conditions.All.Select(GenerateConditionExpression);
+                var allConditions = conditions.All.Select(c => GenerateConditionExpression(c, fallbackStrategies));
                 var combinedAll = allConditions.Aggregate((a, b) => $"EvalOps.And({a}, {b})");
                 parts.Add($"({combinedAll})");
             }
 
             if (conditions.Any?.Any() == true)
             {
-                var anyConditions = conditions.Any.Select(GenerateConditionExpression);
+                var anyConditions = conditions.Any.Select(c => GenerateConditionExpression(c, fallbackStrategies));
                 var combinedAny = anyConditions.Aggregate((a, b) => $"EvalOps.Or({a}, {b})");
                 parts.Add($"({combinedAny})");
             }
@@ -90,10 +95,15 @@ namespace Pulsar.Compiler.Generation.Helpers
 
         public static string GenerateConditionExpression(ConditionDefinition condition)
         {
+            return GenerateConditionExpression(condition, null);
+        }
+
+        public static string GenerateConditionExpression(ConditionDefinition condition, Dictionary<string, FallbackStrategy>? fallbackStrategies)
+        {
             return condition switch
             {
-                ComparisonCondition comparison => GenerateComparisonCondition(comparison),
-                ExpressionCondition expression => $"({FixupExpression(expression.Expression)} ? EvalResult.True : EvalResult.False)",
+                ComparisonCondition comparison => GenerateComparisonCondition(comparison, fallbackStrategies),
+                ExpressionCondition expression => $"({FixupExpression(expression.Expression, fallbackStrategies)} ? EvalResult.True : EvalResult.False)",
                 ThresholdOverTimeCondition threshold => GenerateThresholdCondition(threshold),
                 _ => throw new InvalidOperationException(
                     $"Unknown condition type: {condition.GetType().Name}"
@@ -102,6 +112,11 @@ namespace Pulsar.Compiler.Generation.Helpers
         }
 
         public static string GenerateComparisonCondition(ComparisonCondition comparison)
+        {
+            return GenerateComparisonCondition(comparison, null);
+        }
+
+        public static string GenerateComparisonCondition(ComparisonCondition comparison, Dictionary<string, FallbackStrategy>? fallbackStrategies)
         {
             var op = comparison.Operator switch
             {
@@ -127,9 +142,17 @@ namespace Pulsar.Compiler.Generation.Helpers
             }
             else
             {
-                // Regular input sensor - add safety check to prevent KeyNotFoundException
-                string varName = GenerateUniqueVarName($"inVal_{comparison.Sensor.Replace(":", "_")}");
-                sensorAccess = $"(inputs.TryGetValue(\"{comparison.Sensor}\", out var {varName}) ? {varName} : null)";
+                // Regular input sensor - use fallback if available
+                if (fallbackStrategies?.TryGetValue(comparison.Sensor, out var fallback) == true)
+                {
+                    sensorAccess = GenerateSensorAccessWithFallback(comparison.Sensor, fallback);
+                }
+                else
+                {
+                    // Regular input sensor - add safety check to prevent KeyNotFoundException
+                    string varName = GenerateUniqueVarName($"inVal_{comparison.Sensor.Replace(":", "_")}");
+                    sensorAccess = $"(inputs.TryGetValue(\"{comparison.Sensor}\", out var {varName}) ? {varName} : null)";
+                }
             }
 
             // Generate three-valued logic comparison
@@ -144,6 +167,23 @@ namespace Pulsar.Compiler.Generation.Helpers
                 string s => $"\"{s}\"",
                 _ => value?.ToString() ?? "null"
             };
+        }
+
+        /// <summary>
+        /// Generate sensor access with V3 fallback strategy handling
+        /// </summary>
+        public static string GenerateSensorAccessWithFallback(string sensorId, FallbackStrategy? fallback)
+        {
+            if (fallback == null)
+            {
+                return $"(inputs.TryGetValue(\"{sensorId}\", out var val) ? val : null)";
+            }
+
+            var strategy = $"\"{fallback.Strategy}\"";
+            var defaultValue = fallback.DefaultValue != null ? FormatValue(fallback.DefaultValue) : "null";
+            var maxAge = !string.IsNullOrEmpty(fallback.MaxAge) ? $"\"{fallback.MaxAge}\"" : "null";
+
+            return $"ResolveSensorWithFallback(\"{sensorId}\", inputs, {strategy}, {defaultValue}, {maxAge})";
         }
 
         public static string GenerateHelperMethods()
@@ -201,6 +241,68 @@ namespace Pulsar.Compiler.Generation.Helpers
                 _emitGuards[key] = new EmitGuard(mode);
             }
             return _emitGuards[key];
+        }
+
+        private object? ResolveSensorWithFallback(string sensorId, Dictionary<string, object> inputs, string fallbackStrategy, object? defaultValue = null, string? maxAge = null)
+        {
+            // First try to get the sensor value directly
+            if (inputs.TryGetValue(sensorId, out var value) && value != null)
+                return value;
+
+            // Apply fallback strategy if sensor is missing or null
+            return fallbackStrategy switch
+            {
+                ""use_default"" => defaultValue,
+                ""use_last_known"" => GetLastKnownValue(sensorId, maxAge),
+                ""propagate_unavailable"" => null, // Will result in Indeterminate
+                ""skip_rule"" => null, // Will result in Indeterminate
+                _ => null
+            };
+        }
+
+        private readonly Dictionary<string, (object Value, DateTime Timestamp)> _sensorCache = new();
+
+        private object? GetLastKnownValue(string sensor, string? maxAge)
+        {
+            if (_sensorCache.TryGetValue(sensor, out var cached))
+            {
+                if (!string.IsNullOrEmpty(maxAge))
+                {
+                    var maxAgeSpan = ParseDuration(maxAge);
+                    var age = DateTime.UtcNow - cached.Timestamp;
+                    if (age <= maxAgeSpan)
+                        return cached.Value;
+                }
+                else
+                {
+                    return cached.Value;
+                }
+            }
+            return null;
+        }
+
+        private TimeSpan ParseDuration(string duration)
+        {
+            if (string.IsNullOrEmpty(duration)) return TimeSpan.Zero;
+            
+            if (duration.EndsWith(""ms""))
+                return TimeSpan.FromMilliseconds(double.Parse(duration.Substring(0, duration.Length - 2)));
+            if (duration.EndsWith(""s""))
+                return TimeSpan.FromSeconds(double.Parse(duration.Substring(0, duration.Length - 1)));
+            if (duration.EndsWith(""m""))
+                return TimeSpan.FromMinutes(double.Parse(duration.Substring(0, duration.Length - 1)));
+            if (duration.EndsWith(""h""))
+                return TimeSpan.FromHours(double.Parse(duration.Substring(0, duration.Length - 1)));
+            
+            return TimeSpan.FromSeconds(double.Parse(duration));
+        }
+
+        private void CacheSensorValue(string sensor, object? value)
+        {
+            if (value != null)
+            {
+                _sensorCache[sensor] = (value, DateTime.UtcNow);
+            }
         }";
         }
 
@@ -228,13 +330,18 @@ namespace Pulsar.Compiler.Generation.Helpers
 
         public static string GenerateAction(ActionDefinition action)
         {
+            return GenerateAction(action, null);
+        }
+
+        public static string GenerateAction(ActionDefinition action, Dictionary<string, FallbackStrategy>? fallbackStrategies)
+        {
             return action switch
             {
                 SetValueAction setValue => GenerateSetValueAction(setValue),
                 SendMessageAction sendMessage => GenerateSendMessageAction(sendMessage),
-                V3SetAction v3Set => GenerateV3SetAction(v3Set),
+                V3SetAction v3Set => GenerateV3SetAction(v3Set, fallbackStrategies),
                 V3LogAction v3Log => GenerateV3LogAction(v3Log),
-                V3BufferAction v3Buffer => GenerateV3BufferAction(v3Buffer),
+                V3BufferAction v3Buffer => GenerateV3BufferAction(v3Buffer, fallbackStrategies),
                 _ => throw new InvalidOperationException(
                     $"Unknown action type: {action.GetType().Name}"
                 ),
@@ -410,6 +517,11 @@ namespace Pulsar.Compiler.Generation.Helpers
 
         public static string FixupExpression(string expression)
         {
+            return FixupExpression(expression, null);
+        }
+
+        public static string FixupExpression(string expression, Dictionary<string, FallbackStrategy>? fallbackStrategies)
+        {
             if (string.IsNullOrEmpty(expression))
             {
                 return "null";
@@ -511,8 +623,15 @@ namespace Pulsar.Compiler.Generation.Helpers
                         return sensor;
                     }
 
-                    // Handle prefixed variable
-                    return $"Convert.ToDouble(inputs[\"{sensor}\"])";
+                    // Handle prefixed variable with fallback if available
+                    if (fallbackStrategies?.TryGetValue(sensor, out var fallback) == true)
+                    {
+                        return $"Convert.ToDouble({GenerateSensorAccessWithFallback(sensor, fallback)})";
+                    }
+                    else
+                    {
+                        return $"Convert.ToDouble(inputs[\"{sensor}\"])";
+                    }
                 }
             );
 
@@ -537,8 +656,16 @@ namespace Pulsar.Compiler.Generation.Helpers
                         return sensor;
                     }
 
-                    // Always treat as input lookup with numeric conversion
-                    return $"Convert.ToDouble(inputs[\"{sensor}\"])";
+                    // Use fallback-aware sensor access if available
+                    if (fallbackStrategies?.TryGetValue(sensor, out var fallback) == true)
+                    {
+                        return $"Convert.ToDouble({GenerateSensorAccessWithFallback(sensor, fallback)})";
+                    }
+                    else
+                    {
+                        // Always treat as input lookup with numeric conversion
+                        return $"Convert.ToDouble(inputs[\"{sensor}\"])";
+                    }
                 }
             );
 
@@ -738,8 +865,13 @@ namespace Pulsar.Compiler.Generation.Helpers
         /// </summary>
         public static string GenerateV3SetAction(V3SetAction setAction)
         {
+            return GenerateV3SetAction(setAction, null);
+        }
+
+        public static string GenerateV3SetAction(V3SetAction setAction, Dictionary<string, FallbackStrategy>? fallbackStrategies)
+        {
             var emitGuard = GenerateEmitGuard(setAction.Emit, setAction.Key);
-            var setValue = GenerateSetValueExpression(setAction.Key, setAction.Value, setAction.ValueExpression);
+            var setValue = GenerateSetValueExpression(setAction.Key, setAction.Value, setAction.ValueExpression, fallbackStrategies);
             
             if (setAction.Emit == EmitType.Always)
             {
@@ -774,9 +906,14 @@ namespace Pulsar.Compiler.Generation.Helpers
         /// </summary>
         public static string GenerateV3BufferAction(V3BufferAction bufferAction)
         {
+            return GenerateV3BufferAction(bufferAction, null);
+        }
+
+        public static string GenerateV3BufferAction(V3BufferAction bufferAction, Dictionary<string, FallbackStrategy>? fallbackStrategies)
+        {
             var emitGuard = GenerateEmitGuard(bufferAction.Emit, bufferAction.Key);
             var valueExpr = !string.IsNullOrEmpty(bufferAction.ValueExpression) 
-                ? FixupExpression(bufferAction.ValueExpression)
+                ? FixupExpression(bufferAction.ValueExpression, fallbackStrategies)
                 : "null";
                 
             var bufferStatement = $"BufferManager.UpdateBuffer(\"{bufferAction.Key}\", {valueExpr}, DateTime.UtcNow);";
@@ -817,13 +954,18 @@ namespace Pulsar.Compiler.Generation.Helpers
         /// </summary>
         private static string GenerateSetValueExpression(string key, object? value, string? valueExpression)
         {
+            return GenerateSetValueExpression(key, value, valueExpression, null);
+        }
+
+        private static string GenerateSetValueExpression(string key, object? value, string? valueExpression, Dictionary<string, FallbackStrategy>? fallbackStrategies)
+        {
             if (!string.IsNullOrEmpty(valueExpression))
             {
                 if (valueExpression == "true") return $"outputs[\"{key}\"] = true;";
                 if (valueExpression == "false") return $"outputs[\"{key}\"] = false;";
                 if (valueExpression == "now()") return $"outputs[\"{key}\"] = DateTime.UtcNow.ToString(\"o\");";
                 
-                var expr = FixupExpression(valueExpression);
+                var expr = FixupExpression(valueExpression, fallbackStrategies);
                 return $"outputs[\"{key}\"] = {expr};";
             }
             else if (value != null)

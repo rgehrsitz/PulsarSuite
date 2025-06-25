@@ -20,6 +20,7 @@ namespace BeaconTester.RuleAnalyzer.Parsing
         public string Description { get; set; } = string.Empty;
         public ConditionGroupYaml? Conditions { get; set; }
         public List<ActionItem>? Actions { get; set; }
+        public List<InputItem>? Inputs { get; set; }
         
         // Line tracking
         public int LineNumber { get; set; }
@@ -96,5 +97,31 @@ namespace BeaconTester.RuleAnalyzer.Parsing
         
         [YamlMember(Alias = "message_expression")]
         public string? MessageExpression { get; set; }
+    }
+
+    /// <summary>
+    /// Input item in YAML (with fallback/default)
+    /// </summary>
+    public class InputItem
+    {
+        [YamlMember(Alias = "id")]
+        public string Id { get; set; } = string.Empty;
+        [YamlMember(Alias = "required")]
+        public bool? Required { get; set; }
+        [YamlMember(Alias = "fallback")]
+        public FallbackItem? Fallback { get; set; }
+    }
+
+    /// <summary>
+    /// Fallback/default for an input
+    /// </summary>
+    public class FallbackItem
+    {
+        [YamlMember(Alias = "strategy")]
+        public string? Strategy { get; set; }
+        [YamlMember(Alias = "default_value")]
+        public object? DefaultValue { get; set; }
+        [YamlMember(Alias = "max_age")]
+        public string? MaxAge { get; set; }
     }
 }

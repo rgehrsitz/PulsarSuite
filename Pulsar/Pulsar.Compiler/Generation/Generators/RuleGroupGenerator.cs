@@ -148,11 +148,24 @@ namespace Pulsar.Compiler.Generation.Generators
                 sb.AppendLine($"            // Source: {rule.SourceFile}:{rule.LineNumber}");
                 sb.AppendLine();
 
+                // Build fallback strategies dictionary for this rule
+                var fallbackStrategies = new Dictionary<string, FallbackStrategy>();
+                if (rule.Inputs != null)
+                {
+                    foreach (var input in rule.Inputs)
+                    {
+                        if (input.Fallback != null)
+                        {
+                            fallbackStrategies[input.Id] = input.Fallback;
+                        }
+                    }
+                }
+
                 // Generate v3 three-valued logic condition evaluation
                 if (rule.Conditions != null)
                 {
                     sb.AppendLine(
-                        $"            var conditionResult_{rule.Name.Replace(" ", "_")} = {GenerationHelpers.GenerateCondition(rule.Conditions)};"
+                        $"            var conditionResult_{rule.Name.Replace(" ", "_")} = {GenerationHelpers.GenerateCondition(rule.Conditions, fallbackStrategies)};"
                     );
                     sb.AppendLine();
                     
@@ -166,7 +179,7 @@ namespace Pulsar.Compiler.Generation.Generators
                         foreach (var action in rule.Actions)
                         {
                             sb.AppendLine(
-                                $"                {GenerationHelpers.GenerateAction(action)}"
+                                $"                {GenerationHelpers.GenerateAction(action, fallbackStrategies)}"
                             );
                         }
                     }
@@ -182,7 +195,7 @@ namespace Pulsar.Compiler.Generation.Generators
                         foreach (var action in rule.ElseActions)
                         {
                             sb.AppendLine(
-                                $"                {GenerationHelpers.GenerateAction(action)}"
+                                $"                {GenerationHelpers.GenerateAction(action, fallbackStrategies)}"
                             );
                         }
                         
@@ -197,7 +210,7 @@ namespace Pulsar.Compiler.Generation.Generators
                         foreach (var action in rule.Actions)
                         {
                             sb.AppendLine(
-                                $"            {GenerationHelpers.GenerateAction(action)}"
+                                $"            {GenerationHelpers.GenerateAction(action, fallbackStrategies)}"
                             );
                         }
                     }
