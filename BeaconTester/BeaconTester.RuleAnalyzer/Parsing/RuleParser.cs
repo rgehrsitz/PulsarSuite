@@ -382,6 +382,7 @@ namespace BeaconTester.RuleAnalyzer.Parsing
                     {
                         Type = "threshold_over_time",
                         Sensor = condition.Sensor ?? string.Empty,
+                        Operator = condition.Operator ?? ">",
                         Threshold = threshold,
                         Duration = condition.Duration ?? 0
                     };

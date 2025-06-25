@@ -550,17 +550,26 @@ namespace BeaconTester.RuleAnalyzer.Generation
                             var steps = Math.Max(3, duration / 500); // At least 3 steps, or more for longer durations
                             var comparisonOperator = temporal.Operator ?? ">";
                             _logger.Warning(
-                                "[TEMPORAL TEST GEN] Rule: {Rule}, Sensor: {Sensor}, Threshold: {Threshold}, Duration: {Duration}, Steps: {Steps}",
+                                "[TEMPORAL TEST GEN] Rule: {Rule}, Sensor: {Sensor}, Threshold: {Threshold}, Operator: {Operator}, Duration: {Duration}, Steps: {Steps}",
                                 rule.Name,
                                 sensor,
                                 threshold,
+                                comparisonOperator,
                                 duration,
                                 steps
                             );
                             for (int i = 0; i < steps; i++)
                             {
                                 double margin = Math.Max(threshold * 0.1, 5); // At least 5 or 10% of threshold
-                                var value = threshold + margin + 1; // Always above threshold for every step
+                                // Generate values that satisfy the temporal condition
+                                var value = comparisonOperator switch
+                                {
+                                    ">" => threshold + margin + 1,
+                                    ">=" => threshold + margin,
+                                    "<" => threshold - margin - 1,
+                                    "<=" => threshold - margin,
+                                    _ => threshold + margin + 1
+                                };
                                 _logger.Warning(
                                     "[TEMPORAL TEST GEN] Step {Step}: Using value {Value} for sensor {Sensor} (threshold: {Threshold})",
                                     i + 1,
