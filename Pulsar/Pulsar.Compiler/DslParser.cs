@@ -188,6 +188,8 @@ namespace Pulsar.Compiler.Parsers
                         Description = rule.Description,
                         Conditions = ConvertConditions(rule.Conditions),
                         Actions = ConvertActions(rule.Actions ?? new List<ActionListItem>()),
+                        Inputs = ConvertInputs(rule.Inputs),
+                        Else = ConvertElseClause(rule.Else),
                         SourceFile = _currentFile,
                         LineNumber = rule.LineNumber,
                         InputSensors = inputSensors.ToList(),
@@ -412,28 +414,37 @@ namespace Pulsar.Compiler.Parsers
 
         private ConditionDefinition ConvertCondition(Condition condition)
         {
-            if (condition.ConditionDetails == null)
+            // Support both v3 format (direct properties) and legacy format (ConditionDetails)
+            string? type = condition.Type ?? condition.ConditionDetails?.Type;
+            string? sensor = condition.Sensor ?? condition.ConditionDetails?.Sensor;
+            string? operatorStr = condition.Operator ?? condition.ConditionDetails?.Operator;
+            object? value = condition.Value ?? condition.ConditionDetails?.Value;
+            double? threshold = condition.Threshold ?? condition.ConditionDetails?.Threshold;
+            string? expression = condition.Expression ?? condition.ConditionDetails?.Expression;
+            string? mode = condition.Mode ?? condition.ConditionDetails?.Mode;
+
+            if (string.IsNullOrEmpty(type))
             {
-                throw new ValidationException("Condition details cannot be null");
+                throw new ValidationException("Condition type is required");
             }
 
-            switch (condition.ConditionDetails.Type.ToLowerInvariant())
+            switch (type.ToLowerInvariant())
             {
                 case "comparison":
-                    if (string.IsNullOrEmpty(condition.ConditionDetails.Sensor))
+                    if (string.IsNullOrEmpty(sensor))
                     {
                         throw new ValidationException("Comparison condition must specify a sensor");
                     }
                     return new ComparisonCondition
                     {
                         Type = ConditionType.Comparison,
-                        Sensor = condition.ConditionDetails.Sensor,
-                        Operator = ParseOperator(condition.ConditionDetails.Operator),
-                        Value = condition.ConditionDetails.Value,
+                        Sensor = sensor,
+                        Operator = ParseOperator(operatorStr ?? ""),
+                        Value = value,
                     };
 
                 case "expression":
-                    if (string.IsNullOrEmpty(condition.ConditionDetails.Expression))
+                    if (string.IsNullOrEmpty(expression))
                     {
                         throw new ValidationException(
                             "Expression condition must specify an expression"
@@ -442,17 +453,29 @@ namespace Pulsar.Compiler.Parsers
                     return new ExpressionCondition
                     {
                         Type = ConditionType.Expression,
-                        Expression = condition.ConditionDetails.Expression,
+                        Expression = expression,
                     };
 
                 case "threshold_over_time":
-                    if (string.IsNullOrEmpty(condition.ConditionDetails.Sensor))
+                    if (string.IsNullOrEmpty(sensor))
                     {
                         throw new ValidationException(
                             "Threshold over time condition must specify a sensor"
                         );
                     }
-                    if (condition.ConditionDetails.Duration <= 0)
+
+                    // Parse duration from v3 format (e.g., "10s") or legacy format (milliseconds)
+                    int durationMs = 0;
+                    if (!string.IsNullOrEmpty(condition.Duration))
+                    {
+                        durationMs = ParseDurationToMilliseconds(condition.Duration);
+                    }
+                    else if (condition.ConditionDetails?.Duration > 0)
+                    {
+                        durationMs = condition.ConditionDetails.Duration;
+                    }
+
+                    if (durationMs <= 0)
                     {
                         throw new ValidationException(
                             "Threshold over time condition must specify a positive duration"
@@ -461,22 +484,22 @@ namespace Pulsar.Compiler.Parsers
 
                     // Convert the threshold value properly
                     double thresholdValue = 0;
-                    if (condition.ConditionDetails.Threshold > 0)
+                    if (threshold.HasValue && threshold.Value > 0)
                     {
-                        thresholdValue = condition.ConditionDetails.Threshold;
+                        thresholdValue = threshold.Value;
                     }
-                    else if (condition.ConditionDetails.Value != null)
+                    else if (value != null)
                     {
                         // Try to convert Value to double for threshold
-                        if (condition.ConditionDetails.Value is double dVal)
+                        if (value is double dVal)
                         {
                             thresholdValue = dVal;
                         }
-                        else if (condition.ConditionDetails.Value is int iVal)
+                        else if (value is int iVal)
                         {
                             thresholdValue = iVal;
                         }
-                        else if (condition.ConditionDetails.Value is string sVal && double.TryParse(sVal, out double parsedVal))
+                        else if (value is string sVal && double.TryParse(sVal, out double parsedVal))
                         {
                             thresholdValue = parsedVal;
                         }
@@ -494,15 +517,15 @@ namespace Pulsar.Compiler.Parsers
                         );
                     }
 
-                    var mode = ThresholdOverTimeMode.Strict; // Default to strict mode
-                    if (!string.IsNullOrEmpty(condition.ConditionDetails.Mode))
+                    var modeValue = ThresholdOverTimeMode.Strict; // Default to strict mode
+                    if (!string.IsNullOrEmpty(mode))
                     {
-                        mode = condition.ConditionDetails.Mode.ToLowerInvariant() switch
+                        modeValue = mode.ToLowerInvariant() switch
                         {
                             "strict" => ThresholdOverTimeMode.Strict,
                             "extended" => ThresholdOverTimeMode.Extended,
                             _ => throw new ValidationException(
-                                $"Invalid temporal mode: {condition.ConditionDetails.Mode}. Must be 'strict' or 'extended'."
+                                $"Invalid temporal mode: {mode}. Must be 'strict' or 'extended'."
                             ),
                         };
                     }
@@ -510,10 +533,11 @@ namespace Pulsar.Compiler.Parsers
                     return new ThresholdOverTimeCondition
                     {
                         Type = ConditionType.ThresholdOverTime,
-                        Sensor = condition.ConditionDetails.Sensor,
+                        Sensor = sensor,
                         Threshold = thresholdValue,
-                        Duration = condition.ConditionDetails.Duration,
-                        Mode = mode,
+                        Duration = durationMs,
+                        Mode = modeValue,
+                        ComparisonOperator = ParseOperator(operatorStr ?? ">"),
                     };
 
                 case "group":
@@ -634,12 +658,143 @@ namespace Pulsar.Compiler.Parsers
                         };
                     }
 
+                    // V3 actions
+                    if (actionItem?.Set != null)
+                    {
+                        Debug.WriteLine($"Found V3 Set action");
+                        if (string.IsNullOrEmpty(actionItem.Set.Key))
+                        {
+                            throw new ValidationException("Set action must have a key");
+                        }
+
+                        return new V3SetAction
+                        {
+                            Key = actionItem.Set.Key,
+                            Value = actionItem.Set.Value,
+                            ValueExpression = actionItem.Set.ValueExpression,
+                            Emit = ParseEmitType(actionItem.Set.Emit),
+                        };
+                    }
+
+                    if (actionItem?.Log != null)
+                    {
+                        Debug.WriteLine($"Found V3 Log action");
+                        if (string.IsNullOrEmpty(actionItem.Log.Log))
+                        {
+                            throw new ValidationException("Log action must have a log message");
+                        }
+
+                        return new V3LogAction
+                        {
+                            Log = actionItem.Log.Log,
+                            Emit = ParseEmitType(actionItem.Log.Emit),
+                        };
+                    }
+
+                    if (actionItem?.Buffer != null)
+                    {
+                        Debug.WriteLine($"Found V3 Buffer action");
+                        if (string.IsNullOrEmpty(actionItem.Buffer.Key))
+                        {
+                            throw new ValidationException("Buffer action must have a key");
+                        }
+
+                        return new V3BufferAction
+                        {
+                            Key = actionItem.Buffer.Key,
+                            ValueExpression = actionItem.Buffer.ValueExpression,
+                            MaxItems = actionItem.Buffer.MaxItems,
+                            Emit = ParseEmitType(actionItem.Buffer.Emit),
+                        };
+                    }
+
                     Debug.WriteLine($"No valid action type found");
                     throw new ValidationException(
                         $"Unknown action type. Action item details: {actionItem?.ToString() ?? "null"}"
                     );
                 })
                 .ToList();
+        }
+
+        /// <summary>
+        /// Parse duration string (e.g., "10s", "5m", "1h") to milliseconds
+        /// </summary>
+        private static int ParseDurationToMilliseconds(string duration)
+        {
+            if (string.IsNullOrEmpty(duration))
+                return 0;
+
+            var pattern = @"^(\d+)(ms|s|m|h|d)$";
+            var match = System.Text.RegularExpressions.Regex.Match(duration.ToLowerInvariant(), pattern);
+            
+            if (!match.Success)
+                throw new ValidationException($"Invalid duration format: {duration}. Expected format: <number><unit> (e.g., 10s, 5m, 1h)");
+
+            if (!int.TryParse(match.Groups[1].Value, out int value) || value <= 0)
+                throw new ValidationException($"Invalid duration value: {duration}. Value must be a positive integer");
+
+            var unit = match.Groups[2].Value;
+            return unit switch
+            {
+                "ms" => value,
+                "s" => value * 1000,
+                "m" => value * 60 * 1000,
+                "h" => value * 60 * 60 * 1000,
+                "d" => value * 24 * 60 * 60 * 1000,
+                _ => throw new ValidationException($"Unsupported duration unit: {unit}")
+            };
+        }
+
+        /// <summary>
+        /// Parse emit type string to EmitType enum
+        /// </summary>
+        private static EmitType ParseEmitType(string? emit)
+        {
+            if (string.IsNullOrEmpty(emit))
+                return EmitType.Always;
+
+            return emit.ToLowerInvariant() switch
+            {
+                "always" => EmitType.Always,
+                "on_change" => EmitType.OnChange,
+                "on_enter" => EmitType.OnEnter,
+                _ => throw new ValidationException($"Invalid emit type: {emit}. Valid values: always, on_change, on_enter")
+            };
+        }
+
+        /// <summary>
+        /// Convert YAML inputs to model inputs
+        /// </summary>
+        private List<InputDefinition> ConvertInputs(List<InputDefinitionYaml>? inputs)
+        {
+            if (inputs == null || inputs.Count == 0)
+                return new List<InputDefinition>();
+
+            return inputs.Select(input => new InputDefinition
+            {
+                Id = input.Id,
+                Required = input.Required,
+                Fallback = input.Fallback != null ? new FallbackStrategy
+                {
+                    Strategy = input.Fallback.Strategy,
+                    MaxAge = input.Fallback.MaxAge,
+                    DefaultValue = input.Fallback.DefaultValue
+                } : null
+            }).ToList();
+        }
+
+        /// <summary>
+        /// Convert YAML else clause to model else clause
+        /// </summary>
+        private ElseClause? ConvertElseClause(ElseClauseYaml? elseClause)
+        {
+            if (elseClause == null)
+                return null;
+
+            return new ElseClause
+            {
+                Actions = ConvertActions(elseClause.Actions)
+            };
         }
     }
 
@@ -656,6 +811,10 @@ namespace Pulsar.Compiler.Parsers
         public ConditionGroupYaml? Conditions { get; set; }
         public List<ActionListItem>? Actions { get; set; }
 
+        // V3 additions
+        public List<InputDefinitionYaml>? Inputs { get; set; }
+        public ElseClauseYaml? Else { get; set; }
+
         // Line tracking properties
         public int LineNumber { get; set; }
         public string? OriginalText { get; set; }
@@ -668,6 +827,11 @@ namespace Pulsar.Compiler.Parsers
 
         [YamlMember(Alias = "send_message")]
         public SendMessageActionYaml? SendMessage { get; set; }
+
+        // V3 format
+        public V3SetActionYaml? Set { get; set; }
+        public V3LogActionYaml? Log { get; set; }
+        public V3BufferActionYaml? Buffer { get; set; }
     }
 
     public class ConditionGroupYaml
@@ -679,7 +843,17 @@ namespace Pulsar.Compiler.Parsers
     public class Condition
     {
         [YamlMember(Alias = "condition")]
-        public ConditionInner ConditionDetails { get; set; } = new();
+        public ConditionInner? ConditionDetails { get; set; }
+
+        // V3 format - direct properties
+        public string? Type { get; set; }
+        public string? Sensor { get; set; }
+        public string? Operator { get; set; }
+        public object? Value { get; set; }
+        public double? Threshold { get; set; }
+        public string? Expression { get; set; }
+        public string? Duration { get; set; }
+        public string? Mode { get; set; }
     }
 
     public class ConditionInner
@@ -727,5 +901,52 @@ namespace Pulsar.Compiler.Parsers
 
         [YamlMember(Alias = "message_expression")]
         public string? MessageExpression { get; set; }
+    }
+
+    // V3 YAML classes
+    public class InputDefinitionYaml
+    {
+        public string Id { get; set; } = string.Empty;
+        public bool Required { get; set; } = true;
+        public FallbackStrategyYaml? Fallback { get; set; }
+    }
+
+    public class FallbackStrategyYaml
+    {
+        public string Strategy { get; set; } = string.Empty;
+        [YamlMember(Alias = "max_age")]
+        public string? MaxAge { get; set; }
+        [YamlMember(Alias = "default_value")]
+        public object? DefaultValue { get; set; }
+    }
+
+    public class ElseClauseYaml
+    {
+        public List<ActionListItem> Actions { get; set; } = new();
+    }
+
+    public class V3SetActionYaml
+    {
+        public string Key { get; set; } = string.Empty;
+        public object? Value { get; set; }
+        [YamlMember(Alias = "value_expression")]
+        public string? ValueExpression { get; set; }
+        public string? Emit { get; set; }
+    }
+
+    public class V3LogActionYaml
+    {
+        public string Log { get; set; } = string.Empty;
+        public string? Emit { get; set; }
+    }
+
+    public class V3BufferActionYaml
+    {
+        public string Key { get; set; } = string.Empty;
+        [YamlMember(Alias = "value_expression")]
+        public string? ValueExpression { get; set; }
+        [YamlMember(Alias = "max_items")]
+        public int MaxItems { get; set; } = 100;
+        public string? Emit { get; set; }
     }
 }

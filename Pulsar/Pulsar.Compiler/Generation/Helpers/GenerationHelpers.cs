@@ -93,7 +93,7 @@ namespace Pulsar.Compiler.Generation.Helpers
             return condition switch
             {
                 ComparisonCondition comparison => GenerateComparisonCondition(comparison),
-                ExpressionCondition expression => FixupExpression(expression.Expression),
+                ExpressionCondition expression => $"({FixupExpression(expression.Expression)} ? EvalResult.True : EvalResult.False)",
                 ThresholdOverTimeCondition threshold => GenerateThresholdCondition(threshold),
                 _ => throw new InvalidOperationException(
                     $"Unknown condition type: {condition.GetType().Name}"
@@ -192,6 +192,15 @@ namespace Pulsar.Compiler.Generation.Helpers
             {
                 return null;
             }
+        }
+
+        private EmitGuard GetOrCreateEmitGuard(string key, EmitMode mode)
+        {
+            if (!_emitGuards.ContainsKey(key))
+            {
+                _emitGuards[key] = new EmitGuard(mode);
+            }
+            return _emitGuards[key];
         }";
         }
 
@@ -223,6 +232,9 @@ namespace Pulsar.Compiler.Generation.Helpers
             {
                 SetValueAction setValue => GenerateSetValueAction(setValue),
                 SendMessageAction sendMessage => GenerateSendMessageAction(sendMessage),
+                V3SetAction v3Set => GenerateV3SetAction(v3Set),
+                V3LogAction v3Log => GenerateV3LogAction(v3Log),
+                V3BufferAction v3Buffer => GenerateV3BufferAction(v3Buffer),
                 _ => throw new InvalidOperationException(
                     $"Unknown action type: {action.GetType().Name}"
                 ),
@@ -719,6 +731,109 @@ namespace Pulsar.Compiler.Generation.Helpers
                     }
                     break;
             }
+        }
+
+        /// <summary>
+        /// Generate code for V3 Set action with emit control
+        /// </summary>
+        public static string GenerateV3SetAction(V3SetAction setAction)
+        {
+            var emitGuard = GenerateEmitGuard(setAction.Emit, setAction.Key);
+            var setValue = GenerateSetValueExpression(setAction.Key, setAction.Value, setAction.ValueExpression);
+            
+            if (setAction.Emit == EmitType.Always)
+            {
+                return setValue;
+            }
+            else
+            {
+                return $"if ({emitGuard}) {{ {setValue} }}";
+            }
+        }
+
+        /// <summary>
+        /// Generate code for V3 Log action with emit control
+        /// </summary>
+        public static string GenerateV3LogAction(V3LogAction logAction)
+        {
+            var emitGuard = GenerateEmitGuard(logAction.Emit, $"log_{logAction.Log.GetHashCode()}");
+            var logStatement = $"Logger.Information(\"{logAction.Log}\");";
+            
+            if (logAction.Emit == EmitType.Always)
+            {
+                return logStatement;
+            }
+            else
+            {
+                return $"if ({emitGuard}) {{ {logStatement} }}";
+            }
+        }
+
+        /// <summary>
+        /// Generate code for V3 Buffer action
+        /// </summary>
+        public static string GenerateV3BufferAction(V3BufferAction bufferAction)
+        {
+            var emitGuard = GenerateEmitGuard(bufferAction.Emit, bufferAction.Key);
+            var valueExpr = !string.IsNullOrEmpty(bufferAction.ValueExpression) 
+                ? FixupExpression(bufferAction.ValueExpression)
+                : "null";
+                
+            var bufferStatement = $"BufferManager.UpdateBuffer(\"{bufferAction.Key}\", {valueExpr}, DateTime.UtcNow);";
+            
+            if (bufferAction.Emit == EmitType.Always)
+            {
+                return bufferStatement;
+            }
+            else
+            {
+                return $"if ({emitGuard}) {{ {bufferStatement} }}";
+            }
+        }
+
+        /// <summary>
+        /// Generate emit guard condition for v3 emit controls
+        /// </summary>
+        private static string GenerateEmitGuard(EmitType emit, string key)
+        {
+            var mode = emit switch
+            {
+                EmitType.OnChange => "EmitMode.OnChange",
+                EmitType.OnEnter => "EmitMode.OnEnter", 
+                EmitType.Always => "EmitMode.Always",
+                _ => "EmitMode.Always"
+            };
+            
+            if (emit == EmitType.Always)
+            {
+                return "true";
+            }
+            
+            return $"GetOrCreateEmitGuard(\"{key}\", {mode}).ShouldEmit(\"{key}\", \"{key}\", outputs.GetValueOrDefault(\"{key}\"), true)";
+        }
+
+        /// <summary>
+        /// Generate set value expression handling both Value and ValueExpression
+        /// </summary>
+        private static string GenerateSetValueExpression(string key, object? value, string? valueExpression)
+        {
+            if (!string.IsNullOrEmpty(valueExpression))
+            {
+                if (valueExpression == "true") return $"outputs[\"{key}\"] = true;";
+                if (valueExpression == "false") return $"outputs[\"{key}\"] = false;";
+                if (valueExpression == "now()") return $"outputs[\"{key}\"] = DateTime.UtcNow.ToString(\"o\");";
+                
+                var expr = FixupExpression(valueExpression);
+                return $"outputs[\"{key}\"] = {expr};";
+            }
+            else if (value != null)
+            {
+                if (value is string strValue) return $"outputs[\"{key}\"] = \"{strValue}\";";
+                if (value is bool boolValue) return $"outputs[\"{key}\"] = {boolValue.ToString().ToLower()};";
+                return $"outputs[\"{key}\"] = {value};";
+            }
+            
+            return $"outputs[\"{key}\"] = null;";
         }
     }
 }

@@ -411,6 +411,12 @@ namespace Pulsar.Compiler.Config
                 Path.Combine(runtimeDir, "ThresholdHelper.cs")
             );
 
+            // Copy RuntimeHelpers.cs (required for v3 features)
+            base.CopyTemplateFile(
+                Path.Combine("Runtime", "Helpers", "RuntimeHelpers.cs"),
+                Path.Combine(runtimeDir, "RuntimeHelpers.cs")
+            );
+
             // Copy RuntimeOrchestrator and other core templates
             base.CopyTemplateFile(
                 "Runtime/RuntimeOrchestrator.cs",
