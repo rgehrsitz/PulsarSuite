@@ -14,6 +14,8 @@ namespace Pulsar.Compiler.Models
         public string Description { get; set; } = string.Empty;
         public ConditionGroup? Conditions { get; set; }
         public List<ActionDefinition> Actions { get; set; } = new();
+        public List<InputDefinition> Inputs { get; set; } = new();
+        public ElseClause? Else { get; set; }
         public string SourceFile { get; set; } = string.Empty;
         public int LineNumber { get; set; }
 
@@ -26,6 +28,11 @@ namespace Pulsar.Compiler.Models
         /// List of output sensors written by this rule's actions.
         /// </summary>
         public List<string> OutputSensors { get; set; } = new List<string>();
+
+        /// <summary>
+        /// Get all actions including else actions for processing
+        /// </summary>
+        public List<ActionDefinition> ElseActions => Else?.Actions ?? new List<ActionDefinition>();
 
         public void Validate()
         {
@@ -296,6 +303,111 @@ namespace Pulsar.Compiler.Models
             {
                 _logger.Error("SendMessage action must specify either Message or MessageExpression");
                 throw new ValidationException("Either Message or MessageExpression must be specified for SendMessage action");
+            }
+        }
+    }
+
+    /// <summary>
+    /// Input definition for v3 rules with fallback strategies
+    /// </summary>
+    public class InputDefinition
+    {
+        public string Id { get; set; } = string.Empty;
+        public bool Required { get; set; } = true;
+        public FallbackStrategy? Fallback { get; set; }
+    }
+
+    /// <summary>
+    /// Fallback strategy for unavailable sensors
+    /// </summary>
+    public class FallbackStrategy
+    {
+        public string Strategy { get; set; } = string.Empty; // use_last_known, use_default, propagate_unavailable, skip_rule
+        public string? MaxAge { get; set; }
+        public object? DefaultValue { get; set; }
+    }
+
+    /// <summary>
+    /// Else clause for v3 rules
+    /// </summary>
+    public class ElseClause
+    {
+        public List<ActionDefinition> Actions { get; set; } = new();
+    }
+
+    /// <summary>
+    /// Emit control for v3 actions
+    /// </summary>
+    public enum EmitType
+    {
+        Always,
+        OnChange,
+        OnEnter
+    }
+
+    /// <summary>
+    /// Base class for v3 action definitions with emit control
+    /// </summary>
+    public abstract class V3ActionDefinition : ActionDefinition
+    {
+        public EmitType Emit { get; set; } = EmitType.Always;
+    }
+
+    /// <summary>
+    /// V3 Set action with emit control
+    /// </summary>
+    public class V3SetAction : V3ActionDefinition
+    {
+        public string Key { get; set; } = string.Empty;
+        public object? Value { get; set; }
+        public string? ValueExpression { get; set; }
+
+        public override void Validate()
+        {
+            base.Validate();
+            if (string.IsNullOrEmpty(Key))
+            {
+                throw new ValidationException("Key is required for Set action");
+            }
+        }
+    }
+
+    /// <summary>
+    /// V3 Log action with emit control
+    /// </summary>
+    public class V3LogAction : V3ActionDefinition
+    {
+        public string Log { get; set; } = string.Empty;
+
+        public override void Validate()
+        {
+            base.Validate();
+            if (string.IsNullOrEmpty(Log))
+            {
+                throw new ValidationException("Log message is required for Log action");
+            }
+        }
+    }
+
+    /// <summary>
+    /// V3 Buffer action for temporal data collection
+    /// </summary>
+    public class V3BufferAction : V3ActionDefinition
+    {
+        public string Key { get; set; } = string.Empty;
+        public string? ValueExpression { get; set; }
+        public int MaxItems { get; set; } = 100;
+
+        public override void Validate()
+        {
+            base.Validate();
+            if (string.IsNullOrEmpty(Key))
+            {
+                throw new ValidationException("Key is required for Buffer action");
+            }
+            if (MaxItems <= 0)
+            {
+                throw new ValidationException("MaxItems must be greater than 0");
             }
         }
     }

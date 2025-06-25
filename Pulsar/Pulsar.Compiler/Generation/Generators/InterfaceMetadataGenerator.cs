@@ -130,30 +130,46 @@ namespace Pulsar.Compiler.Generation.Generators
 
                 foreach (var action in rule.Actions)
                 {
-                    if (action.Action == "set" && action.ActionDetails?.Key != null)
+                    switch (action)
                     {
-                        var outputId = action.ActionDetails.Key;
-                        
-                        if (!outputs.ContainsKey(outputId))
-                        {
-                            outputs[outputId] = CreateOutputMetadata(outputId, rule, groupCounter++);
-                        }
+                        case SetValueAction setAction when !string.IsNullOrEmpty(setAction.Key):
+                            var outputId = setAction.Key;
+                            if (!outputs.ContainsKey(outputId))
+                            {
+                                outputs[outputId] = CreateOutputMetadata(outputId, rule, groupCounter++);
+                            }
+                            break;
+                        case V3SetAction v3SetAction when !string.IsNullOrEmpty(v3SetAction.Key):
+                            var v3OutputId = v3SetAction.Key;
+                            if (!outputs.ContainsKey(v3OutputId))
+                            {
+                                outputs[v3OutputId] = CreateOutputMetadata(v3OutputId, rule, groupCounter++);
+                            }
+                            break;
                     }
                 }
 
                 // Also check else actions
-                if (rule.ElseActions == null) continue;
+                if (rule.ElseActions == null || rule.ElseActions.Count == 0) continue;
 
                 foreach (var action in rule.ElseActions)
                 {
-                    if (action.Action == "set" && action.ActionDetails?.Key != null)
+                    switch (action)
                     {
-                        var outputId = action.ActionDetails.Key;
-                        
-                        if (!outputs.ContainsKey(outputId))
-                        {
-                            outputs[outputId] = CreateOutputMetadata(outputId, rule, groupCounter++);
-                        }
+                        case SetValueAction setAction when !string.IsNullOrEmpty(setAction.Key):
+                            var outputId = setAction.Key;
+                            if (!outputs.ContainsKey(outputId))
+                            {
+                                outputs[outputId] = CreateOutputMetadata(outputId, rule, groupCounter++);
+                            }
+                            break;
+                        case V3SetAction v3SetAction when !string.IsNullOrEmpty(v3SetAction.Key):
+                            var v3OutputId = v3SetAction.Key;
+                            if (!outputs.ContainsKey(v3OutputId))
+                            {
+                                outputs[v3OutputId] = CreateOutputMetadata(v3OutputId, rule, groupCounter++);
+                            }
+                            break;
                     }
                 }
             }

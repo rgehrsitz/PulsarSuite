@@ -155,12 +155,7 @@ namespace Pulsar.Compiler.Commands
             if (!catalogResult.IsValid)
             {
                 throw new ValidationException(
-                    "Sensor catalog validation failed",
-                    new Dictionary<string, object>
-                    {
-                        ["CatalogPath"] = catalogPath,
-                        ["Errors"] = catalogResult.Errors
-                    }
+                    $"Sensor catalog validation failed for {catalogPath}: {string.Join(", ", catalogResult.Errors)}"
                 );
             }
 
@@ -178,13 +173,7 @@ namespace Pulsar.Compiler.Commands
                 if (!referenceResult.IsValid)
                 {
                     throw new ValidationException(
-                        "Rule sensor reference validation failed",
-                        new Dictionary<string, object>
-                        {
-                            ["CatalogPath"] = catalogPath,
-                            ["RuleCount"] = rules.Count,
-                            ["Errors"] = referenceResult.Errors
-                        }
+                        $"Rule sensor reference validation failed for {catalogPath} with {rules.Count} rules: {string.Join(", ", referenceResult.Errors)}"
                     );
                 }
             }
