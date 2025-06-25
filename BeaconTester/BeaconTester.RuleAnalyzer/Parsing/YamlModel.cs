@@ -22,6 +22,10 @@ namespace BeaconTester.RuleAnalyzer.Parsing
         public List<ActionItem>? Actions { get; set; }
         public List<InputItem>? Inputs { get; set; }
         
+        // V3 else block support
+        [YamlMember(Alias = "else")]
+        public ElseBlock? Else { get; set; }
+        
         // Line tracking
         public int LineNumber { get; set; }
     }
@@ -40,12 +44,25 @@ namespace BeaconTester.RuleAnalyzer.Parsing
     }
 
     /// <summary>
-    /// Condition item in YAML (with condition wrapper)
+    /// Condition item in YAML (with condition wrapper or direct V3 format)
     /// </summary>
     public class ConditionItem
     {
         [YamlMember(Alias = "condition")]
-        public ConditionDetails Condition { get; set; } = null!;
+        public ConditionDetails? Condition { get; set; }
+        
+        // V3 direct format support
+        public string? Type { get; set; }
+        public string? Sensor { get; set; }
+        public string? Operator { get; set; }
+        public object? Value { get; set; }
+        public object? Threshold { get; set; }
+        public string? Expression { get; set; }
+        public object? Duration { get; set; }
+        
+        // V3 temporal condition support
+        [YamlMember(Alias = "comparison_operator")]
+        public string? ComparisonOperator { get; set; }
     }
 
     /// <summary>
@@ -64,15 +81,29 @@ namespace BeaconTester.RuleAnalyzer.Parsing
     }
 
     /// <summary>
+    /// V3 else block
+    /// </summary>
+    public class ElseBlock
+    {
+        public List<ActionItem>? Actions { get; set; }
+    }
+
+    /// <summary>
     /// Action item in YAML
     /// </summary>
     public class ActionItem
     {
+        // Legacy actions
         [YamlMember(Alias = "set_value")]
         public SetValueActionYaml? SetValue { get; set; }
         
         [YamlMember(Alias = "send_message")]
         public SendMessageActionYaml? SendMessage { get; set; }
+        
+        // V3 actions
+        public V3SetAction? Set { get; set; }
+        public V3LogAction? Log { get; set; }
+        public V3BufferAction? Buffer { get; set; }
     }
 
     /// <summary>
@@ -124,4 +155,5 @@ namespace BeaconTester.RuleAnalyzer.Parsing
         [YamlMember(Alias = "max_age")]
         public string? MaxAge { get; set; }
     }
+
 }

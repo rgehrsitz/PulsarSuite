@@ -44,6 +44,11 @@ namespace BeaconTester.RuleAnalyzer.Parsing
         /// Inputs for this rule, including fallback/default info
         /// </summary>
         public List<InputDefinition> Inputs { get; set; } = new List<InputDefinition>();
+
+        /// <summary>
+        /// V3 else actions to perform when conditions are not met
+        /// </summary>
+        public List<ActionDefinition> ElseActions { get; set; } = new List<ActionDefinition>();
     }
 
     /// <summary>
@@ -221,6 +226,37 @@ namespace BeaconTester.RuleAnalyzer.Parsing
         /// </summary>
         [YamlMember(Alias = "message_expression")]
         public string? MessageExpression { get; set; }
+    }
+
+    /// <summary>
+    /// V3 Set action with emit control
+    /// </summary>
+    public class V3SetAction : ActionDefinition
+    {
+        public string Key { get; set; } = string.Empty;
+        public object? Value { get; set; }
+        public string? ValueExpression { get; set; }
+        public string Emit { get; set; } = "always";
+    }
+
+    /// <summary>
+    /// V3 Log action with emit control
+    /// </summary>
+    public class V3LogAction : ActionDefinition
+    {
+        public string Log { get; set; } = string.Empty;
+        public string Emit { get; set; } = "always";
+    }
+
+    /// <summary>
+    /// V3 Buffer action with emit control
+    /// </summary>
+    public class V3BufferAction : ActionDefinition
+    {
+        public string Key { get; set; } = string.Empty;
+        public string? ValueExpression { get; set; }
+        public int? MaxItems { get; set; }
+        public string Emit { get; set; } = "always";
     }
 
     /// <summary>

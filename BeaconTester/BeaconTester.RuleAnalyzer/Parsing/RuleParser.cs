@@ -102,7 +102,7 @@ namespace BeaconTester.RuleAnalyzer.Parsing
                             foreach (var condItem in rule.Conditions.All)
                             {
                                 var wrapper = new ConditionWrapper();
-                                wrapper.Condition = ConvertCondition(condItem.Condition);
+                                wrapper.Condition = ConvertConditionItem(condItem);
                                 ruleDef.Conditions.All.Add(wrapper);
                             }
                         }
@@ -113,7 +113,7 @@ namespace BeaconTester.RuleAnalyzer.Parsing
                             foreach (var condItem in rule.Conditions.Any)
                             {
                                 var wrapper = new ConditionWrapper();
-                                wrapper.Condition = ConvertCondition(condItem.Condition);
+                                wrapper.Condition = ConvertConditionItem(condItem);
                                 ruleDef.Conditions.Any.Add(wrapper);
                             }
                         }
@@ -150,6 +150,7 @@ namespace BeaconTester.RuleAnalyzer.Parsing
                     {
                         foreach (var actionItem in rule.Actions)
                         {
+                            // Legacy actions
                             if (actionItem.SetValue != null)
                             {
                                 ruleDef.Actions.Add(new SetValueAction
@@ -168,6 +169,63 @@ namespace BeaconTester.RuleAnalyzer.Parsing
                                     MessageExpression = actionItem.SendMessage.MessageExpression
                                 });
                             }
+                            // V3 actions
+                            else if (actionItem.Set != null)
+                            {
+                                ruleDef.Actions.Add(new V3SetAction
+                                {
+                                    Key = actionItem.Set.Key,
+                                    Value = actionItem.Set.Value,
+                                    ValueExpression = actionItem.Set.ValueExpression,
+                                    Emit = actionItem.Set.Emit ?? "always"
+                                });
+                            }
+                            else if (actionItem.Log != null)
+                            {
+                                ruleDef.Actions.Add(new V3LogAction
+                                {
+                                    Log = actionItem.Log.Log,
+                                    Emit = actionItem.Log.Emit ?? "always"
+                                });
+                            }
+                            else if (actionItem.Buffer != null)
+                            {
+                                ruleDef.Actions.Add(new V3BufferAction
+                                {
+                                    Key = actionItem.Buffer.Key,
+                                    ValueExpression = actionItem.Buffer.ValueExpression,
+                                    MaxItems = actionItem.Buffer.MaxItems,
+                                    Emit = actionItem.Buffer.Emit ?? "always"
+                                });
+                            }
+                        }
+                    }
+
+                    // Convert V3 else actions
+                    if (rule.Else?.Actions != null)
+                    {
+                        foreach (var actionItem in rule.Else.Actions)
+                        {
+                            // Similar action parsing for else block
+                            if (actionItem.Set != null)
+                            {
+                                ruleDef.ElseActions.Add(new V3SetAction
+                                {
+                                    Key = actionItem.Set.Key,
+                                    Value = actionItem.Set.Value,
+                                    ValueExpression = actionItem.Set.ValueExpression,
+                                    Emit = actionItem.Set.Emit ?? "always"
+                                });
+                            }
+                            else if (actionItem.Log != null)
+                            {
+                                ruleDef.ElseActions.Add(new V3LogAction
+                                {
+                                    Log = actionItem.Log.Log,
+                                    Emit = actionItem.Log.Emit ?? "always"
+                                });
+                            }
+                            // Add other action types as needed
                         }
                     }
 
@@ -193,6 +251,83 @@ namespace BeaconTester.RuleAnalyzer.Parsing
             }
         }
         
+        /// <summary>
+        /// Converts a YAML condition item to a domain model condition (handles both legacy and V3 formats)
+        /// </summary>
+        private ConditionDefinition ConvertConditionItem(ConditionItem conditionItem)
+        {
+            // Check if this is legacy format (wrapped in condition: property)
+            if (conditionItem.Condition != null)
+            {
+                return ConvertCondition(conditionItem.Condition);
+            }
+            
+            // V3 format - properties are directly on the condition item
+            if (!string.IsNullOrEmpty(conditionItem.Type))
+            {
+                var conditionDetails = new ConditionDetails
+                {
+                    Type = conditionItem.Type,
+                    Sensor = conditionItem.Sensor,
+                    Operator = conditionItem.Operator ?? conditionItem.ComparisonOperator,
+                    Value = conditionItem.Value,
+                    Threshold = conditionItem.Threshold,
+                    Expression = conditionItem.Expression,
+                    Duration = ConvertDurationToMilliseconds(conditionItem.Duration)
+                };
+                
+                return ConvertCondition(conditionDetails);
+            }
+            
+            _logger.Warning("ConditionItem has no valid condition format (neither legacy wrapped nor V3 direct). Returning always-true condition.");
+            return new ExpressionCondition
+            {
+                Type = "expression",
+                Expression = "true"
+            };
+        }
+
+        /// <summary>
+        /// Converts V3 duration format (e.g., "10s", "1m") to milliseconds
+        /// </summary>
+        private int ConvertDurationToMilliseconds(object? duration)
+        {
+            if (duration == null) return 0;
+            
+            if (duration is int intDuration) return intDuration;
+            
+            if (duration is string strDuration)
+            {
+                if (strDuration.EndsWith("ms"))
+                {
+                    if (int.TryParse(strDuration.Substring(0, strDuration.Length - 2), out int ms))
+                        return ms;
+                }
+                else if (strDuration.EndsWith("s"))
+                {
+                    if (double.TryParse(strDuration.Substring(0, strDuration.Length - 1), out double seconds))
+                        return (int)(seconds * 1000);
+                }
+                else if (strDuration.EndsWith("m"))
+                {
+                    if (double.TryParse(strDuration.Substring(0, strDuration.Length - 1), out double minutes))
+                        return (int)(minutes * 60 * 1000);
+                }
+                else if (strDuration.EndsWith("h"))
+                {
+                    if (double.TryParse(strDuration.Substring(0, strDuration.Length - 1), out double hours))
+                        return (int)(hours * 60 * 60 * 1000);
+                }
+                else if (int.TryParse(strDuration, out int parsedInt))
+                {
+                    return parsedInt;
+                }
+            }
+            
+            _logger.Warning("Could not parse duration: {Duration}. Defaulting to 0ms.", duration);
+            return 0;
+        }
+
         /// <summary>
         /// Converts a YAML condition to a domain model condition
         /// </summary>

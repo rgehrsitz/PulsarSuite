@@ -1,0 +1,16 @@
+{
+  "scenarios": [
+    {
+      "name": "HighTempAlertBasicTest",
+      "description": "Basic test for rule HighTempAlert: ",
+      "preSetOutputs": null,
+      "clearOutputs": true,
+      "steps": [],
+      "inputs": null,
+      "inputSequence": null,
+      "expectedOutputs": null,
+      "tolerance": null,
+      "timeoutMultiplier": 1
+    }
+  ]
+}

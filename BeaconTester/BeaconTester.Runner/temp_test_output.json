@@ -1,0 +1,100 @@
+{
+  "scenarios": [
+    {
+      "name": "SustainedHighTemperatureBasicTest",
+      "description": "Basic test for rule SustainedHighTemperature: ",
+      "preSetOutputs": null,
+      "clearOutputs": true,
+      "steps": [],
+      "inputs": null,
+      "inputSequence": null,
+      "expectedOutputs": null,
+      "tolerance": null,
+      "timeoutMultiplier": 1
+    },
+    {
+      "name": "PressureStabilityMonitorBasicTest",
+      "description": "Basic test for rule PressureStabilityMonitor: ",
+      "preSetOutputs": null,
+      "clearOutputs": true,
+      "steps": [],
+      "inputs": null,
+      "inputSequence": null,
+      "expectedOutputs": null,
+      "tolerance": null,
+      "timeoutMultiplier": 1
+    },
+    {
+      "name": "CriticalSystemAlertBasicTest",
+      "description": "Basic test for rule CriticalSystemAlert: ",
+      "preSetOutputs": null,
+      "clearOutputs": true,
+      "steps": [],
+      "inputs": null,
+      "inputSequence": null,
+      "expectedOutputs": null,
+      "tolerance": null,
+      "timeoutMultiplier": 1
+    },
+    {
+      "name": "EfficiencyCalculatorBasicTest",
+      "description": "Basic test for rule EfficiencyCalculator: ",
+      "preSetOutputs": null,
+      "clearOutputs": true,
+      "steps": [],
+      "inputs": null,
+      "inputSequence": null,
+      "expectedOutputs": null,
+      "tolerance": null,
+      "timeoutMultiplier": 1
+    },
+    {
+      "name": "TemperatureHistoryCollectorBasicTest",
+      "description": "Basic test for rule TemperatureHistoryCollector: ",
+      "preSetOutputs": null,
+      "clearOutputs": true,
+      "steps": [],
+      "inputs": null,
+      "inputSequence": null,
+      "expectedOutputs": null,
+      "tolerance": null,
+      "timeoutMultiplier": 1
+    },
+    {
+      "name": "RapidTemperatureChangeBasicTest",
+      "description": "Basic test for rule RapidTemperatureChange: ",
+      "preSetOutputs": null,
+      "clearOutputs": true,
+      "steps": [],
+      "inputs": null,
+      "inputSequence": null,
+      "expectedOutputs": null,
+      "tolerance": null,
+      "timeoutMultiplier": 1
+    },
+    {
+      "name": "EmergencyShutdownLogicBasicTest",
+      "description": "Basic test for rule EmergencyShutdownLogic: ",
+      "preSetOutputs": null,
+      "clearOutputs": true,
+      "steps": [],
+      "inputs": null,
+      "inputSequence": null,
+      "expectedOutputs": null,
+      "tolerance": null,
+      "timeoutMultiplier": 1
+    },
+    {
+      "name": "SystemHealthScoreBasicTest",
+      "description": "Basic test for rule SystemHealthScore: ",
+      "preSetOutputs": null,
+      "clearOutputs": true,
+      "steps": [],
+      "inputs": null,
+      "inputSequence": null,
+      "expectedOutputs": null,
+      "tolerance": null,
+      "timeoutMultiplier": 1
+    }
+  ]
+}
