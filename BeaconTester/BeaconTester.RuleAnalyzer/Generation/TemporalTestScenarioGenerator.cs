@@ -61,22 +61,24 @@ namespace BeaconTester.RuleAnalyzer.Generation
 
             if (rule.Conditions?.All != null)
             {
-                foreach (var condition in rule.Conditions.All)
+                foreach (var wrapper in rule.Conditions.All)
                 {
-                    if (condition.Type == "threshold_over_time")
+                    var condition = wrapper.Condition;
+                    if (condition.Type == "threshold_over_time" && condition is ThresholdOverTimeCondition toc)
                     {
-                        conditions.Add(ParseTemporalCondition(condition));
+                        conditions.Add(ParseTemporalCondition(toc));
                     }
                 }
             }
 
             if (rule.Conditions?.Any != null)
             {
-                foreach (var condition in rule.Conditions.Any)
+                foreach (var wrapper in rule.Conditions.Any)
                 {
-                    if (condition.Type == "threshold_over_time")
+                    var condition = wrapper.Condition;
+                    if (condition.Type == "threshold_over_time" && condition is ThresholdOverTimeCondition toc)
                     {
-                        conditions.Add(ParseTemporalCondition(condition));
+                        conditions.Add(ParseTemporalCondition(toc));
                     }
                 }
             }
@@ -84,14 +86,14 @@ namespace BeaconTester.RuleAnalyzer.Generation
             return conditions;
         }
 
-        private TemporalCondition ParseTemporalCondition(ConditionDefinition condition)
+        private TemporalCondition ParseTemporalCondition(ThresholdOverTimeCondition condition)
         {
             return new TemporalCondition
             {
-                Sensor = condition.ConditionDetails?.Sensor ?? "",
-                Operator = condition.ConditionDetails?.Operator ?? ">",
-                Threshold = Convert.ToDouble(condition.ConditionDetails?.Threshold ?? 0),
-                Duration = ParseDuration(condition.ConditionDetails?.Duration ?? "10s")
+                Sensor = condition.Sensor,
+                Operator = condition.Operator ?? ">",
+                Threshold = condition.Threshold,
+                Duration = TimeSpan.FromMilliseconds(condition.Duration)
             };
         }
 
@@ -442,10 +444,10 @@ namespace BeaconTester.RuleAnalyzer.Generation
         private string GetExpectedOutputKey(RuleDefinition rule)
         {
             // Try to find the output key from the rule's actions
-            var setAction = rule.Actions?.FirstOrDefault(a => a.Action == "set");
-            if (setAction != null && !string.IsNullOrEmpty(setAction.ActionDetails?.Key))
+            var setAction = rule.Actions?.OfType<SetValueAction>().FirstOrDefault();
+            if (setAction != null && !string.IsNullOrEmpty(setAction.Key))
             {
-                return $"output:{setAction.ActionDetails.Key}";
+                return $"output:{setAction.Key}";
             }
 
             // Fallback to rule name pattern
