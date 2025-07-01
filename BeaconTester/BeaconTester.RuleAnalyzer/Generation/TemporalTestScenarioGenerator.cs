@@ -450,6 +450,13 @@ namespace BeaconTester.RuleAnalyzer.Generation
                 return $"output:{setAction.Key}";
             }
 
+            // Check for V3 actions
+            var v3SetAction = rule.Actions?.OfType<V3SetAction>().FirstOrDefault();
+            if (v3SetAction != null && !string.IsNullOrEmpty(v3SetAction.Key))
+            {
+                return $"output:{v3SetAction.Key}";
+            }
+
             // Fallback to rule name pattern
             return $"output:{rule.Name.ToLowerInvariant().Replace(" ", "_")}";
         }
