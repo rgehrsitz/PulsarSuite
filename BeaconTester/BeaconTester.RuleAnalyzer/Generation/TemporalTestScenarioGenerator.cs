@@ -137,7 +137,7 @@ namespace BeaconTester.RuleAnalyzer.Generation
                 Name = "Initialize output key",
                 Inputs = new List<TestInput>
                 {
-                    new TestInput { Key = condition.Sensor, Value = neutralValue }
+                    new TestInput { Key = $"input:{condition.Sensor}", Value = neutralValue }
                 },
                 Delay = 200, // Short delay to let Beacon process
                 Expectations = new List<TestExpectation>() // No expectations, just initialization
@@ -150,7 +150,7 @@ namespace BeaconTester.RuleAnalyzer.Generation
                 Name = "Below threshold",
                 Inputs = new List<TestInput>
                 {
-                    new TestInput { Key = condition.Sensor, Value = belowValue }
+                    new TestInput { Key = $"input:{condition.Sensor}", Value = belowValue }
                 },
                 Delay = 500,
                 Expectations = new List<TestExpectation>
@@ -172,7 +172,7 @@ namespace BeaconTester.RuleAnalyzer.Generation
                 Name = "Above threshold - wait for complete duration",
                 Inputs = new List<TestInput>
                 {
-                    new TestInput { Key = condition.Sensor, Value = aboveValue }
+                    new TestInput { Key = $"input:{condition.Sensor}", Value = aboveValue }
                 },
                 Delay = fullDuration,
                 Expectations = new List<TestExpectation>
@@ -212,7 +212,7 @@ namespace BeaconTester.RuleAnalyzer.Generation
                 Name = "Start above threshold",
                 Inputs = new List<TestInput>
                 {
-                    new TestInput { Key = condition.Sensor, Value = aboveValue }
+                    new TestInput { Key = $"input:{condition.Sensor}", Value = aboveValue }
                 },
                 Delay = partialDuration,
                 Expectations = new List<TestExpectation>
@@ -232,7 +232,7 @@ namespace BeaconTester.RuleAnalyzer.Generation
                 Name = "Drop below threshold - window resets",
                 Inputs = new List<TestInput>
                 {
-                    new TestInput { Key = condition.Sensor, Value = belowValue }
+                    new TestInput { Key = $"input:{condition.Sensor}", Value = belowValue }
                 },
                 Delay = 500,
                 Expectations = new List<TestExpectation>
@@ -252,7 +252,7 @@ namespace BeaconTester.RuleAnalyzer.Generation
                 Name = "Back above threshold - restart duration",
                 Inputs = new List<TestInput>
                 {
-                    new TestInput { Key = condition.Sensor, Value = aboveValue }
+                    new TestInput { Key = $"input:{condition.Sensor}", Value = aboveValue }
                 },
                 Delay = (int)(condition.Duration.TotalMilliseconds * 1.2), // Ensure full duration completes
                 Expectations = new List<TestExpectation>
@@ -295,7 +295,7 @@ namespace BeaconTester.RuleAnalyzer.Generation
                 Name = "Just before duration boundary",
                 Inputs = new List<TestInput>
                 {
-                    new TestInput { Key = condition.Sensor, Value = aboveValue }
+                    new TestInput { Key = $"input:{condition.Sensor}", Value = aboveValue }
                 },
                 Delay = justBefore,
                 Expectations = new List<TestExpectation>
@@ -315,7 +315,7 @@ namespace BeaconTester.RuleAnalyzer.Generation
                 Name = "Just after duration boundary",
                 Inputs = new List<TestInput>
                 {
-                    new TestInput { Key = condition.Sensor, Value = aboveValue }
+                    new TestInput { Key = $"input:{condition.Sensor}", Value = aboveValue }
                 },
                 Delay = justAfter,
                 Expectations = new List<TestExpectation>
@@ -354,7 +354,7 @@ namespace BeaconTester.RuleAnalyzer.Generation
                 Name = "Start above threshold",
                 Inputs = new List<TestInput>
                 {
-                    new TestInput { Key = condition.Sensor, Value = aboveValue }
+                    new TestInput { Key = $"input:{condition.Sensor}", Value = aboveValue }
                 },
                 Delay = partialDuration,
                 Expectations = new List<TestExpectation>
@@ -391,7 +391,7 @@ namespace BeaconTester.RuleAnalyzer.Generation
                 Name = "Sensor restored - restart window",
                 Inputs = new List<TestInput>
                 {
-                    new TestInput { Key = condition.Sensor, Value = aboveValue }
+                    new TestInput { Key = $"input:{condition.Sensor}", Value = aboveValue }
                 },
                 Delay = (int)(condition.Duration.TotalMilliseconds * 1.2),
                 Expectations = new List<TestExpectation>

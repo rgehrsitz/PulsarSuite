@@ -79,6 +79,16 @@ namespace BeaconTester.Core
                 {
                     _logger.Debug("Clearing output keys for scenario: {TestName}", scenario.Name);
                     await _redis.ClearKeysAsync($"{RedisAdapter.OUTPUT_PREFIX}*");
+                    
+                    // Send temporal reset command to Beacon runtime
+                    _logger.Debug("Sending temporal reset command to Beacon runtime");
+                    await _redis.SendInputsAsync(new List<TestInput>
+                    {
+                        new TestInput { Key = "command:reset_temporal", Value = "true" }
+                    });
+                    
+                    // Wait a brief moment for the command to be processed
+                    await Task.Delay(100);
                 }
                 else
                 {

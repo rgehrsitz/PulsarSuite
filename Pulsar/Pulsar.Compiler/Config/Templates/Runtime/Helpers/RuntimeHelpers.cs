@@ -96,6 +96,12 @@ namespace Pulsar.Runtime.Helpers
                 return EvalResult.False;
             }
         }
+
+        public void Reset()
+        {
+            _inWindow = false;
+            _start = default;
+        }
     }
 
     // 3️⃣  Emit guard helper ---------------------------------------------------

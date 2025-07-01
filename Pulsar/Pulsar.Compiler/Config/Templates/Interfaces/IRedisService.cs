@@ -101,6 +101,11 @@ namespace Beacon.Runtime.Interfaces
         Task<Dictionary<string, string>?> HashGetAllAsync(string key);
         
         /// <summary>
+        /// Gets a string value from Redis
+        /// </summary>
+        Task<string?> GetStringAsync(string key);
+        
+        /// <summary>
         /// Deletes a key from Redis
         /// </summary>
         Task<bool> DeleteKeyAsync(string key);

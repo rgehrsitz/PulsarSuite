@@ -99,5 +99,17 @@ namespace Beacon.Runtime
                 return new Dictionary<string, object>();
             }
         }
+
+        /// <summary>
+        /// Resets the temporal state of all rule groups
+        /// </summary>
+        public virtual void ResetTemporalState()
+        {
+            _logger.Information("Resetting temporal state for all rule groups");
+            foreach (var ruleGroup in _ruleGroups)
+            {
+                ruleGroup.ResetTemporalState();
+            }
+        }
     }
 }

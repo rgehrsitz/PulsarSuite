@@ -24,5 +24,10 @@ namespace Beacon.Runtime.Interfaces
         /// <param name="inputs">Dictionary of sensor values</param>
         /// <returns>Dictionary of output values</returns>
         Task<Dictionary<string, object>> ExecuteRulesAsync(Dictionary<string, object> inputs);
+
+        /// <summary>
+        /// Resets the temporal state of all rule groups
+        /// </summary>
+        void ResetTemporalState();
     }
 }

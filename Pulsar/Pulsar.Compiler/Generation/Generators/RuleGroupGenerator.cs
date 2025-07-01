@@ -246,6 +246,17 @@ namespace Pulsar.Compiler.Generation.Generators
             sb.AppendLine("            }");
             sb.AppendLine("        }");
 
+            // Add ResetTemporalState method for test scenario isolation
+            sb.AppendLine();
+            sb.AppendLine("        public void ResetTemporalState()");
+            sb.AppendLine("        {");
+            sb.AppendLine("            foreach (var tracker in _windowTrackers.Values)");
+            sb.AppendLine("            {");
+            sb.AppendLine("                tracker.Reset();");
+            sb.AppendLine("            }");
+            sb.AppendLine("            _emitGuards.Clear();");
+            sb.AppendLine("        }");
+
             sb.AppendLine("    }");
             sb.AppendLine("}");
 

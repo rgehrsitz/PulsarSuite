@@ -39,6 +39,9 @@ namespace Beacon.Runtime
         {
             try
             {
+                // Check for temporal state reset command from BeaconTester
+                await CheckForTemporalResetCommand();
+
                 // Get all inputs from Redis
                 var inputs = await _redis.GetAllInputsAsync();
 
@@ -150,5 +153,26 @@ namespace Beacon.Runtime
         }
 
         public int RuleCount => _coordinator.RuleCount;
+
+        private async Task CheckForTemporalResetCommand()
+        {
+            try
+            {
+                // Check for reset command from BeaconTester
+                var resetCommand = await _redis.GetStringAsync("command:reset_temporal");
+                if (!string.IsNullOrEmpty(resetCommand) && resetCommand == "true")
+                {
+                    _logger.Information("Received temporal reset command, resetting all temporal state");
+                    _coordinator.ResetTemporalState();
+                    
+                    // Clear the command flag
+                    await _redis.DeleteKeyAsync("command:reset_temporal");
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.Error(ex, "Error checking for temporal reset command");
+            }
+        }
     }
 }

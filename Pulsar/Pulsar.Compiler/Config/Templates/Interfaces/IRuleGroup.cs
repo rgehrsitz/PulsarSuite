@@ -30,5 +30,10 @@ namespace Beacon.Runtime.Interfaces
             Dictionary<string, object> inputs,
             Dictionary<string, object> outputs
         );
+
+        /// <summary>
+        /// Resets the temporal state of all WindowTrackers and EmitGuards
+        /// </summary>
+        void ResetTemporalState();
     }
 }

@@ -357,6 +357,21 @@ namespace Beacon.Runtime.Services
             }
         }
 
+        public async Task<string?> GetStringAsync(string key)
+        {
+            try
+            {
+                var connection = GetConnection();
+                var db = connection.GetDatabase();
+                return await db.StringGetAsync(key);
+            }
+            catch (Exception ex)
+            {
+                _logger.Error(ex, "Failed to get string value for key {Key}", key);
+                return null;
+            }
+        }
+
         public async Task<bool> DeleteKeyAsync(string key)
         {
             try

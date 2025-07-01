@@ -224,6 +224,18 @@ namespace Pulsar.Compiler.Generation.Generators
             sb.AppendLine("                throw;");
             sb.AppendLine("            }");
             sb.AppendLine("        }");
+
+            // Add ResetTemporalState method
+            sb.AppendLine();
+            sb.AppendLine("        public void ResetTemporalState()");
+            sb.AppendLine("        {");
+            sb.AppendLine("            _logger.Information(\"Resetting temporal state for all rule groups\");");
+            sb.AppendLine("            foreach (var ruleGroup in _ruleGroups)");
+            sb.AppendLine("            {");
+            sb.AppendLine("                ruleGroup.ResetTemporalState();");
+            sb.AppendLine("            }");
+            sb.AppendLine("        }");
+
             sb.AppendLine("    }");
             sb.AppendLine("}");
 
