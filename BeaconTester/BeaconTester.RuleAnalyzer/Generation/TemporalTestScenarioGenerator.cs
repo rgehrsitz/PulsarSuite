@@ -130,6 +130,19 @@ namespace BeaconTester.RuleAnalyzer.Generation
                 Steps = new List<TestStep>()
             };
 
+            // Step 0: Initialize with neutral value to ensure output key exists
+            var neutralValue = GetNeutralValue(condition);
+            scenario.Steps.Add(new TestStep
+            {
+                Name = "Initialize output key",
+                Inputs = new List<TestInput>
+                {
+                    new TestInput { Key = condition.Sensor, Value = neutralValue }
+                },
+                Delay = 200, // Short delay to let Beacon process
+                Expectations = new List<TestExpectation>() // No expectations, just initialization
+            });
+
             // Step 1: Value below threshold - should be False
             var belowValue = GetValueBelowThreshold(condition);
             scenario.Steps.Add(new TestStep
@@ -174,7 +187,7 @@ namespace BeaconTester.RuleAnalyzer.Generation
             });
 
             // Step 3: Complete duration - should be True
-            var remainingDuration = (int)(condition.Duration.TotalMilliseconds * 0.6); // Ensure we exceed duration
+            var remainingDuration = (int)(condition.Duration.TotalMilliseconds * 0.55); // Total: 50% + 55% = 105% > 100%
             scenario.Steps.Add(new TestStep
             {
                 Name = "Above threshold - complete duration",
@@ -438,6 +451,19 @@ namespace BeaconTester.RuleAnalyzer.Generation
                 "<" => condition.Threshold + 10,
                 "<=" => condition.Threshold + 5,
                 _ => condition.Threshold - 10
+            };
+        }
+
+        private double GetNeutralValue(TemporalCondition condition)
+        {
+            // Return a safe value that's clearly below threshold to ensure clean start
+            return condition.Operator switch
+            {
+                ">" => condition.Threshold - 20,
+                ">=" => condition.Threshold - 20,
+                "<" => condition.Threshold + 20,
+                "<=" => condition.Threshold + 20,
+                _ => condition.Threshold - 20
             };
         }
 
