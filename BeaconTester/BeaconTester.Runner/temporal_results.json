@@ -1,0 +1,360 @@
+{
+  "results": [
+    {
+      "name": "SustainedHighTempBasicTest",
+      "success": true,
+      "duration": "00:00:10.0663564",
+      "stepResults": [
+        {
+          "success": true,
+          "duration": "00:00:00.5081419",
+          "expectationResults": [],
+          "errorMessage": null
+        },
+        {
+          "success": true,
+          "duration": "00:00:00.4993062",
+          "expectationResults": [],
+          "errorMessage": null
+        },
+        {
+          "success": true,
+          "duration": "00:00:00.5016557",
+          "expectationResults": [],
+          "errorMessage": null
+        },
+        {
+          "success": true,
+          "duration": "00:00:00.5011967",
+          "expectationResults": [],
+          "errorMessage": null
+        },
+        {
+          "success": true,
+          "duration": "00:00:00.5024424",
+          "expectationResults": [],
+          "errorMessage": null
+        },
+        {
+          "success": true,
+          "duration": "00:00:00.5013514",
+          "expectationResults": [],
+          "errorMessage": null
+        },
+        {
+          "success": true,
+          "duration": "00:00:00.5019198",
+          "expectationResults": [],
+          "errorMessage": null
+        },
+        {
+          "success": true,
+          "duration": "00:00:00.5013388",
+          "expectationResults": [],
+          "errorMessage": null
+        },
+        {
+          "success": true,
+          "duration": "00:00:00.5020977",
+          "expectationResults": [],
+          "errorMessage": null
+        },
+        {
+          "success": true,
+          "duration": "00:00:00.5009190",
+          "expectationResults": [],
+          "errorMessage": null
+        },
+        {
+          "success": true,
+          "duration": "00:00:00.5022485",
+          "expectationResults": [],
+          "errorMessage": null
+        },
+        {
+          "success": true,
+          "duration": "00:00:00.5010031",
+          "expectationResults": [],
+          "errorMessage": null
+        },
+        {
+          "success": true,
+          "duration": "00:00:00.5017862",
+          "expectationResults": [],
+          "errorMessage": null
+        },
+        {
+          "success": true,
+          "duration": "00:00:00.5012817",
+          "expectationResults": [],
+          "errorMessage": null
+        },
+        {
+          "success": true,
+          "duration": "00:00:00.5017533",
+          "expectationResults": [],
+          "errorMessage": null
+        },
+        {
+          "success": true,
+          "duration": "00:00:00.5106826",
+          "expectationResults": [],
+          "errorMessage": null
+        },
+        {
+          "success": true,
+          "duration": "00:00:00.5019612",
+          "expectationResults": [],
+          "errorMessage": null
+        },
+        {
+          "success": true,
+          "duration": "00:00:00.5002952",
+          "expectationResults": [],
+          "errorMessage": null
+        },
+        {
+          "success": true,
+          "duration": "00:00:00.5017746",
+          "expectationResults": [],
+          "errorMessage": null
+        },
+        {
+          "success": true,
+          "duration": "00:00:00.5000888",
+          "expectationResults": [],
+          "errorMessage": null
+        }
+      ],
+      "errorMessage": null,
+      "startTime": "2025-07-01T14:10:53.0131768Z",
+      "endTime": "2025-07-01T14:11:03.0795332Z"
+    },
+    {
+      "name": "SustainedHighTempTemporalTest",
+      "success": true,
+      "duration": "00:00:10.0168695",
+      "stepResults": [
+        {
+          "success": true,
+          "duration": "00:00:00.5005387",
+          "expectationResults": [],
+          "errorMessage": null
+        },
+        {
+          "success": true,
+          "duration": "00:00:00.5069137",
+          "expectationResults": [],
+          "errorMessage": null
+        },
+        {
+          "success": true,
+          "duration": "00:00:00.5005170",
+          "expectationResults": [],
+          "errorMessage": null
+        },
+        {
+          "success": true,
+          "duration": "00:00:00.4987211",
+          "expectationResults": [],
+          "errorMessage": null
+        },
+        {
+          "success": true,
+          "duration": "00:00:00.5005978",
+          "expectationResults": [],
+          "errorMessage": null
+        },
+        {
+          "success": true,
+          "duration": "00:00:00.4987867",
+          "expectationResults": [],
+          "errorMessage": null
+        },
+        {
+          "success": true,
+          "duration": "00:00:00.5105836",
+          "expectationResults": [],
+          "errorMessage": null
+        },
+        {
+          "success": true,
+          "duration": "00:00:00.4987409",
+          "expectationResults": [],
+          "errorMessage": null
+        },
+        {
+          "success": true,
+          "duration": "00:00:00.5004111",
+          "expectationResults": [],
+          "errorMessage": null
+        },
+        {
+          "success": true,
+          "duration": "00:00:00.4989908",
+          "expectationResults": [],
+          "errorMessage": null
+        },
+        {
+          "success": true,
+          "duration": "00:00:00.5005400",
+          "expectationResults": [],
+          "errorMessage": null
+        },
+        {
+          "success": true,
+          "duration": "00:00:00.4989075",
+          "expectationResults": [],
+          "errorMessage": null
+        },
+        {
+          "success": true,
+          "duration": "00:00:00.5004967",
+          "expectationResults": [],
+          "errorMessage": null
+        },
+        {
+          "success": true,
+          "duration": "00:00:00.4989157",
+          "expectationResults": [],
+          "errorMessage": null
+        },
+        {
+          "success": true,
+          "duration": "00:00:00.5003440",
+          "expectationResults": [],
+          "errorMessage": null
+        },
+        {
+          "success": true,
+          "duration": "00:00:00.4989519",
+          "expectationResults": [],
+          "errorMessage": null
+        },
+        {
+          "success": true,
+          "duration": "00:00:00.5003631",
+          "expectationResults": [],
+          "errorMessage": null
+        },
+        {
+          "success": true,
+          "duration": "00:00:00.4985475",
+          "expectationResults": [],
+          "errorMessage": null
+        },
+        {
+          "success": true,
+          "duration": "00:00:00.5005295",
+          "expectationResults": [],
+          "errorMessage": null
+        },
+        {
+          "success": true,
+          "duration": "00:00:00.4986321",
+          "expectationResults": [],
+          "errorMessage": null
+        }
+      ],
+      "errorMessage": null,
+      "startTime": "2025-07-01T14:11:03.0826235Z",
+      "endTime": "2025-07-01T14:11:13.099493Z"
+    },
+    {
+      "name": "SustainedHighTemp_WindowEstablishment",
+      "success": false,
+      "duration": "00:00:00.8594080",
+      "stepResults": [
+        {
+          "success": false,
+          "duration": "00:00:00.8579985",
+          "expectationResults": [
+            {
+              "key": "output:sustained_high",
+              "success": false,
+              "expected": "False",
+              "actual": null,
+              "details": "Expected: False, Actual: "
+            }
+          ],
+          "errorMessage": null
+        }
+      ],
+      "errorMessage": null,
+      "startTime": "2025-07-01T14:11:13.0996747Z",
+      "endTime": "2025-07-01T14:11:13.9590827Z"
+    },
+    {
+      "name": "SustainedHighTemp_WindowInterruption",
+      "success": false,
+      "duration": "00:00:07.3517286",
+      "stepResults": [
+        {
+          "success": false,
+          "duration": "00:00:07.3506977",
+          "expectationResults": [
+            {
+              "key": "output:sustained_high",
+              "success": false,
+              "expected": "False",
+              "actual": null,
+              "details": "Expected: False, Actual: "
+            }
+          ],
+          "errorMessage": null
+        }
+      ],
+      "errorMessage": null,
+      "startTime": "2025-07-01T14:11:13.9593111Z",
+      "endTime": "2025-07-01T14:11:21.3110397Z"
+    },
+    {
+      "name": "SustainedHighTemp_DurationBoundary",
+      "success": false,
+      "duration": "00:00:10.2448180",
+      "stepResults": [
+        {
+          "success": false,
+          "duration": "00:00:10.2434798",
+          "expectationResults": [
+            {
+              "key": "output:sustained_high",
+              "success": false,
+              "expected": "False",
+              "actual": null,
+              "details": "Expected: False, Actual: "
+            }
+          ],
+          "errorMessage": null
+        }
+      ],
+      "errorMessage": null,
+      "startTime": "2025-07-01T14:11:21.3111081Z",
+      "endTime": "2025-07-01T14:11:31.5559261Z"
+    },
+    {
+      "name": "SustainedHighTemp_SensorUnavailability",
+      "success": false,
+      "duration": "00:00:05.3575511",
+      "stepResults": [
+        {
+          "success": false,
+          "duration": "00:00:05.3563853",
+          "expectationResults": [
+            {
+              "key": "output:sustained_high",
+              "success": false,
+              "expected": "False",
+              "actual": null,
+              "details": "Expected: False, Actual: "
+            }
+          ],
+          "errorMessage": null
+        }
+      ],
+      "errorMessage": null,
+      "startTime": "2025-07-01T14:11:31.5560517Z",
+      "endTime": "2025-07-01T14:11:36.9136028Z"
+    }
+  ]
+}

@@ -1,0 +1,817 @@
+{
+  "scenarios": [
+    {
+      "name": "SustainedHighTempBasicTest",
+      "description": "Basic test for rule SustainedHighTemp: ",
+      "preSetOutputs": null,
+      "clearOutputs": true,
+      "steps": [
+        {
+          "name": "Temporal step 1/20",
+          "description": "Step 1 for temporal rule: Temperature \u003E 75",
+          "inputs": [
+            {
+              "key": "Temperature",
+              "value": 83.5,
+              "format": 0,
+              "field": null
+            }
+          ],
+          "delay": 500,
+          "delayMultiplier": null,
+          "expectations": [],
+          "result": null
+        },
+        {
+          "name": "Temporal step 2/20",
+          "description": "Step 2 for temporal rule: Temperature \u003E 75",
+          "inputs": [
+            {
+              "key": "Temperature",
+              "value": 83.5,
+              "format": 0,
+              "field": null
+            }
+          ],
+          "delay": 500,
+          "delayMultiplier": null,
+          "expectations": [],
+          "result": null
+        },
+        {
+          "name": "Temporal step 3/20",
+          "description": "Step 3 for temporal rule: Temperature \u003E 75",
+          "inputs": [
+            {
+              "key": "Temperature",
+              "value": 83.5,
+              "format": 0,
+              "field": null
+            }
+          ],
+          "delay": 500,
+          "delayMultiplier": null,
+          "expectations": [],
+          "result": null
+        },
+        {
+          "name": "Temporal step 4/20",
+          "description": "Step 4 for temporal rule: Temperature \u003E 75",
+          "inputs": [
+            {
+              "key": "Temperature",
+              "value": 83.5,
+              "format": 0,
+              "field": null
+            }
+          ],
+          "delay": 500,
+          "delayMultiplier": null,
+          "expectations": [],
+          "result": null
+        },
+        {
+          "name": "Temporal step 5/20",
+          "description": "Step 5 for temporal rule: Temperature \u003E 75",
+          "inputs": [
+            {
+              "key": "Temperature",
+              "value": 83.5,
+              "format": 0,
+              "field": null
+            }
+          ],
+          "delay": 500,
+          "delayMultiplier": null,
+          "expectations": [],
+          "result": null
+        },
+        {
+          "name": "Temporal step 6/20",
+          "description": "Step 6 for temporal rule: Temperature \u003E 75",
+          "inputs": [
+            {
+              "key": "Temperature",
+              "value": 83.5,
+              "format": 0,
+              "field": null
+            }
+          ],
+          "delay": 500,
+          "delayMultiplier": null,
+          "expectations": [],
+          "result": null
+        },
+        {
+          "name": "Temporal step 7/20",
+          "description": "Step 7 for temporal rule: Temperature \u003E 75",
+          "inputs": [
+            {
+              "key": "Temperature",
+              "value": 83.5,
+              "format": 0,
+              "field": null
+            }
+          ],
+          "delay": 500,
+          "delayMultiplier": null,
+          "expectations": [],
+          "result": null
+        },
+        {
+          "name": "Temporal step 8/20",
+          "description": "Step 8 for temporal rule: Temperature \u003E 75",
+          "inputs": [
+            {
+              "key": "Temperature",
+              "value": 83.5,
+              "format": 0,
+              "field": null
+            }
+          ],
+          "delay": 500,
+          "delayMultiplier": null,
+          "expectations": [],
+          "result": null
+        },
+        {
+          "name": "Temporal step 9/20",
+          "description": "Step 9 for temporal rule: Temperature \u003E 75",
+          "inputs": [
+            {
+              "key": "Temperature",
+              "value": 83.5,
+              "format": 0,
+              "field": null
+            }
+          ],
+          "delay": 500,
+          "delayMultiplier": null,
+          "expectations": [],
+          "result": null
+        },
+        {
+          "name": "Temporal step 10/20",
+          "description": "Step 10 for temporal rule: Temperature \u003E 75",
+          "inputs": [
+            {
+              "key": "Temperature",
+              "value": 83.5,
+              "format": 0,
+              "field": null
+            }
+          ],
+          "delay": 500,
+          "delayMultiplier": null,
+          "expectations": [],
+          "result": null
+        },
+        {
+          "name": "Temporal step 11/20",
+          "description": "Step 11 for temporal rule: Temperature \u003E 75",
+          "inputs": [
+            {
+              "key": "Temperature",
+              "value": 83.5,
+              "format": 0,
+              "field": null
+            }
+          ],
+          "delay": 500,
+          "delayMultiplier": null,
+          "expectations": [],
+          "result": null
+        },
+        {
+          "name": "Temporal step 12/20",
+          "description": "Step 12 for temporal rule: Temperature \u003E 75",
+          "inputs": [
+            {
+              "key": "Temperature",
+              "value": 83.5,
+              "format": 0,
+              "field": null
+            }
+          ],
+          "delay": 500,
+          "delayMultiplier": null,
+          "expectations": [],
+          "result": null
+        },
+        {
+          "name": "Temporal step 13/20",
+          "description": "Step 13 for temporal rule: Temperature \u003E 75",
+          "inputs": [
+            {
+              "key": "Temperature",
+              "value": 83.5,
+              "format": 0,
+              "field": null
+            }
+          ],
+          "delay": 500,
+          "delayMultiplier": null,
+          "expectations": [],
+          "result": null
+        },
+        {
+          "name": "Temporal step 14/20",
+          "description": "Step 14 for temporal rule: Temperature \u003E 75",
+          "inputs": [
+            {
+              "key": "Temperature",
+              "value": 83.5,
+              "format": 0,
+              "field": null
+            }
+          ],
+          "delay": 500,
+          "delayMultiplier": null,
+          "expectations": [],
+          "result": null
+        },
+        {
+          "name": "Temporal step 15/20",
+          "description": "Step 15 for temporal rule: Temperature \u003E 75",
+          "inputs": [
+            {
+              "key": "Temperature",
+              "value": 83.5,
+              "format": 0,
+              "field": null
+            }
+          ],
+          "delay": 500,
+          "delayMultiplier": null,
+          "expectations": [],
+          "result": null
+        },
+        {
+          "name": "Temporal step 16/20",
+          "description": "Step 16 for temporal rule: Temperature \u003E 75",
+          "inputs": [
+            {
+              "key": "Temperature",
+              "value": 83.5,
+              "format": 0,
+              "field": null
+            }
+          ],
+          "delay": 500,
+          "delayMultiplier": null,
+          "expectations": [],
+          "result": null
+        },
+        {
+          "name": "Temporal step 17/20",
+          "description": "Step 17 for temporal rule: Temperature \u003E 75",
+          "inputs": [
+            {
+              "key": "Temperature",
+              "value": 83.5,
+              "format": 0,
+              "field": null
+            }
+          ],
+          "delay": 500,
+          "delayMultiplier": null,
+          "expectations": [],
+          "result": null
+        },
+        {
+          "name": "Temporal step 18/20",
+          "description": "Step 18 for temporal rule: Temperature \u003E 75",
+          "inputs": [
+            {
+              "key": "Temperature",
+              "value": 83.5,
+              "format": 0,
+              "field": null
+            }
+          ],
+          "delay": 500,
+          "delayMultiplier": null,
+          "expectations": [],
+          "result": null
+        },
+        {
+          "name": "Temporal step 19/20",
+          "description": "Step 19 for temporal rule: Temperature \u003E 75",
+          "inputs": [
+            {
+              "key": "Temperature",
+              "value": 83.5,
+              "format": 0,
+              "field": null
+            }
+          ],
+          "delay": 500,
+          "delayMultiplier": null,
+          "expectations": [],
+          "result": null
+        },
+        {
+          "name": "Temporal step 20/20",
+          "description": "Step 20 for temporal rule: Temperature \u003E 75",
+          "inputs": [
+            {
+              "key": "Temperature",
+              "value": 83.5,
+              "format": 0,
+              "field": null
+            }
+          ],
+          "delay": 500,
+          "delayMultiplier": null,
+          "expectations": [],
+          "result": null
+        }
+      ],
+      "inputs": null,
+      "inputSequence": null,
+      "expectedOutputs": null,
+      "tolerance": null,
+      "timeoutMultiplier": 1
+    },
+    {
+      "name": "SustainedHighTempTemporalTest",
+      "description": "Temporal test for rule SustainedHighTemp: ",
+      "preSetOutputs": null,
+      "clearOutputs": true,
+      "steps": [],
+      "inputs": null,
+      "inputSequence": [
+        {
+          "delayMs": 500,
+          "Temperature": 50
+        },
+        {
+          "delayMs": 500,
+          "Temperature": 50
+        },
+        {
+          "delayMs": 500,
+          "Temperature": 50
+        },
+        {
+          "delayMs": 500,
+          "Temperature": 50
+        },
+        {
+          "delayMs": 500,
+          "Temperature": 50
+        },
+        {
+          "delayMs": 500,
+          "Temperature": 50
+        },
+        {
+          "delayMs": 500,
+          "Temperature": 50
+        },
+        {
+          "delayMs": 500,
+          "Temperature": 50
+        },
+        {
+          "delayMs": 500,
+          "Temperature": 50
+        },
+        {
+          "delayMs": 500,
+          "Temperature": 50
+        },
+        {
+          "delayMs": 500,
+          "Temperature": 50
+        },
+        {
+          "delayMs": 500,
+          "Temperature": 50
+        },
+        {
+          "delayMs": 500,
+          "Temperature": 50
+        },
+        {
+          "delayMs": 500,
+          "Temperature": 50
+        },
+        {
+          "delayMs": 500,
+          "Temperature": 50
+        },
+        {
+          "delayMs": 500,
+          "Temperature": 50
+        },
+        {
+          "delayMs": 500,
+          "Temperature": 50
+        },
+        {
+          "delayMs": 500,
+          "Temperature": 50
+        },
+        {
+          "delayMs": 500,
+          "Temperature": 50
+        },
+        {
+          "delayMs": 500,
+          "Temperature": 50
+        }
+      ],
+      "expectedOutputs": {},
+      "tolerance": null,
+      "timeoutMultiplier": 1
+    },
+    {
+      "name": "SustainedHighTemp_WindowEstablishment",
+      "description": "Tests window establishment for Temperature \u003E 75 over 00:00:10",
+      "preSetOutputs": null,
+      "clearOutputs": true,
+      "steps": [
+        {
+          "name": "Initialize output key",
+          "description": "",
+          "inputs": [
+            {
+              "key": "Temperature",
+              "value": 55,
+              "format": 0,
+              "field": null
+            }
+          ],
+          "delay": 200,
+          "delayMultiplier": null,
+          "expectations": [],
+          "result": null
+        },
+        {
+          "name": "Below threshold",
+          "description": "",
+          "inputs": [
+            {
+              "key": "Temperature",
+              "value": 65,
+              "format": 0,
+              "field": null
+            }
+          ],
+          "delay": 500,
+          "delayMultiplier": null,
+          "expectations": [
+            {
+              "key": "output:sustained_high",
+              "field": null,
+              "expected": "False",
+              "validator": "evalresult",
+              "format": 0,
+              "tolerance": null,
+              "timeoutMs": null,
+              "timeoutMultiplier": null,
+              "pollingIntervalMs": null,
+              "pollingIntervalFactor": null
+            }
+          ],
+          "result": null
+        },
+        {
+          "name": "Above threshold - partial duration",
+          "description": "",
+          "inputs": [
+            {
+              "key": "Temperature",
+              "value": 85,
+              "format": 0,
+              "field": null
+            }
+          ],
+          "delay": 5000,
+          "delayMultiplier": null,
+          "expectations": [
+            {
+              "key": "output:sustained_high",
+              "field": null,
+              "expected": "False",
+              "validator": "evalresult",
+              "format": 0,
+              "tolerance": null,
+              "timeoutMs": null,
+              "timeoutMultiplier": null,
+              "pollingIntervalMs": null,
+              "pollingIntervalFactor": null
+            }
+          ],
+          "result": null
+        },
+        {
+          "name": "Above threshold - complete duration",
+          "description": "",
+          "inputs": [
+            {
+              "key": "Temperature",
+              "value": 85,
+              "format": 0,
+              "field": null
+            }
+          ],
+          "delay": 11000,
+          "delayMultiplier": null,
+          "expectations": [
+            {
+              "key": "output:sustained_high",
+              "field": null,
+              "expected": "True",
+              "validator": "evalresult",
+              "format": 0,
+              "tolerance": null,
+              "timeoutMs": null,
+              "timeoutMultiplier": null,
+              "pollingIntervalMs": null,
+              "pollingIntervalFactor": null
+            }
+          ],
+          "result": null
+        }
+      ],
+      "inputs": null,
+      "inputSequence": null,
+      "expectedOutputs": null,
+      "tolerance": null,
+      "timeoutMultiplier": 1
+    },
+    {
+      "name": "SustainedHighTemp_WindowInterruption",
+      "description": "Tests window interruption behavior for Temperature",
+      "preSetOutputs": null,
+      "clearOutputs": true,
+      "steps": [
+        {
+          "name": "Start above threshold",
+          "description": "",
+          "inputs": [
+            {
+              "key": "Temperature",
+              "value": 85,
+              "format": 0,
+              "field": null
+            }
+          ],
+          "delay": 7000,
+          "delayMultiplier": null,
+          "expectations": [
+            {
+              "key": "output:sustained_high",
+              "field": null,
+              "expected": "False",
+              "validator": "evalresult",
+              "format": 0,
+              "tolerance": null,
+              "timeoutMs": null,
+              "timeoutMultiplier": null,
+              "pollingIntervalMs": null,
+              "pollingIntervalFactor": null
+            }
+          ],
+          "result": null
+        },
+        {
+          "name": "Drop below threshold - window resets",
+          "description": "",
+          "inputs": [
+            {
+              "key": "Temperature",
+              "value": 65,
+              "format": 0,
+              "field": null
+            }
+          ],
+          "delay": 500,
+          "delayMultiplier": null,
+          "expectations": [
+            {
+              "key": "output:sustained_high",
+              "field": null,
+              "expected": "False",
+              "validator": "evalresult",
+              "format": 0,
+              "tolerance": null,
+              "timeoutMs": null,
+              "timeoutMultiplier": null,
+              "pollingIntervalMs": null,
+              "pollingIntervalFactor": null
+            }
+          ],
+          "result": null
+        },
+        {
+          "name": "Back above threshold - restart duration",
+          "description": "",
+          "inputs": [
+            {
+              "key": "Temperature",
+              "value": 85,
+              "format": 0,
+              "field": null
+            }
+          ],
+          "delay": 12000,
+          "delayMultiplier": null,
+          "expectations": [
+            {
+              "key": "output:sustained_high",
+              "field": null,
+              "expected": "True",
+              "validator": "evalresult",
+              "format": 0,
+              "tolerance": null,
+              "timeoutMs": null,
+              "timeoutMultiplier": null,
+              "pollingIntervalMs": null,
+              "pollingIntervalFactor": null
+            }
+          ],
+          "result": null
+        }
+      ],
+      "inputs": null,
+      "inputSequence": null,
+      "expectedOutputs": null,
+      "tolerance": null,
+      "timeoutMultiplier": 1
+    },
+    {
+      "name": "SustainedHighTemp_DurationBoundary",
+      "description": "Tests duration boundary conditions for Temperature",
+      "preSetOutputs": null,
+      "clearOutputs": true,
+      "steps": [
+        {
+          "name": "Just before duration boundary",
+          "description": "",
+          "inputs": [
+            {
+              "key": "Temperature",
+              "value": 85,
+              "format": 0,
+              "field": null
+            }
+          ],
+          "delay": 9900,
+          "delayMultiplier": null,
+          "expectations": [
+            {
+              "key": "output:sustained_high",
+              "field": null,
+              "expected": "False",
+              "validator": "evalresult",
+              "format": 0,
+              "tolerance": null,
+              "timeoutMs": null,
+              "timeoutMultiplier": null,
+              "pollingIntervalMs": null,
+              "pollingIntervalFactor": null
+            }
+          ],
+          "result": null
+        },
+        {
+          "name": "Just after duration boundary",
+          "description": "",
+          "inputs": [
+            {
+              "key": "Temperature",
+              "value": 85,
+              "format": 0,
+              "field": null
+            }
+          ],
+          "delay": 10100,
+          "delayMultiplier": null,
+          "expectations": [
+            {
+              "key": "output:sustained_high",
+              "field": null,
+              "expected": "True",
+              "validator": "evalresult",
+              "format": 0,
+              "tolerance": null,
+              "timeoutMs": null,
+              "timeoutMultiplier": null,
+              "pollingIntervalMs": null,
+              "pollingIntervalFactor": null
+            }
+          ],
+          "result": null
+        }
+      ],
+      "inputs": null,
+      "inputSequence": null,
+      "expectedOutputs": null,
+      "tolerance": null,
+      "timeoutMultiplier": 1
+    },
+    {
+      "name": "SustainedHighTemp_SensorUnavailability",
+      "description": "Tests sensor unavailability handling for Temperature",
+      "preSetOutputs": null,
+      "clearOutputs": true,
+      "steps": [
+        {
+          "name": "Start above threshold",
+          "description": "",
+          "inputs": [
+            {
+              "key": "Temperature",
+              "value": 85,
+              "format": 0,
+              "field": null
+            }
+          ],
+          "delay": 5000,
+          "delayMultiplier": null,
+          "expectations": [
+            {
+              "key": "output:sustained_high",
+              "field": null,
+              "expected": "False",
+              "validator": "evalresult",
+              "format": 0,
+              "tolerance": null,
+              "timeoutMs": null,
+              "timeoutMultiplier": null,
+              "pollingIntervalMs": null,
+              "pollingIntervalFactor": null
+            }
+          ],
+          "result": null
+        },
+        {
+          "name": "Sensor unavailable - should pause window",
+          "description": "",
+          "inputs": [
+            {
+              "key": "Temperature",
+              "value": 0,
+              "format": 0,
+              "field": null
+            }
+          ],
+          "delay": 1000,
+          "delayMultiplier": null,
+          "expectations": [
+            {
+              "key": "output:sustained_high",
+              "field": null,
+              "expected": "Indeterminate",
+              "validator": "evalresult",
+              "format": 0,
+              "tolerance": null,
+              "timeoutMs": null,
+              "timeoutMultiplier": null,
+              "pollingIntervalMs": null,
+              "pollingIntervalFactor": null
+            }
+          ],
+          "result": null
+        },
+        {
+          "name": "Sensor restored - restart window",
+          "description": "",
+          "inputs": [
+            {
+              "key": "Temperature",
+              "value": 85,
+              "format": 0,
+              "field": null
+            }
+          ],
+          "delay": 12000,
+          "delayMultiplier": null,
+          "expectations": [
+            {
+              "key": "output:sustained_high",
+              "field": null,
+              "expected": "True",
+              "validator": "evalresult",
+              "format": 0,
+              "tolerance": null,
+              "timeoutMs": null,
+              "timeoutMultiplier": null,
+              "pollingIntervalMs": null,
+              "pollingIntervalFactor": null
+            }
+          ],
+          "result": null
+        }
+      ],
+      "inputs": null,
+      "inputSequence": null,
+      "expectedOutputs": null,
+      "tolerance": null,
+      "timeoutMultiplier": 1
+    }
+  ]
+}

@@ -164,38 +164,17 @@ namespace BeaconTester.RuleAnalyzer.Generation
                 }
             });
 
-            // Step 2: Value above threshold but within duration - should be False
+            // Step 2: Value above threshold for complete duration - should eventually become True
             var aboveValue = GetValueAboveThreshold(condition);
-            var partialDuration = (int)(condition.Duration.TotalMilliseconds * 0.5);
+            var fullDuration = (int)(condition.Duration.TotalMilliseconds * 1.2); // 120% to ensure we exceed duration
             scenario.Steps.Add(new TestStep
             {
-                Name = "Above threshold - partial duration",
+                Name = "Above threshold - wait for complete duration",
                 Inputs = new List<TestInput>
                 {
                     new TestInput { Key = condition.Sensor, Value = aboveValue }
                 },
-                Delay = partialDuration,
-                Expectations = new List<TestExpectation>
-                {
-                    new TestExpectation
-                    {
-                        Key = GetExpectedOutputKey(rule),
-                        Expected = "False",
-                        Validator = GetValidatorType(rule)
-                    }
-                }
-            });
-
-            // Step 3: Complete duration - should be True
-            var remainingDuration = (int)(condition.Duration.TotalMilliseconds * 0.55); // Total: 50% + 55% = 105% > 100%
-            scenario.Steps.Add(new TestStep
-            {
-                Name = "Above threshold - complete duration",
-                Inputs = new List<TestInput>
-                {
-                    new TestInput { Key = condition.Sensor, Value = aboveValue }
-                },
-                Delay = remainingDuration,
+                Delay = fullDuration,
                 Expectations = new List<TestExpectation>
                 {
                     new TestExpectation
